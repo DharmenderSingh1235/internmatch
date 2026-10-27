@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232a5bd7'/%3E%3Ctext x='16' y='22' font-family='Arial,sans-serif' font-weight='700' font-size='15' fill='white' text-anchor='middle'%3EIM%3C/text%3E%3C/svg%3E" />
+<meta name="theme-color" content="#101b34" />
+<title>Log in — InternMatch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+<link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="container">
+    <a class="brand" href="index.html"><span class="brand__mark">IM</span> InternMatch</a>
+    <span></span>
+    <div class="topbar-actions">
+      <button class="btn btn--ghost btn--sm" data-action="theme-toggle">🌙 Dark mode</button>
+      <a class="btn btn--primary btn--sm" href="register.html" id="login-create-account">Create account</a>
+    </div>
+  </div>
+</header>
+
+<div class="auth-shell">
+  <div class="auth-shell__art">
+    <div>
+      <h2 id="login-welcome-heading">Welcome back.</h2>
+      <p id="login-welcome-copy">Log in to see your latest recommendations, saved internships, and application status.</p>
+    </div>
+    <blockquote class="auth-quote">
+      <span id="login-welcome-note">Sign in to continue to your InternMatch account.</span>
+    </blockquote>
+  </div>
+  <div class="auth-shell__form">
+    <div class="auth-card">
+      <h1 id="login-title">Log in to InternMatch</h1>
+      <p id="login-description">Choose your account type and sign in to continue.</p>
+
+      <form id="login-form" novalidate>
+        <div class="field"><label for="login-role">Account type</label><select id="login-role" name="role"><option value="student">Student</option><option value="company">Recruiter / Company</option><option value="admin">Admin</option></select></div>
+        <div id="student-login-fields">
+        <div class="field">
+          <label for="login-email">Email address</label>
+          <input type="email" id="login-email" name="email" autocomplete="email" required />
+        </div>
+        <div class="field">
+          <label for="login-password">Password</label>
+          <div class="password-field">
+            <input type="password" id="login-password" name="password" autocomplete="current-password" required />
+            <button type="button" data-toggle-password="login-password" aria-pressed="false">Show</button>
+          </div>
+        </div>
+        </div>
+        <div id="company-login-fields" hidden><div class="field"><label for="login-company-email">Work email</label><input type="email" id="login-company-email" autocomplete="username" /></div><div class="field"><label for="login-company-password">Password</label><div class="password-field"><input type="password" id="login-company-password" autocomplete="current-password" /><button type="button" data-toggle-password="login-company-password" aria-pressed="false">Show</button></div></div></div>
+        <div id="admin-login-fields" hidden>
+          <div class="field"><label for="login-admin-password">Admin password</label><div class="password-field"><input type="password" id="login-admin-password" autocomplete="current-password" /><button type="button" data-toggle-password="login-admin-password" aria-pressed="false">Show</button></div></div>
+        </div>
+        <button type="submit" id="login-submit" class="btn btn--primary btn--block btn--lg">Log in as student</button>
+      </form>
+
+      <p class="auth-foot" id="login-register-foot">Don't have an account? <a href="register.html">Register</a></p>
+      <p class="auth-foot" id="recruiter-register-foot" hidden>Recruiting for a company? <a href="company-register.html">Create a recruiter account</a></p>
+      <p class="auth-foot"><button type="button" class="auth-text-button" id="forgot-password-open">Forgot password?</button></p>
+      <p class="auth-foot" id="admin-password-help" hidden>Admin password is managed in <code>server/.env</code>.</p>
+    </div>
+  </div>
+</div>
+
+<dialog class="password-reset-dialog" id="password-reset-dialog" aria-labelledby="password-reset-title">
+  <form id="password-reset-form">
+    <div class="password-reset-dialog__head"><div><span class="admin-settings__eyebrow">ACCOUNT RECOVERY</span><h2 id="password-reset-title">Request a password reset</h2></div><button type="button" class="btn btn--ghost btn--sm" id="password-reset-close">Close</button></div>
+    <p class="hint">A request will appear in the admin dashboard. The admin must confirm your identity and issue a temporary password.</p>
+    <input type="hidden" id="password-reset-role" />
+    <div class="field"><label for="password-reset-email">Account email</label><input id="password-reset-email" type="email" required autocomplete="email" /></div>
+    <button type="submit" class="btn btn--primary">Send reset request</button>
+  </form>
+</dialog>
+
+<script src="data/internships.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/recommendation.js"></script>
+<script src="js/app.js"></script>
+<script src="js/auth.js"></script>
+</body>
+</html>

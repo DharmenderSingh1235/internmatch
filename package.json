@@ -1,0 +1,10 @@
+{
+  "name": "internmatch-project",
+  "version": "1.0.0",
+  "private": true,
+  "description": "InternMatch frontend with its local API server",
+  "scripts": {
+    "start": "npm --prefix server start",
+    "start:api": "npm --prefix server start"
+  }
+}

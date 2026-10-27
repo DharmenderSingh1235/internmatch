@@ -1,0 +1,26 @@
+# Credentials and local environment settings
+.env
+.env.*
+!.env.example
+server/.env
+server/.env.*
+!server/.env.example
+
+# Dependencies, runtime data, and generated files
+node_modules/
+**/node_modules/
+server/data/
+*.log
+npm-debug.log*
+coverage/
+dist/
+build/
+
+# Local uploads and operating-system/editor files
+uploads/
+*.tmp
+*.temp
+Thumbs.db
+Desktop.ini
+.DS_Store
+.vscode/

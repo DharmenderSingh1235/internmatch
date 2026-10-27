@@ -1,0 +1,12 @@
+.recommendations-page { max-width:1440px; padding-top:26px; }
+.recommendations-hero { min-height:210px; margin-bottom:24px; }
+.recommendations-hero h1 { max-width:20ch; }
+.recommendations-results-head { align-items:flex-start; margin-bottom:16px; }
+.recommendations-results-head p { max-width:72ch; margin:4px 0 0; }
+.recommendations-page #recommendations-list { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,400px),1fr)); gap:14px; margin-top:0; }
+.recommendations-page .rec-card { min-width:0; height:100%; padding:20px; border:1px solid var(--color-border); border-radius:16px; background:var(--color-surface); box-shadow:0 5px 16px rgba(15,27,52,.045); transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease; }
+.recommendations-page .rec-card:hover { transform:translateY(-2px); border-color:color-mix(in srgb,var(--color-primary) 30%,var(--color-border)); box-shadow:0 12px 26px rgba(15,27,52,.085); }
+.recommendations-page .rec-card__bars { max-width:none; padding:12px; border:1px solid var(--color-border); border-radius:12px; background:var(--color-bg-alt); }
+.recommendations-page .score-bar-row:last-child { margin-bottom:0; }
+.recommendations-page .rec-card .int-card__footer { margin-top:auto; }
+@media(max-width:600px) { .recommendations-page { padding-top:18px; } .recommendations-page .rec-card { padding:16px; } .recommendations-results-head { margin-bottom:12px; } }

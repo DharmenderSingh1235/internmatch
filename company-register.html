@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Create recruiter account — InternMatch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" /><link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+<header class="topbar"><div class="container"><a class="brand" href="index.html"><span class="brand__mark">IM</span> InternMatch</a><span></span><div class="topbar-actions"><a class="btn btn--ghost btn--sm" href="login.html?role=company">Recruiter log in</a></div></div></header>
+<div class="auth-shell"><div class="auth-shell__art"><div><h2>Find the right early-career talent.</h2><p>Submit your company details for review. Once approved, you can sign in to draft opportunities and manage applicants.</p></div><blockquote class="auth-quote">An administrator must approve your company registration before recruiter access is enabled. Each opportunity is reviewed separately before students can see it.</blockquote></div>
+<div class="auth-shell__form"><div class="auth-card"><h1>Request recruiter access</h1><p>Share your company contact details. Admin approval is required before you can sign in.</p>
+<form id="company-register-form" novalidate>
+<div class="field"><label for="company-reg-name">Company name</label><input id="company-reg-name" required maxlength="120" autocomplete="organization" /></div>
+<div class="field"><label for="company-reg-contact">Your name</label><input id="company-reg-contact" required maxlength="120" autocomplete="name" /></div>
+<div class="field"><label for="company-reg-email">Work email</label><input id="company-reg-email" type="email" required autocomplete="email" /></div>
+<div class="field"><label for="company-reg-industry">Industry</label><input id="company-reg-industry" required maxlength="100" placeholder="e.g. Software and technology" /></div>
+<div class="field"><label for="company-reg-location">Company location</label><input id="company-reg-location" required maxlength="120" placeholder="City or Remote" /></div>
+<div class="field"><label for="company-reg-website">Website <span class="hint">(optional)</span></label><input id="company-reg-website" type="url" maxlength="200" placeholder="https://example.com" /></div>
+<div class="field"><label for="company-reg-password">Password</label><input id="company-reg-password" type="password" required minlength="8" autocomplete="new-password" /><small class="hint">Use at least 8 characters.</small></div>
+<button class="btn btn--primary btn--block btn--lg" type="submit">Send company registration request</button>
+</form><p class="auth-foot">Already registered? <a href="login.html?role=company">Log in</a></p>
+</div></div></div>
+<script src="js/storage.js"></script><script src="js/app.js"></script><script src="js/company-auth.js"></script>
+</body></html>

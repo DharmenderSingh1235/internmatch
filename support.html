@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#101b34" />
+<title>Help &amp; Support — InternMatch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&amp;family=Source+Sans+3:wght@400;600;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+<link rel="stylesheet" href="css/dashboard.css" />
+<link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="primary-sidebar">
+    <div class="sidebar-brand-row">
+      <a class="brand" href="dashboard.html"><span class="brand__mark">IM</span> InternMatch</a>
+      <button type="button" class="sidebar-hide-toggle" data-sidebar-hide aria-label="Hide sidebar" title="Hide sidebar" aria-controls="primary-sidebar"><span aria-hidden="true">‹</span></button>
+    </div>
+    <ul class="sidebar-nav">
+      <li><a href="dashboard.html" data-nav-link="dashboard.html"><span class="icon" aria-hidden="true">▦</span> Dashboard</a></li>
+      <li><a href="internships.html" data-nav-link="internships.html"><span class="icon" aria-hidden="true">⌕</span> Browse internships</a></li>
+      <li><a href="recommendations.html" data-nav-link="recommendations.html"><span class="icon" aria-hidden="true">☆</span> Recommendations</a></li>
+      <li><a href="compare.html" data-nav-link="compare.html"><span class="icon" aria-hidden="true">⇄</span> Compare</a></li>
+      <li><a href="saved.html" data-nav-link="saved.html"><span class="icon" aria-hidden="true">♡</span> Saved</a></li>
+      <li><a href="applications.html" data-nav-link="applications.html"><span class="icon" aria-hidden="true">▤</span> Applications</a></li>
+      <li><a href="interviews.html" data-nav-link="interviews"><span class="icon"><svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="13" height="12" rx="2"></rect><path d="m16 10 5-3v10l-5-3"></path></svg></span> Interviews</a></li>
+      <li><a href="calendar.html" data-nav-link="calendar.html"><span class="icon" aria-hidden="true">▦</span> Deadline calendar</a></li>
+      <li><a href="interview-prep.html" data-nav-link="interview-prep.html"><span class="icon" aria-hidden="true">◉</span> Interview prep</a></li>
+      <li><a href="chatbot.html" data-nav-link="chatbot.html"><span class="icon" aria-hidden="true">▱</span> Career chatbot</a></li>
+      <li><a href="resume-analyzer.html" data-nav-link="resume-analyzer.html"><span class="icon" aria-hidden="true">▧</span> Resume analyzer</a></li>
+      <li><a href="skills.html" data-nav-link="skills.html"><span class="icon" aria-hidden="true">▥</span> Skill development</a></li>
+      <li><a href="profile.html" data-nav-link="profile.html"><span class="icon" aria-hidden="true">♙</span> My profile</a></li>
+      <li><a href="support.html" data-nav-link="support.html"><span class="icon" aria-hidden="true">✉</span> Help &amp; support</a></li>
+    </ul>
+    <div class="sidebar-foot">
+      <div class="sidebar-user"><span class="avatar" data-user-initial>?</span><div><div class="sidebar-user__name" data-user-name>Student</div><div class="sidebar-user__label">Student account</div></div></div>
+      <button class="btn btn--ghost btn--block btn--sm" data-action="logout">Log out</button>
+    </div>
+  </aside>
+  <div class="app-main">
+    <div class="app-topbar">
+      <div style="display:flex;align-items:center;gap:14px;"><button class="sidebar-toggle" data-sidebar-toggle aria-label="Toggle menu">☰</button><h1>Help &amp; support</h1></div>
+      <button type="button" class="btn btn--ghost btn--sm topbar-theme-toggle" data-action="theme-toggle" aria-label="Toggle dark mode">🌙 Dark mode</button>
+    </div>
+    <main class="app-content support-page">
+      <section class="support-hero">
+        <div class="support-hero__main"><span class="support-hero__icon" aria-hidden="true">✉</span><div><span class="browse-eyebrow">Student help desk</span><h2>How can we help?</h2><p>Send a message to the InternMatch admin about your account, profile, applications, or a technical issue. Follow its progress and read the reply here.</p></div></div>
+        <div class="support-hero__badge"><span class="support-online-dot"></span><span><strong>Private support channel</strong><small>Visible to you and the admin</small></span></div>
+      </section>
+      <div class="support-workspace">
+      <section class="panel support-compose" aria-labelledby="support-compose-title">
+        <div class="panel__head"><div><span class="dash-hero__eyebrow">Contact the admin</span><h2 class="mt-0" id="support-compose-title">Tell us what you need help with</h2><p class="hint">Choose a topic and include the details that will help us understand your request.</p></div></div>
+        <form id="student-support-form" class="student-support-form">
+          <div class="field student-support-form__subject"><label for="support-subject">Subject</label><input id="support-subject" name="subject" maxlength="120" placeholder="Briefly summarize your issue" required /></div>
+          <fieldset class="support-category-field">
+            <legend>What do you need help with?</legend>
+            <div class="support-category-grid">
+              <label class="support-category-choice"><input type="radio" name="category" value="Account access" checked /><span class="support-category-choice__icon" aria-hidden="true">♙</span><span><strong>Account access</strong><small>Sign-in or account issues</small></span></label>
+              <label class="support-category-choice"><input type="radio" name="category" value="Profile or CV" /><span class="support-category-choice__icon" aria-hidden="true">▤</span><span><strong>Profile or CV</strong><small>Profile details or resume</small></span></label>
+              <label class="support-category-choice"><input type="radio" name="category" value="Applications" /><span class="support-category-choice__icon" aria-hidden="true">✓</span><span><strong>Applications</strong><small>Application status or tracking</small></span></label>
+              <label class="support-category-choice"><input type="radio" name="category" value="Internship listing" /><span class="support-category-choice__icon" aria-hidden="true">⌕</span><span><strong>Internship listing</strong><small>Listing details or deadlines</small></span></label>
+              <label class="support-category-choice"><input type="radio" name="category" value="Technical issue" /><span class="support-category-choice__icon" aria-hidden="true">⚙</span><span><strong>Technical issue</strong><small>A page or feature isn’t working</small></span></label>
+              <label class="support-category-choice"><input type="radio" name="category" value="Other" /><span class="support-category-choice__icon" aria-hidden="true">···</span><span><strong>Something else</strong><small>Another question or concern</small></span></label>
+            </div>
+          </fieldset>
+          <div class="field student-support-form__message"><div class="support-label-row"><label for="support-message">Message</label><span id="support-message-count">0 / 2,000</span></div><textarea id="support-message" name="message" rows="6" minlength="10" maxlength="2000" placeholder="Tell us what happened, where you saw the problem, and what you already tried…" required></textarea></div>
+          <div class="student-support-form__footer"><p class="hint" id="student-support-status" aria-live="polite">Please don’t include passwords or API keys in your message.</p><button type="submit" class="btn btn--primary">Submit request <span aria-hidden="true">→</span></button></div>
+        </form>
+      </section>
+      <aside class="support-guidance">
+        <span class="support-guidance__icon" aria-hidden="true">i</span>
+        <h2>What happens next?</h2>
+        <ol class="support-steps"><li><span>1</span><div><strong>Your request is saved</strong><small>It appears in your support history.</small></div></li><li><span>2</span><div><strong>Admin reviews it</strong><small>You can see when its status changes.</small></div></li><li><span>3</span><div><strong>Read the reply here</strong><small>Replies stay with the request.</small></div></li></ol>
+        <div class="support-guidance__note"><strong>Helpful details</strong><p>Include the page name and the error you saw. Never share your password or API key.</p></div>
+      </aside>
+      </div>
+      <section class="support-requests" aria-labelledby="support-requests-title">
+        <div class="support-requests__head"><div><span class="browse-eyebrow">Your history</span><h2 id="support-requests-title">Support requests</h2></div><button type="button" class="btn btn--ghost btn--sm" id="student-support-refresh">Refresh</button></div>
+        <div id="student-support-list" class="student-support-list"><p class="hint">Loading your requests…</p></div>
+      </section>
+    </main>
+  </div>
+</div>
+<script src="js/storage.js"></script>
+<script src="js/app.js"></script>
+<script src="js/support.js"></script>
+</body>
+</html>

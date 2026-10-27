@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232a5bd7'/%3E%3Ctext x='16' y='22' font-family='Arial,sans-serif' font-weight='700' font-size='15' fill='white' text-anchor='middle'%3EIM%3C/text%3E%3C/svg%3E" />
+<meta name="theme-color" content="#101b34" />
+<title>Admin — InternMatch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+<link rel="stylesheet" href="css/dashboard.css" />
+<link rel="stylesheet" href="css/responsive.css" />
+<style>
+  .admin-gate { padding:28px; border:1px solid var(--color-border); border-radius:20px; background:var(--color-surface); box-shadow:0 14px 40px rgba(21,39,82,.08); }
+  .admin-gate__eyebrow,.admin-settings__eyebrow { color:var(--color-primary); font-size:.74rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+  .admin-gate h1 { margin:7px 0; font-family:var(--font-display); }
+  .admin-gate > p { color:var(--color-muted); line-height:1.5; }
+  .admin-settings { margin:18px 0 24px; padding:18px; border:1px solid var(--color-border); border-radius:15px; background:var(--color-bg-alt); }
+  .admin-settings h2 { margin:3px 0 5px; font-size:1.05rem; }
+  .admin-settings p { color:var(--color-muted); font-size:.86rem; }
+  .admin-password-form { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); align-items:end; gap:12px; }
+  .admin-password-form .field { margin:0; }
+  .admin-password-form button { margin-bottom:17px; }
+  .admin-password-status { min-height:1.2em; margin:8px 0 0; font-size:.84rem; }
+  .admin-profile-details { margin-top:8px; }
+  .admin-profile-details summary { color:var(--color-primary); font-size:.8rem; font-weight:700; cursor:pointer; }
+  .admin-profile-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 14px; min-width:280px; margin:10px 0 2px; }
+  .admin-profile-grid div { min-width:0; }
+  .admin-profile-grid dt { color:var(--color-muted); font-size:.72rem; }
+  .admin-profile-grid dd { margin:2px 0 0; overflow-wrap:anywhere; font-size:.8rem; }
+  .admin-cell-tags { max-width:240px; color:var(--color-muted); font-size:.8rem; line-height:1.45; }
+  .admin-student-record { display:grid; grid-template-columns:190px minmax(0,1fr); align-items:start; gap:16px; width:auto; min-width:0; margin:0; white-space:normal; }
+  .admin-student-dialog { width:min(920px,calc(100vw - 32px)); max-height:calc(100vh - 36px); padding:0; overflow:auto; border:1px solid var(--color-border); border-radius:20px; color:var(--color-text); background:var(--color-surface); box-shadow:0 24px 80px rgba(5,14,32,.3); }
+  .admin-student-dialog::backdrop { background:rgba(7,15,31,.62); backdrop-filter:blur(4px); }
+  .admin-student-dialog__head { position:sticky; top:0; z-index:2; display:flex; align-items:center; justify-content:space-between; gap:14px; padding:18px 22px; border-bottom:1px solid var(--color-border); background:var(--color-surface); }
+  .admin-student-dialog__head h2 { margin:2px 0 0; font-size:1.25rem; }
+  .admin-student-dialog__body { padding:18px 22px 22px; }
+  .admin-student-dialog__body .admin-student-record { width:auto; min-width:0; margin:0; }
+  .admin-cv-dialog { width:min(1100px,calc(100vw - 32px)); height:min(86vh,900px); padding:0; overflow:hidden; border:1px solid var(--color-border); border-radius:16px; color:var(--color-text); background:var(--color-surface); box-shadow:0 24px 80px rgba(5,14,32,.3); }
+  .admin-cv-dialog::backdrop { background:rgba(7,15,31,.68); backdrop-filter:blur(4px); }
+  .admin-cv-dialog__head { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; padding:13px 18px; border-bottom:1px solid var(--color-border); }
+  .admin-cv-dialog__title { display:grid; gap:4px; }
+  .admin-cv-dialog__title span { color:var(--color-muted); font-size:.78rem; }
+  .admin-cv-dialog__title #admin-cv-review-status { display:inline-block; width:max-content; padding:3px 8px; border:1px solid var(--color-border); border-radius:999px; background:var(--color-bg-alt); }
+  #admin-cv-review-status.is-approved { border-color:var(--color-success); color:var(--color-success); background:var(--color-success-tint); }
+  #admin-cv-review-status.is-needs-changes { border-color:var(--color-warn); color:var(--color-warn); background:var(--color-warn-tint); }
+  .admin-cv-review-actions { display:flex; flex-wrap:wrap; align-items:center; gap:7px; }
+  .admin-cv-review-note { width:calc(100% - 36px); margin:10px 18px; padding:8px 10px; border:1px solid var(--color-border); border-radius:9px; color:var(--color-text); background:var(--color-bg-alt); font:inherit; font-size:.84rem; }
+  .admin-cv-dialog iframe { display:block; width:100%; height:calc(100% - 126px); border:0; background:#edf1f6; }
+  .admin-student-open { padding:0; border:0; color:var(--color-primary); background:none; font:inherit; font-weight:700; text-align:left; cursor:pointer; }
+  .admin-student-open:hover { text-decoration:underline; }
+  .admin-record-section { min-width:0; padding:12px; border:1px solid var(--color-border); border-radius:11px; background:var(--color-bg-alt); }
+  .admin-record-section h4 { margin:0 0 8px; font-size:.82rem; }
+  .admin-profile-grid { margin:0; }
+  .admin-profile-grid dd { line-height:1.4; }
+  .admin-record-section p { margin:0; font-size:.8rem; line-height:1.45; overflow-wrap:anywhere; }
+  .admin-record-list { margin:0; padding-left:17px; font-size:.8rem; line-height:1.45; }
+  .admin-record-list li+li { margin-top:6px; }
+  .admin-record-list small { display:block; color:var(--color-muted); }
+  .admin-student-project { padding:8px 0; border-top:1px solid var(--color-border); font-size:.8rem; }
+  .admin-student-project:first-child { border-top:0; padding-top:0; }
+  .admin-student-project span,.admin-student-project p { display:block; margin:3px 0 0; color:var(--color-muted); }
+  .admin-student-detail-nav { position:sticky; top:76px; align-self:start; display:grid; gap:4px; max-height:calc(100vh - 150px); overflow-y:auto; padding:8px; border:1px solid var(--color-border); border-radius:12px; background:var(--color-bg-alt); }
+  .admin-student-detail-nav a { display:block; padding:9px 10px; border-radius:8px; color:var(--color-muted); font-size:.8rem; font-weight:650; line-height:1.3; text-decoration:none; }
+  .admin-student-detail-nav a:hover,.admin-student-detail-nav a.is-active { color:var(--color-primary); background:var(--color-primary-tint); }
+  .admin-student-detail-sections { display:grid; gap:10px; min-width:0; }
+  .admin-student-detail-sections .admin-record-section { scroll-margin-top:76px; }
+  .admin-achievements { display:flex; flex-wrap:wrap; gap:6px; }
+  .admin-achievement { padding:4px 7px; border:1px solid var(--color-border); border-radius:999px; color:var(--color-muted); font-size:.72rem; }
+  .admin-achievement.is-earned { border-color:var(--color-success); color:var(--color-success); background:var(--color-success-tint); }
+  .admin-menu { position:sticky; top:0; z-index:10; display:flex; gap:7px; margin:18px 0; padding:8px; overflow-x:auto; border:1px solid var(--color-border); border-radius:14px; background:var(--color-surface); box-shadow:0 8px 22px rgba(15,27,52,.08); }
+  .admin-menu a { flex:none; padding:9px 12px; border-radius:9px; color:var(--color-muted); font-size:.84rem; font-weight:700; text-decoration:none; white-space:nowrap; }
+  .admin-menu a:hover,.admin-menu a:focus-visible { color:var(--color-primary); background:var(--color-primary-tint); outline:none; }
+  .admin-overview__stats { grid-template-columns:repeat(3,minmax(0,1fr)); margin:0 0 18px; }
+  .admin-overview__stats small { display:block; margin-top:4px; color:var(--color-muted); font-size:.74rem; }
+  .admin-overview__lower { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+  .admin-summary-card { padding:16px; border:1px solid var(--color-border); border-radius:14px; background:var(--color-bg-alt); }
+  .admin-summary-card h3 { margin:4px 0 12px; font-size:1rem; }
+  .admin-summary-card p { margin:0; color:var(--color-muted); font-size:.86rem; line-height:1.5; }
+  .admin-mini-chart { display:grid; gap:9px; }
+  .admin-mini-chart__row { display:grid; grid-template-columns:minmax(82px,1fr) minmax(60px,2fr) 28px; align-items:center; gap:9px; color:var(--color-muted); font-size:.75rem; }
+  .admin-mini-chart__track { height:8px; overflow:hidden; border-radius:99px; background:#243553; }
+  .admin-mini-chart__bar { height:100%; border-radius:inherit; background:linear-gradient(90deg,#4285ff,#9271ff); }
+  .admin-mini-chart__value { color:#e8edfa; font-weight:750; text-align:right; }
+  .admin-ops-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-top:14px; }
+  #admin-panel { display:grid; grid-template-columns:236px minmax(0,1fr); column-gap:18px; align-items:start; }
+  #admin-panel > :not(.admin-menu) { grid-column:2; min-width:0; }
+  #admin-panel > h1 { grid-row:1; margin:0 0 4px; font-size:1.75rem; }
+  #admin-panel > p { grid-row:2; margin:0 0 14px; }
+  #admin-panel > .admin-menu { grid-column:1; grid-row:1 / span 40; position:sticky; top:18px; display:flex; flex-direction:column; align-self:start; gap:5px; max-height:calc(100vh - 36px); overflow-y:auto; overflow-x:hidden; margin:0; padding:10px; border:1px solid var(--color-border); border-radius:18px; background:linear-gradient(180deg,#0e1b35,#0a1429); box-shadow:0 16px 42px rgba(0,0,0,.22); }
+  .admin-menu-brand { display:flex; align-items:center; gap:10px; margin:0 2px 8px; padding:8px 5px 14px; border-bottom:1px solid rgba(145,168,218,.18); }
+  .admin-menu-brand__mark { display:grid; width:34px; height:34px; place-items:center; border:1px solid #647dff; border-radius:11px; color:#c1caff; background:linear-gradient(145deg,#4c64ed,#7747d9); font-size:1.25rem; }
+  .admin-menu-brand strong { display:block; color:#f4f6ff; font-size:1.1rem; letter-spacing:.01em; }
+  .admin-menu-brand strong span { color:#9d84ff; }
+  .admin-menu-brand small { display:block; margin-top:1px; color:#8291b1; font-size:.75rem; }
+  .admin-menu a { display:flex; align-items:center; gap:11px; flex:none; min-height:40px; padding:9px 11px; border:1px solid transparent; color:#a8b5d0; font-size:.84rem; font-weight:650; white-space:normal; transition:background .16s,color .16s,border-color .16s; }
+  .admin-menu a span { width:20px; color:#789cff; font-size:1.05rem; text-align:center; }
+  .admin-menu a:hover,.admin-menu a:focus-visible,.admin-menu a.is-active { color:#fff; background:linear-gradient(100deg,rgba(61,100,231,.36),rgba(102,64,220,.24)); border-color:rgba(96,128,255,.5); outline:none; }
+  .admin-menu a.is-active span { color:#b9c8ff; }
+  #admin-panel > .panel,#admin-panel > .admin-settings { margin-top:0; margin-bottom:14px; border-color:#25375e; background:linear-gradient(145deg,rgba(15,30,57,.98),rgba(10,22,43,.98)); box-shadow:0 12px 32px rgba(0,0,0,.13); }
+  #admin-panel .stat-card,#admin-panel .admin-summary-card { border-color:#263c66; background:linear-gradient(150deg,#132544,#0e1a31); }
+  #admin-panel .admin-module-note { grid-column:2; margin-bottom:14px; padding:13px 16px; border:1px solid rgba(100,132,255,.36); border-radius:13px; color:#b8c8e7; background:linear-gradient(100deg,rgba(45,80,170,.24),rgba(65,43,135,.18)); font-size:.88rem; line-height:1.5; }
+  #admin-panel .admin-menu + .admin-module-note[hidden] { display:none; }
+  #admin-panel .admin-settings__eyebrow { color:#8c9fff; }
+  #admin-panel .admin-table-wrap { border:1px solid #26375c; border-radius:12px; }
+  #admin-panel .admin-table th { color:#98add1; background:#101e38; }
+  #admin-panel .admin-table td { border-color:#213250; }
+  #admin-panel .admin-table tbody tr:hover { background:rgba(79,116,208,.1); }
+  #admin-panel .admin-student-dialog { background:#111d34; }
+  #admin-panel .admin-student-dialog__head { background:#111d34; }
+  #admin-panel .admin-record-section { border-color:#28385a; background:#14223d; }
+  /* Admin workspace refinements: quieter surfaces, stronger text hierarchy, fewer decorative effects. */
+  #admin-panel > .admin-menu { border-color:#24314a; border-radius:14px; background:#0d1729; box-shadow:none; }
+  .admin-menu-brand { border-color:#27344c; }
+  .admin-menu-brand__mark { border:0; border-radius:9px; background:#3456b6; color:#fff; box-shadow:none; }
+  .admin-menu-brand strong span { color:#97aaff; }
+  .admin-menu a { border-radius:8px; color:#b5bfd0; }
+  .admin-menu a span,.admin-menu a.is-active span { color:#a8b9ef; }
+  .admin-menu a:hover,.admin-menu a:focus-visible { border-color:transparent; background:#17243a; }
+  .admin-menu a.is-active { border-color:transparent; background:#21365b; box-shadow:inset 3px 0 #7293f3; }
+  #admin-panel > .panel,#admin-panel > .admin-settings { border-color:#25334b; border-radius:14px; background:#111d31; box-shadow:none; }
+  #admin-panel .stat-card,#admin-panel .admin-summary-card { border-color:#26364e; border-radius:12px; background:#142238; box-shadow:none; }
+  #admin-panel .stat-card__value { color:#f1f4fa; }
+  #admin-panel .admin-summary-card h3 { color:#edf1f8; }
+  #admin-panel .admin-module-note { border-color:#34476a; border-radius:10px; color:#bac7dc; background:#17263d; }
+  #admin-panel .admin-table-wrap { border-color:#29374d; border-radius:10px; }
+  #admin-panel .admin-table th { color:#bbc6d8; background:#17243a; }
+  #admin-panel .admin-table td { border-color:#26344a; }
+  #admin-panel .admin-table tbody tr:hover { background:#18283f; }
+  .admin-mini-chart__track { background:#26364d; }
+  .admin-mini-chart__bar { background:#6d8ee6; }
+  .admin-mini-chart__value { color:#e1e8f4; }
+  #admin-panel .admin-record-section { border-color:#2a3a53; background:#142238; }
+  :root[data-theme="light"] body { background:#eef2f8; }
+  :root[data-theme="light"] .topbar { border-bottom:1px solid #dce4ef; background:#fff; }
+  :root[data-theme="light"] #admin-panel > .panel,:root[data-theme="light"] #admin-panel > .admin-settings { border-color:#dce4ef; background:#fff; box-shadow:0 5px 18px rgba(26,49,87,.045); }
+  :root[data-theme="light"] #admin-panel .stat-card,:root[data-theme="light"] #admin-panel .admin-summary-card { border-color:#e0e7f1; background:#f9fbfe; }
+  :root[data-theme="light"] #admin-panel .stat-card__value { color:#18243a; }
+  :root[data-theme="light"] #admin-panel .admin-summary-card h3 { color:#25344c; }
+  :root[data-theme="light"] #admin-panel .admin-module-note { border-color:#cfdbef; color:#435574; background:#edf4ff; }
+  :root[data-theme="light"] #admin-panel .admin-table-wrap { border-color:#dce4ef; }
+  :root[data-theme="light"] #admin-panel .admin-table th { color:#53647f; background:#f3f6fb; }
+  :root[data-theme="light"] #admin-panel .admin-table td { border-color:#e6ebf2; }
+  :root[data-theme="light"] #admin-panel .admin-table tbody tr:hover { background:#f6f9ff; }
+  :root[data-theme="light"] .admin-mini-chart__track { background:#e4eaf3; }
+  :root[data-theme="light"] .admin-mini-chart__bar { background:#5478d4; }
+  :root[data-theme="light"] .admin-mini-chart__value { color:#293a56; }
+  :root[data-theme="light"] #admin-panel .admin-record-section { border-color:#e0e7f1; background:#f9fbfe; }
+  :root[data-theme="light"] #admin-panel .admin-student-dialog,:root[data-theme="light"] #admin-panel .admin-student-dialog__head { color:#1b2338; background:#fff; }
+  :root[data-theme="light"] #admin-panel .admin-settings__eyebrow { color:#4564b5; }
+  :root[data-theme="light"] #admin-panel .admin-menu a.is-active { color:#fff; }
+  .admin-overview__stats--compact { margin:14px 0; }
+  .admin-overview__stats--compact .stat-card { padding:14px; }
+  #admin-alert-list,#admin-recent-activity,#admin-audit-list { display:grid; gap:8px; padding-left:18px; }
+  #admin-alert-list li,#admin-recent-activity li,#admin-audit-list li { padding:3px 0; }
+  .admin-panel-note { padding:14px; border:1px dashed var(--color-border); border-radius:12px; color:var(--color-muted); background:var(--color-bg-alt); }
+  .support-ticket { padding:14px; border:1px solid var(--color-border); border-radius:12px; background:var(--color-bg-alt); }
+  .support-ticket + .support-ticket { margin-top:12px; }
+  .support-ticket__head { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+  .support-ticket__meta,.support-ticket__message { color:var(--color-muted); font-size:.86rem; }
+  .support-ticket__message { white-space:pre-wrap; margin:10px 0; }
+  .support-ticket__controls { display:grid; grid-template-columns:minmax(140px,.3fr) minmax(220px,1fr) auto; gap:8px; align-items:end; }
+  .support-ticket__controls .field { margin:0; }
+  .support-ticket__controls textarea { min-height:70px; }
+  .admin-send-student-form { display:grid; grid-template-columns:1.1fr 1fr 1fr; gap:12px; align-items:end; margin:16px 0 20px; padding:16px; border:1px solid var(--color-border); border-radius:13px; background:var(--color-bg-alt); }
+  .admin-send-student-form > div:first-child { grid-column:1 / -1; }
+  .admin-send-student-form h3 { margin:3px 0; font-size:1rem; }
+  .admin-send-student-form p { margin:0; }
+  .admin-send-student-form .field { margin:0; }
+  .admin-send-student-form__message { grid-column:1 / 3; }
+  .admin-send-student-form textarea { width:100%; min-height:78px; padding:9px 10px; border:1px solid var(--color-border); border-radius:9px; color:var(--color-text); background:var(--color-surface); font:inherit; resize:vertical; }
+  @media(max-width:760px) { .admin-send-student-form { grid-template-columns:1fr; } .admin-send-student-form > div:first-child,.admin-send-student-form__message { grid-column:1; } .support-ticket__controls { grid-template-columns:1fr; } }
+  @media(max-width:760px) { .support-ticket__controls { grid-template-columns:1fr; } }
+  @media(max-width:760px) { #admin-panel { grid-template-columns:minmax(0,1fr); row-gap:12px; } #admin-panel > :not(.admin-menu) { grid-column:1; } #admin-panel > h1 { grid-row:auto; } #admin-panel > p { grid-row:auto; } #admin-panel > .admin-menu { grid-column:1; grid-row:auto; top:0; z-index:5; display:flex; flex-direction:row; width:100%; max-height:none; overflow-x:auto; overflow-y:hidden; padding:7px; } .admin-menu-brand { flex:none; margin:0; padding:6px 10px 6px 4px; border:0; border-right:1px solid rgba(145,168,218,.18); } .admin-menu-brand__mark { display:none; } .admin-menu-brand strong { font-size:.9rem; } .admin-menu-brand small { display:none; } #admin-panel .admin-menu a { flex:none; white-space:nowrap; } #admin-panel .admin-module-note { grid-column:1; } .admin-student-dialog__body .admin-student-record { grid-template-columns:minmax(0,1fr); } .admin-student-detail-nav { position:sticky; top:68px; z-index:1; display:flex; flex-wrap:nowrap; max-height:none; overflow-x:auto; } .admin-student-detail-nav a { flex:none; white-space:nowrap; } .admin-overview__stats,.admin-overview__lower,.admin-ops-grid { grid-template-columns:1fr; } }
+  @media(max-width:760px) { .admin-password-form { grid-template-columns:1fr; } .admin-password-form button { margin:0; } }
+.company-review-list { display:grid; gap:14px; }
+.company-review-card { padding:18px; border:1px solid var(--color-border); border-radius:16px; background:var(--color-surface); }
+.company-review-card__head { display:flex; justify-content:space-between; gap:18px; align-items:flex-start; }
+.company-review-card h3 { margin:8px 0 3px; }
+.company-review-card p { margin:9px 0; }
+.company-review-card__details { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:14px 0; }
+.company-review-card__details span { display:grid; gap:3px; padding:9px; border-radius:9px; background:var(--color-bg-alt); font-size:.9rem; }
+.company-review-card__details b { color:var(--color-muted); font-size:.75rem; }
+.company-review-card__actions { display:flex; align-items:center; gap:8px; margin-top:14px; }
+.company-review-card__actions input { flex:1; min-width:160px; }
+.company-review-card .company-status-badge { display:inline-flex; padding:4px 9px; border-radius:999px; background:#fff2cd; color:#76551a; font-size:.75rem; font-weight:700; }
+@media(max-width:760px) { .company-review-card__details { grid-template-columns:repeat(2,minmax(0,1fr)); } .company-review-card__actions { align-items:stretch; flex-direction:column; } }
+.admin-reset-queue { margin-top:22px; padding-top:18px; border-top:1px solid var(--color-border); }
+.admin-reset-request { display:grid; grid-template-columns:minmax(180px,1fr) minmax(190px,.7fr) auto; align-items:end; gap:12px; margin:10px 0; padding:14px; border:1px solid var(--color-border); border-radius:12px; background:var(--color-bg-alt); }
+.admin-reset-request > div { display:grid; gap:5px; overflow-wrap:anywhere; }
+.admin-reset-request > div span { color:var(--color-muted); font-size:.85rem; }
+.admin-reset-request__password { display:grid; gap:5px; font-size:.82rem; }
+.company-access-request { margin:12px 0; padding:17px; border:1px solid var(--color-border); border-radius:14px; background:var(--color-surface); }
+.company-access-request__head { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; }
+.company-access-request h3 { margin:7px 0 3px; }
+.company-access-request__meta { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; margin:14px 0; }
+.company-access-request__meta span { display:grid; gap:3px; padding:9px; border-radius:9px; background:var(--color-bg-alt); overflow-wrap:anywhere; }
+.company-access-request__meta b { color:var(--color-muted); font-size:.75rem; }
+.company-access-request__actions { display:flex; justify-content:flex-end; gap:8px; }
+.company-access-state { display:inline-flex; padding:4px 9px; border-radius:999px; color:#76551a; background:#fff2cd; font-size:.75rem; font-weight:700; }
+@media(max-width:760px) { .admin-reset-request { grid-template-columns:1fr; } }
+@media(max-width:760px) { .company-access-request__meta { grid-template-columns:1fr 1fr; } .company-access-request__head { display:block; } }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="container">
+    <a class="brand" href="index.html"><span class="brand__mark">IM</span> InternMatch</a>
+    <span></span>
+    <div class="topbar-actions">
+      <button class="btn btn--ghost btn--sm" data-action="theme-toggle">🌙 Dark mode</button>
+      <a class="btn btn--ghost btn--sm" href="login.html?role=admin" id="admin-logout">Log out</a>
+    </div>
+  </div>
+</header>
+
+<div class="container" style="padding-top:36px; padding-bottom:60px;">
+
+  <p id="admin-loading" class="hint" role="status">Checking administrator session…</p>
+  <div id="admin-panel" style="display:none;">
+    <h1 id="admin-page-title">Admin dashboard</h1>
+    <p>Manage students, internships, and platform activity.</p>
+
+    <nav class="admin-menu" aria-label="Admin dashboard menu">
+      <div class="admin-menu-brand"><span class="admin-menu-brand__mark">✦</span><span><strong>Intern<span>AI</span></strong><small>Admin portal</small></span></div>
+      <a class="is-active" href="#admin-overview" data-admin-view="overview"><span aria-hidden="true">◫</span> Dashboard &amp; analytics</a>
+      <a href="#admin-students" data-admin-view="users"><span aria-hidden="true">♙</span> User management</a>
+      <a href="#admin-company-requests" data-admin-view="companies"><span aria-hidden="true">▣</span> Company access requests</a>
+      <a href="#admin-add-internship" data-admin-view="internships"><span aria-hidden="true">▣</span> Internship management &amp; approvals</a>
+      <a href="#admin-recruitment" data-admin-view="recruitment"><span aria-hidden="true">⇄</span> Applications &amp; recruitment</a>
+      <a href="#admin-recommendations" data-admin-view="recommendations"><span aria-hidden="true">✦</span> AI recommendations</a>
+      <a href="#admin-assessments" data-admin-view="assessments"><span aria-hidden="true">▧</span> Assessments &amp; interviews</a>
+      <a href="#admin-analytics" data-admin-view="reports"><span aria-hidden="true">▥</span> Reports &amp; analytics</a>
+      <a href="#admin-module-note" data-admin-view="notifications"><span aria-hidden="true">♧</span> Notifications &amp; support</a>
+      <a href="#admin-governance" data-admin-view="roles"><span aria-hidden="true">⚿</span> Roles &amp; permissions</a>
+      <a href="#admin-audit" data-admin-view="audit"><span aria-hidden="true">⚙</span> Audit logs &amp; settings</a>
+    </nav>
+
+    <div class="admin-module-note" id="admin-module-note" hidden></div>
+    <section class="panel" id="admin-support" aria-labelledby="admin-support-title" style="display:none;">
+      <div class="panel__head"><div><span class="admin-settings__eyebrow">Student help desk</span><h2 class="mt-0" id="admin-support-title">Student messages</h2></div><button type="button" class="btn btn--ghost btn--sm" id="admin-support-refresh">Refresh inbox</button></div>
+      <p class="hint">Read support requests, reply to students, and update each request's status.</p>
+      <form id="admin-send-student-form" class="admin-send-student-form">
+        <div><span class="admin-settings__eyebrow">Start a conversation</span><h3>Send a message to a student</h3><p class="hint">The student will see your message in Help &amp; support.</p></div>
+        <div class="field"><label for="admin-message-student">Student</label><select id="admin-message-student" name="studentId" required><option value="">Loading students…</option></select></div>
+        <div class="field"><label for="admin-message-subject">Subject</label><input id="admin-message-subject" name="subject" maxlength="120" required placeholder="Message subject" /></div>
+        <div class="field admin-send-student-form__message"><label for="admin-message-body">Message</label><textarea id="admin-message-body" name="message" rows="3" minlength="10" maxlength="2000" required placeholder="Write a message for the student…"></textarea></div>
+        <button class="btn btn--primary" type="submit">Send message</button>
+      </form>
+      <div id="admin-support-list"><p class="hint">Loading student messages…</p></div>
+      <section class="admin-reset-queue" aria-labelledby="admin-reset-title"><div class="panel__head"><div><span class="admin-settings__eyebrow">Account access</span><h2 id="admin-reset-title">Password reset requests</h2></div><button type="button" class="btn btn--ghost btn--sm" id="admin-reset-refresh">Refresh</button></div><p class="hint">Confirm the person’s identity before setting a temporary password. The app does not email passwords; share the temporary password through a verified channel.</p><div id="admin-reset-list"><p class="hint">Loading reset requests…</p></div></section>
+    </section>
+
+    <section class="panel admin-overview" id="admin-overview" aria-labelledby="admin-overview-title">
+      <div class="panel__head"><div><span class="admin-settings__eyebrow">Overview</span><h2 class="mt-0" id="admin-overview-title">Today at a glance</h2></div><span class="hint">Counts update from available demo records</span></div>
+      <div class="stat-grid admin-overview__stats">
+        <article class="stat-card"><div class="stat-card__label">Students</div><div class="stat-card__value" id="admin-stat-students">0</div><small>Demo accounts</small></article>
+        <article class="stat-card"><div class="stat-card__label">Companies</div><div class="stat-card__value" id="admin-stat-companies">0</div><small>From listed opportunities</small></article>
+        <article class="stat-card"><div class="stat-card__label">Internship listings</div><div class="stat-card__value" id="admin-stat-internships">0</div><small>Visible in catalogue</small></article>
+        <article class="stat-card"><div class="stat-card__label">Applications</div><div class="stat-card__value" id="admin-stat-applications">0</div><small>Across student accounts</small></article>
+        <article class="stat-card"><div class="stat-card__label">Interviews scheduled</div><div class="stat-card__value" id="admin-stat-interviews">0</div><small>Saved calendar events</small></article>
+        <article class="stat-card"><div class="stat-card__label">Assessments completed</div><div class="stat-card__value" id="admin-stat-assessments">0</div><small>Practice quiz attempts</small></article>
+      </div>
+      <div class="admin-overview__lower">
+        <article class="admin-summary-card admin-assessment-inbox"><span class="admin-settings__eyebrow">Recruiter approvals</span><h3>Company assessment requests</h3><div id="admin-assessment-overview-requests"><p class="hint">Loading assessment requests…</p></div><button type="button" class="btn btn--secondary btn--sm" id="admin-open-assessments">Open assessment approvals</button></article>
+        <article class="admin-summary-card"><span class="admin-settings__eyebrow">Attention</span><h3>Needs a look</h3><ul id="admin-alert-list" class="admin-record-list"></ul></article>
+        <article class="admin-summary-card"><span class="admin-settings__eyebrow">Activity</span><h3>Recent admin actions</h3><ul id="admin-recent-activity" class="admin-record-list"></ul></article>
+        <article class="admin-summary-card"><span class="admin-settings__eyebrow">Applications</span><h3>Recruitment stages</h3><div class="admin-mini-chart" id="admin-overview-pipeline"></div></article>
+        <article class="admin-summary-card"><span class="admin-settings__eyebrow">Opportunities</span><h3>Listings by sector</h3><div class="admin-mini-chart" id="admin-overview-sectors"></div></article>
+      </div>
+    </section>
+
+    <section class="admin-settings" id="admin-account" aria-labelledby="admin-password-heading">
+      <span class="admin-settings__eyebrow">Account security</span>
+      <h2 id="admin-password-heading">Administrator password</h2>
+      <p>Admin sign-in is checked by the server. To change the password, update <code>ADMIN_PASSWORD</code> in <code>server/.env</code> and restart the backend.</p>
+    </section>
+
+    <div class="panel" id="admin-add-internship">
+      <h2 id="admin-form-title" class="mt-0">Add a new internship</h2>
+      <form id="admin-form">
+        <input type="hidden" name="id" />
+        <div class="field-row">
+          <div class="field"><label>Title</label><input type="text" name="title" required /></div>
+          <div class="field"><label>Organization</label><input type="text" name="org" required /></div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Sector</label>
+            <select name="sector" required>
+              <option>Information Technology</option>
+              <option>Software Development</option>
+              <option>Data Analytics</option>
+              <option>Artificial Intelligence</option>
+              <option>Finance</option>
+              <option>Marketing</option>
+              <option>Manufacturing</option>
+              <option>Renewable Energy</option>
+              <option>Healthcare</option>
+            </select>
+          </div>
+          <div class="field"><label>Location</label><input type="text" name="location" required /></div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Location type</label>
+            <select name="locationType">
+              <option>On-site</option>
+              <option>Hybrid</option>
+              <option>Remote</option>
+            </select>
+          </div>
+          <div class="field"><label>Duration label</label><input type="text" name="duration" placeholder="e.g. 3 months" required /></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Duration (months, numeric)</label><input type="number" name="durationMonths" min="1" max="12" required /></div>
+          <div class="field"><label>Application deadline</label><input type="date" name="deadline" required /></div>
+        </div>
+        <div class="field"><label>Required skills (comma-separated)</label><input type="text" name="skills" placeholder="Python, SQL, Excel" required /></div>
+        <div class="field"><label>Eligibility criteria</label><input type="text" name="eligibility" required /></div>
+        <div class="field"><label>Description</label><textarea name="description" required></textarea></div>
+        <div class="field"><label>Stipend <span style="font-weight:400;color:var(--color-muted);">(optional)</span></label><input type="text" name="stipend" placeholder="e.g. ₹8,000/month" /></div>
+        <div style="display:flex; gap:10px;">
+          <button type="submit" class="btn btn--primary">Save internship</button>
+          <button type="button" id="admin-form-reset" class="btn btn--ghost">Clear form</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="panel" id="admin-listings">
+      <h2 class="mt-0">All internship listings</h2>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Title</th><th>Organization</th><th>Sector</th><th>Location</th><th>Deadline</th><th>Actions</th></tr></thead>
+          <tbody id="admin-internship-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <section class="panel" id="admin-company-review" style="display:none;">
+      <div class="panel__head"><div><span class="admin-settings__eyebrow">Recruiter submissions</span><h2 class="mt-0">Review job and internship posts</h2></div><button type="button" class="btn btn--ghost btn--sm" id="admin-company-review-refresh">Refresh</button></div>
+      <p class="hint">Approve a posting to publish it in the student catalogue. Rejected postings remain private to the recruiter until edited and resubmitted.</p>
+      <div id="admin-company-review-list" class="company-review-list"><p class="hint">Loading recruiter submissions…</p></div>
+    </section>
+
+    <div class="panel" id="admin-students">
+      <h2 class="mt-0">Student directory</h2>
+      <p class="hint">Select a student to open their saved profile and activity record.</p>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Student profile</th><th>Education</th><th>Skills &amp; interests</th><th>Preferences</th><th>Applications</th></tr></thead>
+          <tbody id="admin-student-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <section class="panel" id="admin-company-requests" style="display:none;">
+      <div class="panel__head"><div><span class="admin-settings__eyebrow">Recruiter onboarding</span><h2 class="mt-0">Company registration requests</h2></div><button type="button" class="btn btn--ghost btn--sm" id="admin-company-requests-refresh">Refresh</button></div>
+      <p class="hint">Only admins can see these requests. Approving adds the recruiter to the approved company list and enables sign-in. Rejecting keeps the request out of that list.</p>
+      <div id="admin-company-requests-list"><p class="hint">Loading company requests…</p></div>
+    </section>
+    <section class="panel" id="admin-company-list" style="display:none;">
+      <div class="panel__head"><div><span class="admin-settings__eyebrow">Approved recruiters</span><h2 class="mt-0">Company list</h2></div></div>
+      <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Company</th><th>Contact</th><th>Work email</th><th>Industry</th><th>Location</th><th>Status</th></tr></thead><tbody id="admin-company-tbody"></tbody></table></div>
+    </section>
+
+    <dialog class="admin-student-dialog" id="admin-student-dialog" aria-labelledby="admin-student-dialog-title">
+      <div class="admin-student-dialog__head"><div><span class="admin-settings__eyebrow">Student record</span><h2 id="admin-student-dialog-title">Student details</h2></div><button type="button" class="btn btn--ghost btn--sm" id="admin-student-dialog-close" aria-label="Close student details">Close</button></div>
+      <div class="admin-student-dialog__body"><div class="admin-student-record" id="admin-student-dialog-content"></div></div>
+    </dialog>
+    <dialog class="admin-cv-dialog" id="admin-cv-dialog" aria-labelledby="admin-cv-dialog-title">
+      <div class="admin-cv-dialog__head">
+        <div class="admin-cv-dialog__title"><strong id="admin-cv-dialog-title">Student CV</strong><span id="admin-cv-review-status">Not reviewed</span></div>
+        <div class="admin-cv-review-actions"><button type="button" class="btn btn--secondary btn--sm" id="admin-cv-approve">Approve CV</button><button type="button" class="btn btn--ghost btn--sm" id="admin-cv-request-changes">Needs changes</button><button type="button" class="btn btn--ghost btn--sm" id="admin-cv-dialog-close">Close</button></div>
+      </div>
+      <textarea class="admin-cv-review-note" id="admin-cv-review-note" rows="2" maxlength="500" placeholder="Optional feedback for the student"></textarea>
+      <iframe id="admin-cv-frame" title="Student CV preview"></iframe>
+    </dialog>
+
+    <div class="panel" id="admin-analytics">
+      <div class="panel__head">
+        <h2 class="mt-0">Analytics</h2>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn btn--ghost btn--sm" id="export-students-csv">Export students (CSV)</button>
+          <button type="button" class="btn btn--ghost btn--sm" id="export-applications-csv">Export applications (CSV)</button>
+        </div>
+      </div>
+      <p class="hint">Computed from demo accounts and applications stored in this browser.</p>
+      <div class="stat-grid" style="grid-template-columns: repeat(3,1fr); margin-bottom:20px;">
+        <div class="stat-card">
+          <div class="stat-card__label">Most popular sector</div>
+          <div class="stat-card__value" id="admin-stat-top-sector" style="font-size:1.2rem;">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__label">Most requested skill</div>
+          <div class="stat-card__value" id="admin-stat-top-skill" style="font-size:1.2rem;">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__label">Applications per student (avg)</div>
+          <div class="stat-card__value" id="admin-stat-avg-apps" style="font-size:1.2rem;">0</div>
+        </div>
+      </div>
+      <div class="dash-grid">
+        <div class="chart-wrap"><canvas id="chart-sectors"></canvas></div>
+        <div class="chart-wrap"><canvas id="chart-app-status"></canvas></div>
+      </div>
+      <div class="chart-wrap" style="margin-top:20px;"><canvas id="chart-top-skills"></canvas></div>
+    </div>
+
+    <section class="panel" id="admin-recruitment" aria-labelledby="admin-recruitment-title">
+      <div class="panel__head"><div><span class="admin-settings__eyebrow">Hiring workflow</span><h2 class="mt-0" id="admin-recruitment-title">Recruitment pipeline</h2></div></div>
+      <p class="hint">Monitor application progress across the demo platform. Final candidate decisions remain with the recruiting company.</p>
+      <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Student</th><th>Internship</th><th>Company</th><th>Stage</th><th>Applied</th></tr></thead><tbody id="admin-recruitment-tbody"></tbody></table></div>
+    </section>
+
+    <section class="panel" id="admin-assessments" aria-labelledby="admin-assessments-title">
+      <div class="panel__head"><div><span class="admin-settings__eyebrow">Candidate readiness</span><h2 class="mt-0" id="admin-assessments-title">Assessments &amp; interviews</h2></div></div>
+      <p class="hint">Review company-created assessments before publishing them to applicants. MCQ answer keys remain private to the server; submitted results are available to the recruiting company.</p>
+      <div class="panel__head"><h3>Company assessments awaiting review</h3><button type="button" class="btn btn--ghost btn--sm" id="admin-assessments-refresh">Refresh queue</button></div>
+      <div id="admin-assessment-review-list" class="company-review-list"></div>
+      <div class="admin-overview__stats admin-overview__stats--compact">
+        <article class="stat-card"><div class="stat-card__label">Quiz attempts</div><div class="stat-card__value" id="admin-assessment-attempts">0</div></article>
+        <article class="stat-card"><div class="stat-card__label">Average practice score</div><div class="stat-card__value" id="admin-assessment-average">—</div></article>
+        <article class="stat-card"><div class="stat-card__label">Upcoming interviews</div><div class="stat-card__value" id="admin-upcoming-interviews">0</div></article>
+      </div>
+      <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Student</th><th>Practice type</th><th>Score</th><th>Date</th></tr></thead><tbody id="admin-assessment-tbody"></tbody></table></div>
+    </section>
+
+    <section class="panel" id="admin-recommendations" aria-labelledby="admin-recommendations-title">
+      <div class="panel__head"><div><span class="admin-settings__eyebrow">Matching oversight</span><h2 class="mt-0" id="admin-recommendations-title">AI recommendations</h2></div></div>
+      <p class="hint">Recommendations are generated from profile and listing tags in the browser. Review the strongest current matches below; scores are guidance, not hiring decisions.</p>
+      <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Student</th><th>Recommended opportunity</th><th>Company</th><th>Match</th><th>Skills overlap</th></tr></thead><tbody id="admin-recommendation-tbody"></tbody></table></div>
+    </section>
+
+    <section class="panel" id="admin-audit" aria-labelledby="admin-audit-title">
+      <div class="panel__head"><div><span class="admin-settings__eyebrow">Security history</span><h2 class="mt-0" id="admin-audit-title">Admin activity log</h2></div><button type="button" class="btn btn--ghost btn--sm" id="admin-clear-audit">Clear demo log</button></div>
+      <p class="hint">Local demo log of admin actions in this browser. Production audit history must be recorded by the authenticated backend.</p>
+      <ul id="admin-audit-list" class="admin-record-list"></ul>
+    </section>
+
+    <section class="panel" id="admin-governance" aria-labelledby="admin-governance-title">
+      <div class="panel__head"><div><span class="admin-settings__eyebrow">Platform operations</span><h2 class="mt-0" id="admin-governance-title">Access &amp; operations</h2></div></div>
+      <p class="hint">The modules below summarize platform roles and operational controls.</p>
+      <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Role</th><th>Intended access</th><th>Demo status</th></tr></thead><tbody>
+        <tr><td><strong>Super Admin</strong></td><td>All platform modules, security settings, and administrator permissions</td><td>Backend required</td></tr>
+        <tr><td><strong>Admin</strong></td><td>Users, listings, and recruitment moderation</td><td>Backend required</td></tr>
+        <tr><td><strong>Recruitment Moderator</strong></td><td>Listings, reports, and recruitment complaints</td><td>Backend required</td></tr>
+        <tr><td><strong>Support Staff</strong></td><td>Support tickets and limited account information</td><td>Backend required</td></tr>
+      </tbody></table></div>
+      <div class="admin-ops-grid">
+        <article class="admin-summary-card"><h3>Notifications &amp; support</h3><p>Delivery, user preferences, and support tickets require a notification service and persistent database.</p></article>
+        <article class="admin-summary-card"><h3>Security controls</h3><p>Role checks, secure sessions, and audit records must be enforced by the backend on every administrative request.</p></article>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="data/internships.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/recommendation.js"></script>
+<script src="js/app.js"></script>
+<script src="js/shared-adapter.js"></script>
+<script src="js/resume-vault.js"></script>
+<script src="js/admin.js?v=20261027-assessment-approval-inbox"></script>
+<script src="js/admin-analytics.js"></script>
+</body>
+</html>

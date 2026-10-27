@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232a5bd7'/%3E%3Ctext x='16' y='22' font-family='Arial,sans-serif' font-weight='700' font-size='15' fill='white' text-anchor='middle'%3EIM%3C/text%3E%3C/svg%3E" />
+<meta name="theme-color" content="#101b34" />
+<title>Browse Internships — InternMatch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+<link rel="stylesheet" href="css/responsive.css" />
+<link rel="stylesheet" href="css/browse.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="container">
+    <a class="brand" href="index.html"><span class="brand__mark">IM</span> InternMatch</a>
+    <ul class="nav-links">
+      <li><a href="index.html" data-nav-link="index.html">Home</a></li>
+      <li><a href="internships.html" data-nav-link="internships.html">Internships</a></li>
+      <li><a href="dashboard.html" data-nav-link="dashboard.html">Dashboard</a></li>
+    </ul>
+    <div class="topbar-actions">
+      <button class="btn btn--ghost btn--sm" data-action="theme-toggle">🌙 Dark mode</button>
+      <span data-guest-only>
+        <a class="btn btn--ghost btn--sm" href="login.html">Log in</a>
+        <a class="btn btn--primary btn--sm" href="register.html">Get started</a>
+      </span>
+      <span data-auth-only style="display:none;">
+        <a class="btn btn--primary btn--sm" href="dashboard.html">Dashboard</a>
+      </span>
+    </div>
+  </div>
+</header>
+
+<section class="section browse-page">
+  <div class="container">
+    <div class="browse-hero">
+      <div class="browse-hero__copy"><span class="browse-eyebrow">Explore opportunities</span><h1>Find an internship that fits your next step.</h1><p>Search roles, compare requirements, and focus on opportunities that match your skills and goals.</p><span class="browse-match-note"><span aria-hidden="true">✦</span> Sign in to see matches ranked against your profile</span></div>
+      <div class="browse-hero__art" aria-hidden="true"><div class="browse-art-orbit browse-art-orbit--one"></div><div class="browse-art-orbit browse-art-orbit--two"></div><div class="browse-art-document"><span>IM</span><i></i><i></i><i></i><b>✓</b></div></div>
+    </div>
+
+    <div class="browse-filters">
+      <div class="browse-filters__head"><div><span class="browse-eyebrow">Narrow your search</span><h2>Find the right fit</h2><p>Filter by role details, location, and skills.</p></div><button class="btn btn--ghost btn--sm" id="clear-filters">Clear filters</button></div>
+      <div class="catalogue-toolbar">
+      <input type="search" id="search-input" aria-label="Search internship title, organization, or skill" placeholder="Search title, organization, or skill…" />
+      <select id="filter-sector"><option value="">All sectors</option></select>
+      <select id="filter-location"><option value="">All locations</option></select>
+      <select id="filter-duration">
+        <option value="">Any duration</option>
+        <option value="3">3 months</option>
+        <option value="4">4 months</option>
+        <option value="6">6 months</option>
+      </select>
+      <select id="filter-skill"><option value="">Any skill</option></select>
+      <select id="sort-select">
+        <option value="match">Sort by match score</option>
+        <option value="deadline">Sort by deadline</option>
+      </select>
+      </div>
+    </div>
+
+    <div class="browse-results-head">
+      <div><span class="browse-eyebrow">Your shortlist</span><h2>Internship opportunities</h2></div>
+      <span class="results-meta" id="results-count">0 internships found</span>
+    </div>
+
+    <div class="grid-cards" id="internship-grid"></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <p class="footer-note">All internship records, organizations, and deadlines shown are fictional sample data created for this prototype and do not represent live or official PM Internship Scheme vacancies.</p>
+  </div>
+</footer>
+
+<script src="data/internships.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/recommendation.js"></script>
+<script src="js/app.js"></script>
+<script src="js/internships.js"></script>
+</body>
+</html>

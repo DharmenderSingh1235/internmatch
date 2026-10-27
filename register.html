@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232a5bd7'/%3E%3Ctext x='16' y='22' font-family='Arial,sans-serif' font-weight='700' font-size='15' fill='white' text-anchor='middle'%3EIM%3C/text%3E%3C/svg%3E" />
+<meta name="theme-color" content="#101b34" />
+<title>Create your account — InternMatch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+<link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="container">
+    <a class="brand" href="index.html"><span class="brand__mark">IM</span> InternMatch</a>
+    <span></span>
+    <div class="topbar-actions">
+      <button class="btn btn--ghost btn--sm" data-action="theme-toggle">🌙 Dark mode</button>
+      <a class="btn btn--ghost btn--sm" href="login.html">Log in</a>
+    </div>
+  </div>
+</header>
+
+<div class="auth-shell">
+  <div class="auth-shell__art">
+    <div>
+      <h2>Your profile does the searching for you.</h2>
+      <p>Fill it in once, and every internship in the catalogue gets scored against it automatically.</p>
+    </div>
+    <blockquote class="auth-quote">
+      "This is a demo prototype — no real accounts or data leave your browser."
+    </blockquote>
+  </div>
+  <div class="auth-shell__form">
+    <div class="auth-card">
+      <h1 id="register-title">Create your student account</h1>
+      <p id="register-description">It takes about a minute. This is a demo login — nothing is sent to a server.</p>
+
+      <form id="register-form" novalidate>
+        <div class="field">
+          <label for="reg-name">Full name</label>
+          <input type="text" id="reg-name" name="name" autocomplete="name" required />
+        </div>
+        <div class="field">
+          <label for="reg-email">Email address</label>
+          <input type="email" id="reg-email" name="email" autocomplete="email" required />
+        </div>
+        <div class="field" id="reg-college-field">
+          <label for="reg-college">College / University</label>
+          <input type="text" id="reg-college" name="college" autocomplete="organization" required />
+        </div>
+        <div class="field" id="reg-company-field" hidden>
+          <label for="reg-company">Company name</label>
+          <input type="text" id="reg-company" name="company" autocomplete="organization" />
+        </div>
+        <div class="field">
+          <label for="reg-password">Password</label>
+          <div class="password-field">
+            <input type="password" id="reg-password" name="password" autocomplete="new-password" required minlength="6" />
+            <button type="button" data-toggle-password="reg-password" aria-pressed="false">Show</button>
+          </div>
+          <p class="hint">At least 6 characters. Demo only — do not reuse a real password.</p>
+        </div>
+        <div class="field">
+          <label for="reg-confirm">Confirm password</label>
+          <div class="password-field">
+            <input type="password" id="reg-confirm" name="confirmPassword" autocomplete="new-password" required />
+            <button type="button" data-toggle-password="reg-confirm" aria-pressed="false">Show</button>
+          </div>
+        </div>
+        <button type="submit" class="btn btn--primary btn--block btn--lg">Create account</button>
+      </form>
+
+      <p class="auth-foot">Already have an account? <a href="login.html">Log in</a></p>
+    </div>
+  </div>
+</div>
+
+<script src="data/internships.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/recommendation.js"></script>
+<script src="js/app.js"></script>
+<script src="js/auth.js"></script>
+</body>
+</html>

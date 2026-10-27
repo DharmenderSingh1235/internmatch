@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232a5bd7'/%3E%3Ctext x='16' y='22' font-family='Arial,sans-serif' font-weight='700' font-size='15' fill='white' text-anchor='middle'%3EIM%3C/text%3E%3C/svg%3E" />
+<meta name="theme-color" content="#101b34" />
+<title>InternMatch — Find internships that actually fit you</title>
+<meta name="description" content="InternMatch is a rule-based recommendation prototype that matches student profiles to internship listings for the PM Internship Scheme." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+<link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="container">
+    <a class="brand" href="index.html"><span class="brand__mark">IM</span> InternMatch</a>
+    <ul class="nav-links">
+      <li><a href="index.html" data-nav-link="index.html">Home</a></li>
+      <li><a href="internships.html" data-nav-link="internships.html">Internships</a></li>
+      <li><a href="dashboard.html" data-nav-link="dashboard.html">Dashboard</a></li>
+    </ul>
+    <div class="topbar-actions">
+      <button class="btn btn--ghost btn--sm" data-action="theme-toggle">🌙 Dark mode</button>
+      <span data-guest-only>
+        <a class="btn btn--ghost btn--sm" href="login.html">Log in</a>
+        <a class="btn btn--primary btn--sm" href="register.html">Get started</a>
+      </span>
+      <span data-auth-only style="display:none;">
+        <a class="btn btn--primary btn--sm" href="dashboard.html">Go to dashboard</a>
+      </span>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container">
+    <div>
+      <span class="hero__eyebrow">PM Internship Scheme · student prototype</span>
+      <h1>Internships matched to your skills, not just your keywords.</h1>
+      <p class="hero__lede">InternMatch reads your profile — skills, interests, academics, and preferences — and scores every listing with a transparent, explainable match percentage. No black box, no guesswork.</p>
+      <div class="hero__actions">
+        <a class="btn btn--primary btn--lg" href="internships.html">Search internships</a>
+        <a class="btn btn--ghost btn--lg" href="register.html">Create your profile</a>
+      </div>
+    </div>
+    <div class="hero__panel">
+      <h3>How your match score is built</h3>
+      <div class="hero__stat-row"><span>Skills match</span><strong>40%</strong></div>
+      <div class="hero__stat-row"><span>Interest match</span><strong>25%</strong></div>
+      <div class="hero__stat-row"><span>Academic eligibility</span><strong>15%</strong></div>
+      <div class="hero__stat-row"><span>Sector preference</span><strong>10%</strong></div>
+      <div class="hero__stat-row"><span>Location &amp; duration fit</span><strong>10%</strong></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="section__head text-center" style="margin:0 auto 40px;">
+      <h2>How it works</h2>
+      <p>Three steps between you and a shortlist that's actually worth your time.</p>
+    </div>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-card__index">01</div>
+        <h3>Build your profile</h3>
+        <p>Add your skills, interests, academic details, and preferred sector, location, and duration.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-card__index">02</div>
+        <h3>Get scored recommendations</h3>
+        <p>Every internship is scored 0–100 using a transparent, weighted formula you can inspect on each listing.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-card__index">03</div>
+        <h3>Apply and track progress</h3>
+        <p>Save internships, apply in one click, and follow your application status from Applied through to Selected.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section--alt">
+  <div class="container">
+    <div class="section__head" style="margin:0 auto 40px; text-align:center;">
+      <h2>Built for students, not recruiters</h2>
+      <p>Every feature is designed around one question: does this help you find the right internship faster?</p>
+    </div>
+    <div class="benefits-grid">
+      <div class="benefit-card">
+        <div class="benefit-card__icon">＋</div>
+        <h3>Explainable match scores</h3>
+        <p>See exactly which skills and preferences drove your score — and what's missing.</p>
+      </div>
+      <div class="benefit-card">
+        <div class="benefit-card__icon">◎</div>
+        <h3>Skill gap roadmap</h3>
+        <p>Get a ranked list of skills worth learning next, based on what real listings are asking for.</p>
+      </div>
+      <div class="benefit-card">
+        <div class="benefit-card__icon">▤</div>
+        <h3>One dashboard for everything</h3>
+        <p>Track saved internships, applications, and status changes without digging through email.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="section__head flex-between" style="max-width:none;">
+      <div>
+        <h2>Featured internships</h2>
+        <p>A sample of listings currently in the demo catalogue.</p>
+      </div>
+      <a class="btn btn--ghost" href="internships.html">View all internships</a>
+    </div>
+    <div class="featured-grid" id="featured-grid"></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <a class="brand" href="index.html"><span class="brand__mark">IM</span> InternMatch</a>
+        <p style="margin-top:12px; max-width:36ch;">A university project prototype exploring rule-based matching for the PM Internship Scheme. All internship listings shown are fictional sample data.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="internships.html">Browse internships</a></li>
+          <li><a href="recommendations.html">Recommendations</a></li>
+          <li><a href="skills.html">Skill development</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Project</h4>
+        <ul>
+          <li><a href="README.md">Documentation</a></li>
+          <li><a href="company-dashboard.html">Company portal (demo)</a></li>
+          <li><a href="mailto:team@internmatch.dev">Contact</a></li>
+        </ul>
+      </div>
+    </div>
+    <p class="footer-note">InternMatch is a student-built demonstration project. It is not affiliated with or endorsed by the official PM Internship Scheme. All internship records, organizations, and deadlines are sample data for demonstration purposes only.</p>
+  </div>
+</footer>
+
+<script src="data/internships.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/recommendation.js"></script>
+<script src="js/app.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const grid = document.getElementById("featured-grid");
+    const featured = Store.getAllInternships().slice(0, 3);
+    grid.innerHTML = featured.map((i) => `
+      <article class="int-card">
+        <div class="int-card__top">
+          <div>
+            <h3 class="int-card__title">${App.escapeHtml(i.title)}</h3>
+            <p class="int-card__org">${App.escapeHtml(i.org)} &middot; ${App.escapeHtml(i.location)}</p>
+          </div>
+        </div>
+        <div class="int-card__meta">
+          <span class="pill">${App.escapeHtml(i.sector)}</span>
+          <span class="pill pill--muted">${App.escapeHtml(i.duration)}</span>
+        </div>
+        <p class="int-card__desc">${App.escapeHtml(i.description)}</p>
+        <div class="int-card__footer">
+          <span class="deadline">Apply by ${App.formatDate(i.deadline)}</span>
+          <a class="btn btn--secondary btn--sm" href="internship-details.html?id=${i.id}">View details</a>
+        </div>
+      </article>
+    `).join("");
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232a5bd7'/%3E%3Ctext x='16' y='22' font-family='Arial,sans-serif' font-weight='700' font-size='15' fill='white' text-anchor='middle'%3EIM%3C/text%3E%3C/svg%3E" />
+<meta name="theme-color" content="#101b34" />
+<title>Internship Details — InternMatch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+<link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="container">
+    <a class="brand" href="index.html"><span class="brand__mark">IM</span> InternMatch</a>
+    <ul class="nav-links">
+      <li><a href="index.html" data-nav-link="index.html">Home</a></li>
+      <li><a href="internships.html" data-nav-link="internships.html">Internships</a></li>
+      <li><a href="dashboard.html" data-nav-link="dashboard.html">Dashboard</a></li>
+    </ul>
+    <div class="topbar-actions">
+      <button class="btn btn--ghost btn--sm" data-action="theme-toggle">🌙 Dark mode</button>
+      <span data-guest-only>
+        <a class="btn btn--ghost btn--sm" href="login.html">Log in</a>
+        <a class="btn btn--primary btn--sm" href="register.html">Get started</a>
+      </span>
+      <span data-auth-only style="display:none;">
+        <a class="btn btn--primary btn--sm" href="dashboard.html">Dashboard</a>
+      </span>
+    </div>
+  </div>
+</header>
+
+<section class="section" style="padding-top:40px;">
+  <div class="container">
+    <p style="margin-bottom:20px;"><a href="internships.html">&larr; Back to catalogue</a></p>
+    <div id="internship-detail"></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <p class="footer-note">Sample listing shown for demonstration purposes only.</p>
+  </div>
+</footer>
+
+<script src="data/internships.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/recommendation.js"></script>
+<script src="js/app.js"></script>
+<script src="js/internships.js"></script>
+</body>
+</html>

@@ -1,0 +1,570 @@
+/* js/admin.js — server-authenticated admin workspace */
+
+document.addEventListener("DOMContentLoaded", () => {
+  const panel = document.getElementById("admin-panel");
+  if (!panel) return;
+
+  const SESSION_KEY = "im_admin_authenticated";
+  const AUDIT_KEY = "im_admin_audit_log";
+  const adminApi = async (route, options = {}) => {
+    const response = await fetch(`http://127.0.0.1:3002/api${route}`, { ...options, headers: { "content-type": "application/json", authorization: `Bearer ${sessionStorage.getItem("im_admin_api_token") || ""}`, ...(options.headers || {}) } });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `Admin API request failed (${response.status}) at ${route}.`);
+    return data;
+  };
+  const adminViews = {
+    overview: { title: "Admin dashboard", panels: ["admin-overview"] },
+    users: { title: "User management", panels: ["admin-students"] },
+    companies: { title: "Company access requests", panels: ["admin-company-requests", "admin-company-list"] },
+    internships: { title: "Internship management & approvals", panels: ["admin-add-internship", "admin-listings", "admin-company-review"] },
+    recruitment: { title: "Applications & recruitment", panels: ["admin-recruitment"] },
+    recommendations: { title: "AI recommendations", panels: ["admin-recommendations"] },
+    assessments: { title: "Assessments & interviews", panels: ["admin-assessments"] },
+    reports: { title: "Reports & analytics", panels: ["admin-analytics"] },
+    notifications: { title: "Student support inbox", panels: ["admin-support"] },
+    roles: { title: "Roles & permissions", panels: ["admin-governance"] },
+    audit: { title: "Audit logs & settings", panels: ["admin-audit", "admin-account"] }
+  };
+  function selectAdminView(viewName) {
+    const view = adminViews[viewName] || adminViews.overview;
+    const allPanels = ["admin-overview", "admin-account", "admin-add-internship", "admin-listings", "admin-company-review", "admin-company-requests", "admin-company-list", "admin-students", "admin-analytics", "admin-recruitment", "admin-assessments", "admin-recommendations", "admin-support", "admin-audit", "admin-governance"];
+    allPanels.forEach((id) => { const panel = document.getElementById(id); if (panel) panel.style.display = "none"; });
+    view.panels.forEach((id) => { const panel = document.getElementById(id); if (panel) panel.style.display = ""; });
+    const note = document.getElementById("admin-module-note");
+    note.hidden = !view.note;
+    note.textContent = view.note || "";
+    document.getElementById("admin-page-title").textContent = view.title;
+    document.querySelectorAll("[data-admin-view]").forEach((link) => {
+      const active = link.getAttribute("data-admin-view") === viewName;
+      link.classList.toggle("is-active", active);
+      if (active) link.setAttribute("aria-current", "page"); else link.removeAttribute("aria-current");
+    });
+    if (viewName === "notifications") { renderSupportInbox(); renderPasswordResetRequests(); }
+    if (viewName === "internships") renderCompanyReviewQueue();
+    if (viewName === "companies") renderCompanyAccounts();
+    if (viewName === "assessments") renderAssessmentReviewQueue();
+  }
+  async function renderAssessmentReviewQueue() {
+    const list = document.getElementById("admin-assessment-review-list");
+    if (!list) return;
+    list.innerHTML = '<p class="hint">Loading submitted assessments…</p>';
+    try {
+      const data = await adminApi("/admin/assessments");
+      const items = data.items || [];
+      const overviewRequests = document.getElementById("admin-assessment-overview-requests");
+      if (overviewRequests) overviewRequests.innerHTML = items.length ? `<ul class="admin-record-list">${items.slice(0, 4).map((item) => `<li><strong>${App.escapeHtml(item.title)}</strong><span>${App.escapeHtml(item.companyName)} · ${App.escapeHtml(item.status === "rejected" ? "Resubmitted" : "Pending review")}</span></li>`).join("")}</ul><p class="hint">${items.length} assessment${items.length === 1 ? "" : "s"} need review.</p>` : '<p class="hint">No company assessments are waiting for approval.</p>';
+      list.innerHTML = items.length ? items.map((item) => `<article class="company-review-card" data-assessment-review="${App.escapeHtml(item.id)}"><div class="company-review-card__head"><div><span class="company-status-badge ${item.status === "rejected" ? "" : "is-active"}">${item.status === "rejected" ? "Resubmitted" : "Pending approval"}</span><h3>${App.escapeHtml(item.title)}</h3><p>${App.escapeHtml(item.companyName)} · ${App.escapeHtml(item.roleTitle)} · ${App.escapeHtml(item.category)} · ${App.escapeHtml(item.difficulty)}</p></div><strong>${item.durationMinutes} min · ${item.totalMarks} marks</strong></div><p>${item.questions.length} questions · ${item.questions.map((question) => App.escapeHtml(question.type)).join(", ")}</p><details><summary>Review question content</summary>${item.questions.map((question, index) => `<section><strong>Q${index + 1} · ${App.escapeHtml(question.type)} · ${question.marks} marks</strong><p>${App.escapeHtml(question.prompt)}</p>${question.options?.length ? `<ol type="A">${question.options.map((option) => `<li>${App.escapeHtml(option)}</li>`).join("")}</ol>` : ""}</section>`).join("")}</details><div class="company-review-card__actions"><input type="text" maxlength="500" data-assessment-note placeholder="Optional feedback for company" aria-label="Admin review note"><button type="button" class="btn btn--primary btn--sm" data-assessment-decision="approve">Approve &amp; assign to applicants</button><button type="button" class="btn btn--ghost btn--sm" data-assessment-decision="reject">Reject with feedback</button></div></article>`).join("") : '<div class="admin-panel-note">No company assessments are waiting for approval.</div>';
+      list.querySelectorAll("[data-assessment-decision]").forEach((button) => button.addEventListener("click", async () => {
+        const card = button.closest("[data-assessment-review]"); button.disabled = true;
+        try { await adminApi(`/admin/assessments/${encodeURIComponent(card.dataset.assessmentReview)}/review`, { method: "PATCH", body: JSON.stringify({ decision: button.dataset.assessmentDecision, note: card.querySelector("[data-assessment-note]").value }) }); App.toast(button.dataset.assessmentDecision === "approve" ? "Assessment approved for eligible applicants." : "Assessment rejected with feedback."); renderAssessmentReviewQueue(); }
+        catch (error) { App.toast(error.message, "error"); button.disabled = false; }
+      }));
+    } catch (error) {
+      const message = error.message.includes("404") || error.message.includes("Admin API request failed")
+        ? `${error.message} The running server may be older than the assessment approval feature. Stop it with Ctrl+C in its terminal, then run npm start from the server folder.`
+        : error.message;
+      list.innerHTML = `<p class="hint">${App.escapeHtml(message)}</p>`;
+      const overviewRequests = document.getElementById("admin-assessment-overview-requests");
+      if (overviewRequests) overviewRequests.innerHTML = `<p class="hint">${App.escapeHtml(message)}</p>`;
+    }
+  }
+  async function renderCompanyReviewQueue() {
+    const list = document.getElementById("admin-company-review-list");
+    if (!list) return;
+    list.innerHTML = '<p class="hint">Loading recruiter submissions…</p>';
+    try {
+      const data = await adminApi("/admin/company-internships");
+      const items = data.items || [];
+      list.innerHTML = items.length ? items.map((item) => `<article class="company-review-card" data-review-role="${App.escapeHtml(item.id)}"><div class="company-review-card__head"><div><span class="company-status-badge ${item.status === "rejected" ? "" : "is-active"}">${item.status === "rejected" ? "Resubmitted" : "Pending review"}</span><h3>${App.escapeHtml(item.title)}</h3><p>${App.escapeHtml(item.companyName)} · ${App.escapeHtml(item.companyEmail)} · ${App.escapeHtml(item.postingType || "Internship")}</p></div><strong>${App.escapeHtml(item.location || "Location flexible")}</strong></div><div class="company-review-card__details"><span><b>Sector</b>${App.escapeHtml(item.sector || "—")}</span><span><b>Work mode</b>${App.escapeHtml(item.locationType || "—")}</span><span><b>Compensation</b>${App.escapeHtml(item.salary || item.stipend || "Not listed")}</span><span><b>Openings</b>${App.escapeHtml(item.positions || 1)}</span><span><b>Deadline</b>${App.escapeHtml(item.deadline || "—")}</span><span><b>Eligibility</b>${App.escapeHtml(item.eligibility || "—")}</span></div><p>${App.escapeHtml(item.description || "No role summary provided.")}</p><p><strong>Skills:</strong> ${App.escapeHtml((item.skills || []).join(", ") || "None listed")}</p>${item.responsibilities ? `<details><summary>Responsibilities</summary><p>${App.escapeHtml(item.responsibilities)}</p></details>` : ""}<div class="company-review-card__actions"><input type="text" maxlength="500" data-review-note placeholder="Optional note for recruiter" aria-label="Review note"/><button type="button" class="btn btn--primary btn--sm" data-review-decision="approve">Approve &amp; publish</button><button type="button" class="btn btn--ghost btn--sm" data-review-decision="reject">Request changes</button></div></article>`).join("") : '<div class="admin-panel-note">No recruiter postings are waiting for review.</div>';
+      list.querySelectorAll("[data-review-decision]").forEach((button) => button.addEventListener("click", async () => {
+        const card = button.closest("[data-review-role]");
+        button.disabled = true;
+        try { await adminApi(`/admin/company-internships/${encodeURIComponent(card.dataset.reviewRole)}/review`, { method: "PATCH", body: JSON.stringify({ decision: button.dataset.reviewDecision, note: card.querySelector("[data-review-note]").value }) }); App.toast(button.dataset.reviewDecision === "approve" ? "Posting approved and published." : "Posting rejected; the recruiter can edit and resubmit."); renderCompanyReviewQueue(); }
+        catch (error) { App.toast(error.message, "error"); button.disabled = false; }
+      }));
+    } catch (error) { list.innerHTML = `<p class="hint">${App.escapeHtml(error.message)}</p>`; }
+  }
+  async function renderCompanyAccounts() {
+    const requestsList = document.getElementById("admin-company-requests-list");
+    const companyBody = document.getElementById("admin-company-tbody");
+    if (!requestsList || !companyBody) return;
+    requestsList.innerHTML = '<p class="hint">Loading company requests…</p>';
+    companyBody.innerHTML = '<tr><td colspan="6">Loading approved companies…</td></tr>';
+    try {
+      const [requestData, companyData] = await Promise.all([adminApi("/admin/company-requests"), adminApi("/admin/companies")]);
+      const requests = requestData.items || [];
+      requestsList.innerHTML = requests.length ? requests.map((item) => `<article class="company-access-request" data-company-request="${App.escapeHtml(item.id)}"><div class="company-access-request__head"><div><span class="company-access-state">Pending admin approval</span><h3>${App.escapeHtml(item.name)}</h3><p>${App.escapeHtml(item.contact || "Contact not provided")} · ${App.escapeHtml(item.email)}</p></div><strong>Requested ${App.escapeHtml(App.formatDate(item.requestedAt))}</strong></div><div class="company-access-request__meta"><span><b>Industry</b>${App.escapeHtml(item.industry || "—")}</span><span><b>Location</b>${App.escapeHtml(item.location || "—")}</span><span><b>Website</b>${App.escapeHtml(item.website || "—")}</span></div>${item.about ? `<p>${App.escapeHtml(item.about)}</p>` : ""}<div class="company-access-request__actions"><button type="button" class="btn btn--primary btn--sm" data-company-decision="approve">Approve &amp; add to company list</button><button type="button" class="btn btn--ghost btn--sm" data-company-decision="reject">Reject request</button></div></article>`).join("") : '<div class="admin-panel-note">No pending company registration requests.</div>';
+      companyBody.innerHTML = (companyData.items || []).length ? companyData.items.map((company) => `<tr><td>${App.escapeHtml(company.name)}</td><td>${App.escapeHtml(company.contact || "—")}</td><td>${App.escapeHtml(company.email)}</td><td>${App.escapeHtml(company.industry || "—")}</td><td>${App.escapeHtml(company.location || "—")}</td><td>${App.escapeHtml(company.status || "active")}</td></tr>`).join("") : '<tr><td colspan="6">No approved company accounts yet.</td></tr>';
+      const stat = document.getElementById("admin-stat-companies"); if (stat) stat.textContent = (companyData.items || []).filter((company) => company.status === "active").length;
+      requestsList.querySelectorAll("[data-company-decision]").forEach((button) => button.addEventListener("click", async () => {
+        const card = button.closest("[data-company-request]");
+        const decision = button.dataset.companyDecision;
+        if (decision === "reject" && !window.confirm(`Reject the company request from ${card.querySelector("h3").textContent}?`)) return;
+        button.disabled = true;
+        try { await adminApi(`/admin/company-requests/${encodeURIComponent(card.dataset.companyRequest)}`, { method: "PATCH", body: JSON.stringify({ decision }) }); App.toast(decision === "approve" ? "Company approved and added to the company list." : "Company request rejected."); renderCompanyAccounts(); }
+        catch (error) { App.toast(error.message, "error"); button.disabled = false; }
+      }));
+    } catch (error) { requestsList.innerHTML = `<p class="hint">${App.escapeHtml(error.message)}</p>`; companyBody.innerHTML = `<tr><td colspan="6">${App.escapeHtml(error.message)}</td></tr>`; }
+  }
+  async function renderSupportInbox() {
+    const container = document.getElementById("admin-support-list");
+    if (!container) return;
+    container.innerHTML = '<p class="hint">Loading student messages…</p>';
+    try {
+      const data = await adminApi("/admin/support-messages");
+      const items = data.items || [];
+      container.innerHTML = items.length ? items.map((item) => `
+        <article class="support-ticket" data-support-ticket="${App.escapeHtml(item.id)}">
+          <div class="support-ticket__head"><strong>${App.escapeHtml(item.subject)}</strong><span class="pill pill--muted">${App.escapeHtml(item.status)}</span></div>
+          <div class="support-ticket__meta">${App.escapeHtml(item.senderRole === "admin" ? "Sent by admin to" : "From")} ${App.escapeHtml(item.studentName)} · ${App.escapeHtml(item.studentEmail)} · ${App.escapeHtml(item.category)} · ${App.escapeHtml(App.formatDate(item.createdAt))}</div>
+          <p class="support-ticket__message">${App.escapeHtml(item.message)}</p>
+          ${item.senderRole === "admin" ? (item.reply ? `<div class="support-ticket__meta">Student reply: ${App.escapeHtml(item.reply)}</div>` : "") : `<div class="support-ticket__controls">
+            <div class="field"><label>Status</label><select data-support-status><option${item.status === "Open" ? " selected" : ""}>Open</option><option${item.status === "In progress" ? " selected" : ""}>In progress</option><option${item.status === "Resolved" ? " selected" : ""}>Resolved</option></select></div>
+            <div class="field"><label>Reply to student</label><textarea data-support-reply maxlength="2000" rows="3" placeholder="Write a helpful reply…">${App.escapeHtml(item.reply || "")}</textarea></div>
+            <button type="button" class="btn btn--primary btn--sm" data-support-save>Save reply</button>
+          </div>`}
+          ${item.repliedAt ? `<div class="support-ticket__meta">Last reply · ${App.escapeHtml(App.formatDate(item.repliedAt))}</div>` : ""}
+        </article>`).join("") : '<div class="admin-panel-note">No student support requests yet. Student messages will appear here.</div>';
+      container.querySelectorAll("[data-support-save]").forEach((button) => button.addEventListener("click", async () => {
+        const ticket = button.closest("[data-support-ticket]");
+        button.disabled = true;
+        try {
+          await adminApi(`/admin/support-messages/${encodeURIComponent(ticket.dataset.supportTicket)}`, { method: "PATCH", body: JSON.stringify({ status: ticket.querySelector("[data-support-status]").value, reply: ticket.querySelector("[data-support-reply]").value }) });
+          App.toast("Support reply saved.");
+          renderSupportInbox();
+        } catch (error) { App.toast(error.message, "error"); button.disabled = false; }
+      }));
+    } catch (error) { container.innerHTML = `<p class="hint">${App.escapeHtml(error.message)}</p>`; }
+  }
+  async function renderPasswordResetRequests() {
+    const container = document.getElementById("admin-reset-list");
+    if (!container) return;
+    container.innerHTML = '<p class="hint">Loading reset requests…</p>';
+    try {
+      const data = await adminApi("/admin/password-reset-requests");
+      const requests = (data.items || []).filter((item) => item.status === "Pending");
+      container.innerHTML = requests.length ? requests.map((item) => `<article class="admin-reset-request" data-reset-id="${App.escapeHtml(item.id)}"><div><strong>${App.escapeHtml(item.email)}</strong><span>${item.role === "company" ? "Recruiter / company" : "Student"} · Requested ${App.escapeHtml(App.formatDate(item.requestedAt))}</span></div><label class="admin-reset-request__password">Temporary password<input type="password" minlength="8" maxlength="256" autocomplete="new-password" placeholder="At least 8 characters" required /></label><button class="btn btn--primary btn--sm" type="button" data-reset-password>Set password</button></article>`).join("") : '<div class="admin-panel-note">No pending password reset requests.</div>';
+      container.querySelectorAll("[data-reset-password]").forEach((button) => button.addEventListener("click", async () => {
+        const card = button.closest("[data-reset-id]");
+        const password = card.querySelector("input").value;
+        if (password.length < 8) return App.toast("Enter a temporary password with at least 8 characters.", "error");
+        button.disabled = true;
+        try { await adminApi(`/admin/password-reset-requests/${encodeURIComponent(card.dataset.resetId)}`, { method: "PATCH", body: JSON.stringify({ temporaryPassword: password }) }); App.toast("Password reset. Share the temporary password through the user’s verified contact channel."); renderPasswordResetRequests(); }
+        catch (error) { App.toast(error.message, "error"); button.disabled = false; }
+      }));
+    } catch (error) { container.innerHTML = `<p class="hint">${App.escapeHtml(error.message)}</p>`; }
+  }
+  async function loadSupportStudents() {
+    const select = document.getElementById("admin-message-student");
+    try {
+      const data = await adminApi("/admin/students");
+      const students = (data.items || []).filter((student) => !/demo company/i.test(student.name || ""));
+      select.innerHTML = students.length ? '<option value="">Select a student…</option>' + students.map((student) => `<option value="${App.escapeHtml(student.id)}">${App.escapeHtml(student.name)} · ${App.escapeHtml(student.email)}</option>`).join("") : '<option value="">No students found</option>';
+    } catch (error) { select.innerHTML = `<option value="">${App.escapeHtml(error.message)}</option>`; }
+  }
+  const readAuditLog = () => {
+    try { const items = JSON.parse(localStorage.getItem(AUDIT_KEY) || "[]"); return Array.isArray(items) ? items : []; }
+    catch (_) { return []; }
+  };
+  function renderAuditLog() {
+    const entries = readAuditLog();
+    const markup = entries.length ? entries.slice(0, 20).map((entry) => `<li><strong>${App.escapeHtml(entry.action)}</strong>${entry.target ? ` · ${App.escapeHtml(entry.target)}` : ""}<small>${App.escapeHtml(new Date(entry.at).toLocaleString())}</small></li>`).join("") : "<li>No admin actions recorded in this browser yet.</li>";
+    const audit = document.getElementById("admin-audit-list");
+    const recent = document.getElementById("admin-recent-activity");
+    if (audit) audit.innerHTML = markup;
+    if (recent) recent.innerHTML = markup;
+  }
+  function logAdminAction(action, target = "") {
+    const entries = readAuditLog();
+    entries.unshift({ action, target, at: new Date().toISOString() });
+    localStorage.setItem(AUDIT_KEY, JSON.stringify(entries.slice(0, 100)));
+  }
+  const showAdminPanel = () => {
+    panel.style.display = "";
+    document.getElementById("admin-loading").hidden = true;
+    selectAdminView("overview");
+    renderAll();
+  };
+
+  document.getElementById("admin-logout").addEventListener("click", (e) => {
+    e.preventDefault();
+    sessionStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem("im_admin_api_token");
+    window.location.href = "login.html?role=admin";
+  });
+
+  const form = document.getElementById("admin-form");
+  const formTitle = document.getElementById("admin-form-title");
+  const resetBtn = document.getElementById("admin-form-reset");
+  const tbody = document.getElementById("admin-internship-tbody");
+  const studentTbody = document.getElementById("admin-student-tbody");
+  const studentDialog = document.getElementById("admin-student-dialog");
+  const studentDialogTitle = document.getElementById("admin-student-dialog-title");
+  const studentDialogContent = document.getElementById("admin-student-dialog-content");
+  const cvDialog = document.getElementById("admin-cv-dialog");
+  const cvFrame = document.getElementById("admin-cv-frame");
+  let activeCvUrl = "";
+  let activeCvEmail = "";
+  const cvReviewStatus = document.getElementById("admin-cv-review-status");
+  const cvReviewNote = document.getElementById("admin-cv-review-note");
+  function showCvReviewState(review) {
+    const status = review?.status || "Not reviewed";
+    cvReviewStatus.textContent = review?.reviewedAt ? `${status} · ${App.formatDate(review.reviewedAt)}` : status;
+    cvReviewStatus.className = status === "Approved" ? "is-approved" : status === "Needs changes" ? "is-needs-changes" : "";
+    cvReviewNote.value = review?.note || "";
+    const statusValue = studentDialogContent.querySelector("[data-cv-review-status]");
+    if (statusValue) statusValue.textContent = status;
+  }
+  function saveCvReview(status) {
+    if (!activeCvEmail) return;
+    const review = { status, note: cvReviewNote.value.trim(), reviewedAt: new Date().toISOString(), reviewer: "Admin" };
+    Store.writeBlob(`im_cv_review_${activeCvEmail}`, review);
+    logAdminAction(status === "Approved" ? "Approved student CV" : "Requested student CV changes", activeCvEmail);
+    showCvReviewState(review);
+    App.toast(status === "Approved" ? "CV approved for the student." : "CV marked as needing changes.");
+  }
+  document.getElementById("admin-cv-approve").addEventListener("click", () => saveCvReview("Approved"));
+  document.getElementById("admin-cv-request-changes").addEventListener("click", () => saveCvReview("Needs changes"));
+  document.getElementById("admin-cv-dialog-close").addEventListener("click", () => cvDialog.close());
+  cvDialog.addEventListener("close", () => {
+    cvFrame.removeAttribute("src");
+    if (activeCvUrl) URL.revokeObjectURL(activeCvUrl);
+    activeCvUrl = "";
+    activeCvEmail = "";
+  });
+  document.getElementById("admin-student-dialog-close").addEventListener("click", () => studentDialog.close());
+  studentDialog.addEventListener("click", (event) => {
+    if (event.target === studentDialog) studentDialog.close();
+  });
+
+  function resetForm() {
+    form.reset();
+    form.elements["id"].value = "";
+    formTitle.textContent = "Add a new internship";
+  }
+
+  function fillFormForEdit(internship) {
+    form.elements["id"].value = internship.id;
+    form.elements["title"].value = internship.title;
+    form.elements["org"].value = internship.org;
+    form.elements["sector"].value = internship.sector;
+    form.elements["location"].value = internship.location;
+    form.elements["locationType"].value = internship.locationType;
+    form.elements["duration"].value = internship.duration;
+    form.elements["durationMonths"].value = internship.durationMonths;
+    form.elements["deadline"].value = internship.deadline;
+    form.elements["skills"].value = (internship.skills || []).join(", ");
+    form.elements["eligibility"].value = internship.eligibility;
+    form.elements["description"].value = internship.description;
+    form.elements["stipend"].value = internship.stipend || "";
+    formTitle.textContent = `Edit: ${internship.title}`;
+    form.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const id = form.elements["id"].value;
+    const data = {
+      title: form.elements["title"].value.trim(),
+      org: form.elements["org"].value.trim(),
+      sector: form.elements["sector"].value,
+      location: form.elements["location"].value.trim(),
+      locationType: form.elements["locationType"].value,
+      duration: form.elements["duration"].value.trim(),
+      durationMonths: parseInt(form.elements["durationMonths"].value, 10),
+      deadline: form.elements["deadline"].value,
+      skills: form.elements["skills"].value.split(",").map((s) => s.trim()).filter(Boolean),
+      eligibility: form.elements["eligibility"].value.trim(),
+      description: form.elements["description"].value.trim(),
+      stipend: form.elements["stipend"].value.trim()
+    };
+    if (id) {
+      Store.updateInternship(id, data);
+      logAdminAction("Updated internship listing", data.title);
+      App.toast("Internship updated.");
+    } else {
+      Store.addInternship(data);
+      logAdminAction("Added internship listing", data.title);
+      App.toast("Internship added.");
+    }
+    resetForm();
+    renderAll();
+  });
+
+  resetBtn.addEventListener("click", resetForm);
+
+  function renderInternshipTable() {
+    const all = Store.getAllInternships();
+    tbody.innerHTML = all.map((i) => `
+      <tr>
+        <td>${App.escapeHtml(i.title)}</td>
+        <td>${App.escapeHtml(i.org)}</td>
+        <td>${App.escapeHtml(i.sector)}</td>
+        <td>${App.escapeHtml(i.location)}</td>
+        <td>${App.formatDate(i.deadline)}</td>
+        <td style="white-space:nowrap;">
+          <button class="btn btn--ghost btn--sm" data-edit="${i.id}">Edit</button>
+          <button class="btn btn--ghost btn--sm" data-delete="${i.id}">Delete</button>
+        </td>
+      </tr>
+    `).join("");
+
+    tbody.querySelectorAll("[data-edit]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const internship = Store.getInternshipById(btn.getAttribute("data-edit"));
+        if (internship) fillFormForEdit(internship);
+      });
+    });
+    tbody.querySelectorAll("[data-delete]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (!confirm("Delete this internship listing?")) return;
+        const item = Store.getInternshipById(btn.getAttribute("data-delete"));
+        Store.deleteInternship(btn.getAttribute("data-delete"));
+        logAdminAction("Deleted internship listing", item ? item.title : btn.getAttribute("data-delete"));
+        App.toast("Internship deleted.");
+        renderAll();
+      });
+    });
+
+    document.getElementById("admin-stat-internships").textContent = all.length;
+  }
+
+  function renderStudentTable() {
+    const users = Store.getAllUsers();
+    const studentDetails = new Map();
+    studentTbody.innerHTML = users.map((u) => {
+      const profile = Store.getProfile(u.email);
+      const apps = Store.getApplications(u.email);
+      const fullName = profile.fullName || u.name;
+      const skills = Array.isArray(profile.skills) ? profile.skills : [];
+      const interests = Array.isArray(profile.interests) ? profile.interests : [];
+      const projects = Array.isArray(profile.projects) ? profile.projects : [];
+      const education = [profile.degree, profile.course].filter(Boolean).join(" · ");
+      const year = profile.academicYear ? `${profile.academicYear}${profile.academicYear === "1" ? "st" : profile.academicYear === "2" ? "nd" : profile.academicYear === "3" ? "rd" : "th"} year` : "Year not provided";
+      const history = Store.readBlob(`im_interview_history_${u.email}`, []);
+      const interviewHistory = Array.isArray(history) ? history : [];
+      const savedIds = Store.getSavedIds(u.email);
+      const ats = Store.readBlob(`im_profile_ats_${u.email}`, null);
+      const cvReview = Store.readBlob(`im_cv_review_${u.email}`, null);
+      const skillProgress = Store.getSkillProgress(u.email);
+      const learnedSkills = Object.keys(skillProgress).filter((skill) => skillProgress[skill]);
+      const selectedSkillTarget = Store.readBlob(`im_skill_target_${u.email}`, "all");
+      const customSkillTarget = Store.readBlob(`im_skill_target_custom_${u.email}`, "");
+      const safeLink = (url, label) => /^https?:\/\//i.test(url || "") ? `<a href="${App.escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${label} ↗</a>` : "Not provided";
+      const detail = (label, value) => `<div><dt>${label}</dt><dd>${value || "Not provided"}</dd></div>`;
+      const projectMarkup = projects.length ? projects.map((project) => `<article class="admin-student-project"><strong>${App.escapeHtml(project.title || "Untitled project")}</strong>${project.technologies ? `<span>${App.escapeHtml(project.technologies)}</span>` : ""}${project.description ? `<p>${App.escapeHtml(project.description)}</p>` : ""}${project.url ? `<p>${safeLink(project.url, "Open project")}</p>` : ""}</article>`).join("") : "No projects added";
+      const applicationMarkup = apps.length ? apps.map((application) => {
+        const internship = Store.getInternshipById(application.internshipId);
+        const statusHistory = Array.isArray(application.history) ? application.history : [];
+        const historyText = statusHistory.map((item) => `${item.status} · ${App.formatDate(item.on)}`).join(" → ");
+        return `<li><strong>${App.escapeHtml(internship ? internship.title : application.internshipId)}</strong>${internship ? ` · ${App.escapeHtml(internship.org)}` : ""} — ${App.escapeHtml(application.status || "Applied")} · Applied ${App.formatDate(application.appliedOn)}${historyText ? `<small>${App.escapeHtml(historyText)}</small>` : ""}</li>`;
+      }).join("") : "No applications yet";
+      const savedMarkup = savedIds.length ? savedIds.map((id) => Store.getInternshipById(id)).filter(Boolean).map((item) => `${item.title} · ${item.org}`).map(App.escapeHtml).join(", ") : "No saved internships";
+      const scoredInterviews = interviewHistory.filter((entry) => entry.type === "quiz" && Number(entry.total) > 0);
+      const interviewMarkup = interviewHistory.length ? interviewHistory.map((entry) => {
+        const result = entry.type === "quiz" ? `${entry.score}/${entry.total} · ${Math.round((Number(entry.score) / Number(entry.total)) * 100)}%` : `${entry.total || 0} responses`;
+        return `<li>${App.escapeHtml(entry.category || "Practice session")} — ${App.escapeHtml(result)} · ${App.formatDate(entry.date)}</li>`;
+      }).join("") : "No interview practice sessions";
+      const topMatches = Recommendation.rankAll(profile, Store.getAllInternships()).slice(0, 3).map((internship) => `<li>${App.escapeHtml(internship.title)} · ${App.escapeHtml(internship.org)} — ${internship.match.score}%</li>`).join("") || "No recommendations available";
+      const achievementNames = [
+        ["Profile complete", Store.profileCompletion(profile) === 100],
+        ["First application", apps.length > 0],
+        ["Bookmark collector", savedIds.length >= 5],
+        ["Shortlisted", apps.some((application) => ["Shortlisted", "Selected"].includes(application.status))],
+        ["Interview ready", interviewHistory.length >= 3],
+        ["Skill builder", skills.length >= 5],
+        ["Project builder", projects.length > 0]
+      ];
+      const achievementMarkup = achievementNames.map(([name, earned]) => `<span class="admin-achievement ${earned ? "is-earned" : ""}">${earned ? "✓" : "○"} ${name}</span>`).join(" ");
+      const profileCompletion = Store.profileCompletion(profile);
+      const recordMarkup = `
+        <nav class="admin-student-detail-nav" aria-label="Student detail sections">
+          <a class="is-active" href="#student-account">Overview &amp; contact</a><a href="#student-intro">Introduction</a><a href="#student-academic">Academic details</a><a href="#student-skills">Skills &amp; preferences</a><a href="#student-links">Professional links</a><a href="#student-projects">Projects</a><a href="#student-resume">Resume &amp; ATS</a><a href="#student-roadmap">Skill development</a><a href="#student-matches">Recommendations</a><a href="#student-interviews">Interview scores</a><a href="#student-achievements">Achievements</a><a href="#student-saved">Saved internships</a><a href="#student-applications">Applications</a>
+        </nav>
+        <div class="admin-student-detail-sections">
+          <section class="admin-record-section" id="student-account"><h4>Overview &amp; contact</h4><dl class="admin-profile-grid">${detail("Email", App.escapeHtml(u.email))}${detail("Mobile", App.escapeHtml(profile.mobileNumber))}${detail("Account created", App.escapeHtml(u.createdOn ? App.formatDate(u.createdOn) : "Not available"))}${detail("Profile completion", `${profileCompletion}%`)}${detail("Profile photo", profile.photo ? "Added in this browser" : "Not added")}</dl></section>
+          <section class="admin-record-section" id="student-intro"><h4>Professional introduction</h4><dl class="admin-profile-grid">${detail("Headline", App.escapeHtml(profile.headline))}${detail("Summary", App.escapeHtml(profile.summary))}</dl></section>
+          <section class="admin-record-section" id="student-academic"><h4>Academic details</h4><dl class="admin-profile-grid">${detail("College / university", App.escapeHtml(profile.college || u.college))}${detail("Degree", App.escapeHtml(profile.degree))}${detail("Course / branch", App.escapeHtml(profile.course))}${detail("Academic year", App.escapeHtml(year))}${detail("Graduation year", App.escapeHtml(profile.graduationYear))}${detail("CGPA / percentage", App.escapeHtml(profile.cgpa))}</dl></section>
+          <section class="admin-record-section" id="student-skills"><h4>Skills, interests &amp; preferences</h4><dl class="admin-profile-grid">${detail("Skills", App.escapeHtml(skills.join(", ")))}${detail("Interests", App.escapeHtml(interests.join(", ")))}${detail("Preferred sector", App.escapeHtml(profile.preferredSector))}${detail("Preferred location", App.escapeHtml(profile.preferredLocation))}${detail("Preferred duration", App.escapeHtml(profile.preferredDuration ? `${profile.preferredDuration} months` : "No preference"))}</dl></section>
+          <section class="admin-record-section" id="student-links"><h4>Professional links</h4><dl class="admin-profile-grid">${detail("LinkedIn", safeLink(profile.linkedIn, "Open LinkedIn"))}${detail("GitHub", safeLink(profile.github, "Open GitHub"))}${detail("Portfolio", safeLink(profile.portfolio, "Open portfolio"))}</dl></section>
+          <section class="admin-record-section" id="student-projects"><h4>Projects &amp; portfolio</h4>${projectMarkup}</section>
+          <section class="admin-record-section" id="student-resume"><h4>Resume &amp; ATS readiness</h4><dl class="admin-profile-grid">${detail("Resume filename", App.escapeHtml(profile.resumeFileName || "No filename saved"))}${detail("Latest ATS score", ats && Number.isFinite(Number(ats.score)) ? `${Number(ats.score)}% · ${App.escapeHtml(ats.role || "Target role not saved")}` : "No ATS score saved")}${detail("ATS check date", ats && ats.checkedAt ? App.escapeHtml(App.formatDate(ats.checkedAt)) : "Not checked")}${detail("CV review", `<span data-cv-review-status>${App.escapeHtml(cvReview?.status || "Not reviewed")}</span>`)}</dl><button type="button" class="btn btn--secondary btn--sm" data-open-student-cv="${App.escapeHtml(u.email)}">Open shared CV</button><p class="hint" style="margin-top:8px;">The student must enable admin access in Resume Analyzer first. Opening and review decisions are recorded in the local activity log.</p></section>
+          <section class="admin-record-section" id="student-roadmap"><h4>Skill development</h4><dl class="admin-profile-grid">${detail("Selected roadmap", App.escapeHtml(selectedSkillTarget === "other" ? customSkillTarget || "Other role" : selectedSkillTarget === "all" ? "All opportunities" : selectedSkillTarget))}${detail("Skills marked learned", App.escapeHtml(learnedSkills.join(", ") || "None marked yet"))}</dl></section>
+          <section class="admin-record-section" id="student-matches"><h4>Top profile matches</h4><ul class="admin-record-list">${topMatches}</ul></section>
+          <section class="admin-record-section" id="student-interviews"><h4>Interview practice scores</h4><ul class="admin-record-list">${interviewMarkup}</ul></section>
+          <section class="admin-record-section" id="student-achievements"><h4>Achievements</h4><div class="admin-achievements">${achievementMarkup}</div></section>
+          <section class="admin-record-section" id="student-saved"><h4>Saved internships</h4><p>${App.escapeHtml(savedMarkup)}</p></section>
+          <section class="admin-record-section" id="student-applications"><h4>Applications &amp; status history</h4><ul class="admin-record-list">${applicationMarkup}</ul></section>
+        </div>`;
+      studentDetails.set(u.email, { name: fullName, markup: recordMarkup });
+      return `
+        <tr>
+          <td><button type="button" class="admin-student-open" data-view-student="${App.escapeHtml(u.email)}">${App.escapeHtml(fullName)}</button><div class="admin-cell-tags">${App.escapeHtml(u.email)}</div><div class="admin-cell-tags">Profile ${profileCompletion}% complete</div></td>
+          <td>${App.escapeHtml(education || "Program not provided")}<div class="admin-cell-tags">${App.escapeHtml(profile.college || u.college || "College not provided")} · ${App.escapeHtml(year)}</div></td>
+          <td><div class="admin-cell-tags"><strong>Skills:</strong> ${App.escapeHtml(skills.join(", ") || "Not provided")}<br><strong>Interests:</strong> ${App.escapeHtml(interests.join(", ") || "Not provided")}</div></td>
+          <td><div class="admin-cell-tags">${App.escapeHtml([profile.preferredSector, profile.preferredLocation, profile.preferredDuration ? `${profile.preferredDuration} months` : ""].filter(Boolean).join(" · ") || "No preferences set")}</div></td>
+          <td>${apps.length}</td>
+        </tr>
+      `;
+    }).join("");
+    studentTbody.querySelectorAll("[data-view-student]").forEach((button) => button.addEventListener("click", () => {
+      const record = studentDetails.get(button.getAttribute("data-view-student"));
+      if (!record) return;
+      studentDialogTitle.textContent = record.name;
+      studentDialogContent.innerHTML = record.markup;
+      studentDialogContent.querySelectorAll(".admin-student-detail-nav a").forEach((link) => link.addEventListener("click", () => {
+        studentDialogContent.querySelectorAll(".admin-student-detail-nav a").forEach((item) => item.classList.remove("is-active"));
+        link.classList.add("is-active");
+      }));
+      studentDialogContent.querySelectorAll("[data-open-student-cv]").forEach((button) => button.addEventListener("click", async () => {
+        const email = button.getAttribute("data-open-student-cv");
+        if (!window.ResumeVault) { App.toast("CV storage is unavailable in this browser.", "error"); return; }
+        try {
+          const record = await ResumeVault.get(email);
+          if (!record || !record.file) { App.toast("This student has not enabled admin CV access on this browser."); return; }
+          if (activeCvUrl) URL.revokeObjectURL(activeCvUrl);
+          activeCvUrl = URL.createObjectURL(record.file);
+          cvFrame.src = activeCvUrl;
+          activeCvEmail = email;
+          document.getElementById("admin-cv-dialog-title").textContent = `${record.name || "Student"} · CV`;
+          showCvReviewState(Store.readBlob(`im_cv_review_${email}`, null));
+          logAdminAction("Opened student CV", email);
+          renderAuditLog();
+          cvDialog.showModal();
+        } catch (_) { App.toast("Could not open the saved CV from this browser.", "error"); }
+      }));
+      studentDialog.showModal();
+    }));
+    document.getElementById("admin-stat-students").textContent = users.length;
+
+    const totalApps = users.reduce((sum, u) => sum + Store.getApplications(u.email).length, 0);
+    document.getElementById("admin-stat-applications").textContent = totalApps;
+  }
+
+  function renderControlCenter() {
+    const users = Store.getAllUsers();
+    const internships = Store.getAllInternships();
+    const applications = users.flatMap((user) => Store.getApplications(user.email).map((application) => ({ user, application })));
+    const companies = new Set(internships.map((item) => (item.org || "").trim().toLowerCase()).filter(Boolean));
+    const recommendationRows = [];
+    const assessmentRows = [];
+    let quizCount = 0;
+    let scoreTotal = 0;
+    let scoreMax = 0;
+    let interviewCount = 0;
+    let upcomingInterviewCount = 0;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+
+    users.forEach((user) => {
+      const profile = Store.getProfile(user.email);
+      const name = profile.fullName || user.name || user.email;
+      const top = Recommendation.rankAll(profile, internships)[0];
+      if (top) recommendationRows.push({ name, item: top });
+      const history = Store.readBlob(`im_interview_history_${user.email}`, []);
+      (Array.isArray(history) ? history : []).filter((entry) => entry.type === "quiz").forEach((entry) => {
+        const total = Number(entry.total) || 0;
+        const score = Number(entry.score) || 0;
+        quizCount += 1; scoreTotal += score; scoreMax += total;
+        assessmentRows.push({ name, entry, score, total });
+      });
+      const reminders = Store.readBlob(`im_calendar_reminders_${user.email}`, []);
+      (Array.isArray(reminders) ? reminders : []).forEach((reminder) => {
+        if (!/interview|group discussion|\bGD\b/i.test(reminder.title || "")) return;
+        interviewCount += 1;
+        const date = new Date(`${reminder.date || ""}T00:00:00`);
+        if (!Number.isNaN(date.getTime()) && date >= today) upcomingInterviewCount += 1;
+      });
+    });
+
+    document.getElementById("admin-stat-companies").textContent = companies.size;
+    document.getElementById("admin-stat-interviews").textContent = interviewCount;
+    document.getElementById("admin-stat-assessments").textContent = quizCount;
+    document.getElementById("admin-assessment-attempts").textContent = quizCount;
+    document.getElementById("admin-assessment-average").textContent = scoreMax ? `${Math.round((scoreTotal / scoreMax) * 100)}%` : "—";
+    document.getElementById("admin-upcoming-interviews").textContent = upcomingInterviewCount;
+
+    const stages = ["Applied", "Shortlisted", "Assessment", "Interview", "Offered", "Selected"];
+    const stageCounts = stages.map((stage) => ({ label: stage, count: applications.filter(({ application }) => (application.status || "Applied").toLowerCase().includes(stage.toLowerCase())).length }));
+    const maxStage = Math.max(1, ...stageCounts.map((stage) => stage.count));
+    document.getElementById("admin-overview-pipeline").innerHTML = stageCounts.map((stage) => `<div class="admin-mini-chart__row"><span>${stage.label}</span><span class="admin-mini-chart__track"><span class="admin-mini-chart__bar" style="display:block;width:${Math.round((stage.count / maxStage) * 100)}%"></span></span><strong class="admin-mini-chart__value">${stage.count}</strong></div>`).join("");
+    const sectorCounts = {};
+    internships.forEach((item) => { const sector = item.sector || "Other"; sectorCounts[sector] = (sectorCounts[sector] || 0) + 1; });
+    const sectors = Object.entries(sectorCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const maxSector = Math.max(1, ...sectors.map((entry) => entry[1]));
+    document.getElementById("admin-overview-sectors").innerHTML = sectors.length ? sectors.map(([label, count]) => `<div class="admin-mini-chart__row"><span title="${App.escapeHtml(label)}">${App.escapeHtml(label)}</span><span class="admin-mini-chart__track"><span class="admin-mini-chart__bar" style="display:block;width:${Math.round((count / maxSector) * 100)}%"></span></span><strong class="admin-mini-chart__value">${count}</strong></div>`).join("") : "<p class=\"hint\">No internship listings yet.</p>";
+
+    const recruitmentRows = applications.slice().sort((a, b) => new Date(b.application.appliedOn) - new Date(a.application.appliedOn));
+    document.getElementById("admin-recruitment-tbody").innerHTML = recruitmentRows.length ? recruitmentRows.map(({ user, application }) => {
+      const profile = Store.getProfile(user.email);
+      const item = Store.getInternshipById(application.internshipId);
+      return `<tr><td>${App.escapeHtml(profile.fullName || user.name || user.email)}</td><td>${App.escapeHtml(item ? item.title : application.internshipId)}</td><td>${App.escapeHtml(item ? item.org : "Listing removed")}</td><td>${App.escapeHtml(application.status || "Applied")}</td><td>${App.escapeHtml(application.appliedOn ? App.formatDate(application.appliedOn) : "—")}</td></tr>`;
+    }).join("") : `<tr><td colspan="5">No applications recorded yet.</td></tr>`;
+
+    assessmentRows.sort((a, b) => new Date(b.entry.date) - new Date(a.entry.date));
+    document.getElementById("admin-assessment-tbody").innerHTML = assessmentRows.length ? assessmentRows.slice(0, 30).map(({ name, entry, score, total }) => `<tr><td>${App.escapeHtml(name)}</td><td>${App.escapeHtml(entry.category || "Practice quiz")}</td><td>${score}/${total}${total ? ` · ${Math.round((score / total) * 100)}%` : ""}</td><td>${App.escapeHtml(entry.date ? App.formatDate(entry.date) : "—")}</td></tr>`).join("") : `<tr><td colspan="4">No quiz attempts found.</td></tr>`;
+    document.getElementById("admin-recommendation-tbody").innerHTML = recommendationRows.length ? recommendationRows.slice(0, 30).map(({ name, item }) => `<tr><td>${App.escapeHtml(name)}</td><td>${App.escapeHtml(item.title)}</td><td>${App.escapeHtml(item.org)}</td><td><strong>${item.match.score}%</strong></td><td>${App.escapeHtml(item.match.matchedSkills.join(", ") || "No direct skill overlap")}</td></tr>`).join("") : `<tr><td colspan="5">Add students and opportunities to generate demo matches.</td></tr>`;
+
+    const soon = internships.filter((item) => {
+      if (!item.deadline) return false;
+      const days = Math.ceil((new Date(`${item.deadline}T00:00:00`) - today) / 86400000);
+      return days >= 0 && days <= 7;
+    });
+    const alerts = [];
+    if (!users.length) alerts.push("No student accounts are registered in this browser yet.");
+    if (!companies.size) alerts.push("No companies are represented in the internship catalogue.");
+    if (soon.length) alerts.push(`${soon.length} internship listing${soon.length === 1 ? " has" : "s have"} a deadline within 7 days.`);
+    document.getElementById("admin-alert-list").innerHTML = alerts.length ? alerts.map((item) => `<li>${App.escapeHtml(item)}</li>`).join("") : "<li>No urgent platform items based on the available demo data.</li>";
+    renderAuditLog();
+  }
+
+  function renderAll() {
+    renderInternshipTable();
+    renderStudentTable();
+    renderCompanyAccounts();
+    if (window.AdminAnalytics) window.AdminAnalytics.render();
+    renderControlCenter();
+  }
+
+  document.getElementById("admin-clear-audit").addEventListener("click", () => {
+    localStorage.removeItem(AUDIT_KEY);
+    renderAuditLog();
+    App.toast("Local demo activity log cleared.");
+  });
+  document.getElementById("admin-support-refresh").addEventListener("click", renderSupportInbox);
+  document.getElementById("admin-reset-refresh")?.addEventListener("click", renderPasswordResetRequests);
+  document.getElementById("admin-company-review-refresh")?.addEventListener("click", renderCompanyReviewQueue);
+  document.getElementById("admin-assessments-refresh")?.addEventListener("click", renderAssessmentReviewQueue);
+  document.getElementById("admin-open-assessments")?.addEventListener("click", () => { selectAdminView("assessments"); window.scrollTo({ top: 0, behavior: "smooth" }); });
+  document.getElementById("admin-company-requests-refresh")?.addEventListener("click", renderCompanyAccounts);
+  document.getElementById("admin-send-student-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = form.querySelector('[type="submit"]');
+    button.disabled = true;
+    try {
+      await adminApi("/admin/support-messages", { method: "POST", body: JSON.stringify(Object.fromEntries(new FormData(form).entries())) });
+      form.reset();
+      App.toast("Message sent to the student.");
+      await renderSupportInbox();
+      await loadSupportStudents();
+    } catch (error) { App.toast(error.message, "error"); }
+    finally { button.disabled = false; }
+  });
+  loadSupportStudents();
+
+  document.querySelectorAll("[data-admin-view]").forEach((link) => link.addEventListener("click", (event) => {
+    event.preventDefault();
+    selectAdminView(link.getAttribute("data-admin-view"));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }));
+
+  if (sessionStorage.getItem(SESSION_KEY) === "true" && sessionStorage.getItem("im_admin_api_token")) {
+    adminApi("/admin/students").then(() => { showAdminPanel(); renderAssessmentReviewQueue(); }).catch(() => {
+      sessionStorage.removeItem(SESSION_KEY);
+      sessionStorage.removeItem("im_admin_api_token");
+      window.location.replace("login.html?role=admin");
+    });
+  } else window.location.replace("login.html?role=admin");
+
+  window.AdminShared = { renderAll };
+});

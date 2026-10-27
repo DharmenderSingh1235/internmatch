@@ -1,0 +1,16 @@
+.applications-page { max-width:1440px; padding-top:26px; }
+.applications-hero { min-height:210px; margin-bottom:21px; }
+.applications-filter-panel { margin-bottom:23px; padding:19px 20px; border:1px solid var(--color-border); border-radius:17px; background:var(--color-surface); box-shadow:0 6px 20px rgba(15,27,52,.04); }
+.applications-filter-panel__head { margin-bottom:12px; }
+.applications-filter-panel__head h2,.applications-list-head h2 { margin:0 0 4px; font-size:1.18rem; }
+.applications-filter-panel__head p { margin:0; color:var(--color-muted); font-size:.86rem; }
+.applications-filter-panel .app-toolbar { display:grid; grid-template-columns:minmax(220px,1.5fr) minmax(190px,.8fr); gap:10px; margin:0; }
+.applications-filter-panel .app-toolbar input,.applications-filter-panel .app-toolbar select { min-width:0; margin:0; background:var(--color-bg); }
+.applications-list-head { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; margin-bottom:13px; }
+.applications-list-head .results-meta { display:inline-flex; align-items:center; min-height:34px; margin:0; padding:6px 11px; border:1px solid var(--color-border); border-radius:999px; background:var(--color-surface); font-weight:600; }
+.applications-page .app-row { padding:18px 20px; border-radius:15px; box-shadow:0 3px 12px rgba(15,27,52,.035); }
+.applications-page .app-row:hover { box-shadow:0 8px 20px rgba(15,27,52,.07); }
+.applications-page .app-row__notes { padding:14px; border:1px solid var(--color-border); border-radius:12px; background:var(--color-bg-alt); }
+.applications-page .app-row__notes textarea { background:var(--color-surface); }
+.applications-page #applications-list > .empty-state { padding:30px; }
+@media(max-width:600px) { .applications-page { padding-top:18px; } .applications-filter-panel { padding:15px; } .applications-filter-panel .app-toolbar { grid-template-columns:1fr; } .applications-list-head { align-items:flex-start; flex-direction:column; gap:8px; } .applications-page .app-row { padding:15px; } }

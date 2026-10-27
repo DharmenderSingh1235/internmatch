@@ -1,0 +1,81 @@
+/* css/responsive.css
+   Mobile-first adjustments layered on top of style.css and dashboard.css.
+   Loaded last on every page, so rules here win at their breakpoints. */
+
+@media (max-width: 1080px) {
+  .steps-grid, .benefits-grid { grid-template-columns: repeat(2, 1fr); }
+  .detail-grid { grid-template-columns: 1fr; }
+  .dash-grid { grid-template-columns: 1fr; }
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+  .dashboard-columns { grid-template-columns: 1fr 1fr; }
+  .dashboard-columns > .panel:first-child { grid-column: 1 / -1; }
+  .dash-hero { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .dash-hero__intro { grid-column:1/-1; }
+}
+
+@media (max-width: 960px) {
+  .topbar-search { display: none; }
+}
+
+@media (max-width: 900px) {
+  .hero .container { grid-template-columns: 1fr; }
+  .hero__panel { order: -1; }
+  .auth-shell { grid-template-columns: 1fr; }
+  .auth-shell__art { display: none; }
+}
+
+@media (max-width: 860px) {
+  .app-shell { grid-template-columns: 1fr; }
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 248px;
+    z-index: 40;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    box-shadow: 0 0 0 2000px rgba(15,27,52,0);
+  }
+  .app-shell.sidebar-open .sidebar {
+    transform: translateX(0);
+    box-shadow: 0 0 0 2000px rgba(15,27,52,0.45);
+  }
+  .sidebar-toggle { display: inline-flex; align-items: center; justify-content: center; }
+  .app-content { padding: 20px 16px 48px; }
+  .app-topbar { padding: 14px 16px; }
+  .dashboard-columns { grid-template-columns: 1fr; }
+  .dashboard-columns > .panel:first-child { grid-column: auto; }
+  .topbar-user__text { display: none; }
+}
+
+@media (max-width: 720px) {
+  .container { padding: 0 16px; }
+  .steps-grid, .benefits-grid { grid-template-columns: 1fr; }
+  .footer-grid { grid-template-columns: 1fr; gap: 24px; }
+  .field-row { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 2rem; }
+  .catalogue-toolbar { flex-direction: column; }
+  .catalogue-toolbar select, .catalogue-toolbar input { flex: 1 1 auto; width: 100%; }
+  .stat-grid { grid-template-columns: 1fr; }
+  #dashboard-root .stat-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .detail-head { flex-direction: column; }
+  .app-row__main { flex-direction: column; align-items: flex-start; }
+  .app-row__right { width: 100%; justify-content: space-between; }
+  .nav-links { display: none; }
+}
+
+@media (max-width: 560px) {
+  .dash-hero { grid-template-columns:1fr; padding:22px 18px; }
+  .dash-hero__intro { grid-column:auto; }
+  .dash-hero__actions .btn { flex:1 1 auto; }
+  .cv-review-banner { grid-template-columns:38px minmax(0,1fr); padding:13px; }
+  .cv-review-banner .btn { grid-column:1 / -1; justify-self:start; margin-left:51px; }
+  #dashboard-root .stat-grid { grid-template-columns:1fr; }
+}
+
+@media (max-width: 480px) {
+  .int-card__footer { flex-direction: column; align-items: flex-start; }
+  .int-card__footer > div { width: 100%; }
+  .int-card__footer .btn { flex: 1; }
+}

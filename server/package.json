@@ -1,0 +1,21 @@
+{
+  "name": "internmatch-ai-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Backend proxy that holds AI provider API keys server-side and answers InternMatch chatbot questions, grounded to the local internship catalogue.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --experimental-sqlite server.js",
+    "start:json": "node server.js",
+    "dev": "node --watch --experimental-sqlite server.js",
+    "migrate": "node --experimental-sqlite migrate.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
+}
