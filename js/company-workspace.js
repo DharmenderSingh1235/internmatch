@@ -62,13 +62,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     const feedbackBadge = item.feedback ? `<p class="company-muted" style="color:var(--color-success);font-weight:600;margin-top:4px;">✓ Evaluated: ${esc(item.feedback.decision === "offer" ? "Recommended Offer" : item.feedback.decision === "reject" ? "Rejected" : "Next Round")}</p>` : "";
     return `<article class="company-schedule-card${isPast ? " is-past" : ""}"><div class="company-schedule-date"><strong>${esc(item.date.slice(8, 10))}</strong><span>${esc(new Date(`${item.date}T00:00:00`).toLocaleDateString(undefined, { month: "short" }))}</span></div><div class="company-schedule-copy"><span class="company-schedule-kind">${esc(isPast ? "Completed" : "Upcoming")} · ${esc(item.type)}</span><h3>${esc(item.studentName)}</h3><p>${esc(item.internshipTitle || "Candidate meeting")} · ${esc(item.time || "Time TBD")} · ${esc(item.mode || "Online")}</p>${item.details ? `<p class="company-muted">${esc(item.details)}</p>` : ""}${feedbackBadge}</div><div class="company-schedule-actions">${!isPast ? `${isOnline ? `<button type="button" class="btn btn--primary btn--sm" data-start-call="${esc(item.id)}">📹 Start Video Call</button>` : ""}<button type="button" class="btn btn--ghost btn--sm" data-add-calendar="${esc(item.id)}">Add to calendar</button>` : ""}<button type="button" class="btn btn--ghost btn--sm company-danger" data-delete-schedule="${esc(item.id)}">Remove</button></div></article>`;
   }
-  function addAssessmentQuestion() {
+  function addAssessmentQuestion(question = null) {
     const questions = document.getElementById("assessment-questions");
     const index = questions.children.length + 1;
     const card = document.createElement("fieldset");
     card.className = "company-form-section company-assessment-question";
     card.innerHTML = `<legend><span>${String(index).padStart(2, "0")}</span> Question <button type="button" class="btn btn--ghost btn--sm" data-remove-assessment-question>Remove</button></legend><div class="company-form-grid"><div class="field"><label>Question type</label><select data-question-type><option>MCQ</option><option>Coding</option><option>Descriptive</option></select></div><div class="field"><label>Marks</label><input type="number" data-question-marks min="1" max="100" value="1" required></div><div class="field company-form-wide"><label>Question prompt</label><textarea data-question-prompt rows="2" required placeholder="Write the question"></textarea></div><div class="field company-form-wide" data-mcq-options><label>Answer choices (four)</label><div class="company-form-grid">${[0,1,2,3].map((i) => `<input data-question-option="${i}" required placeholder="Option ${String.fromCharCode(65+i)}">`).join("")}</div><label>Correct option</label><select data-question-correct><option value="0">A</option><option value="1">B</option><option value="2">C</option><option value="3">D</option></select></div><div class="field company-form-wide"><label>Explanation (optional)</label><input data-question-explanation maxlength="1000" placeholder="Shown only to recruiter after the test"></div></div>`;
     questions.append(card);
+    if (question) {
+      const typeSelect = card.querySelector("[data-question-type]");
+      typeSelect.value = question.type;
+      typeSelect.dispatchEvent(new Event("change", { bubbles: true }));
+      card.querySelector("[data-question-marks]").value = question.marks || 1;
+      card.querySelector("[data-question-prompt]").value = question.prompt || "";
+      card.querySelectorAll("[data-question-option]").forEach((input, optionIndex) => { input.value = question.options?.[optionIndex] || ""; });
+      card.querySelector("[data-question-correct]").value = String(question.correctIndex >= 0 ? question.correctIndex : 0);
+      card.querySelector("[data-question-explanation]").value = question.explanation || "";
+    }
   }
   function renderAssessments() {
     const list = document.getElementById("company-assessment-list");
@@ -405,7 +415,57 @@ document.addEventListener("DOMContentLoaded", async () => {
     catch (error) { alertError(error); }
     finally { saveButton.disabled = !applicants.some((item) => item.student); }
   });
-  document.getElementById("assessment-add-question").addEventListener("click", addAssessmentQuestion);
+  const assessmentSourceInput = document.getElementById("assessment-source-file");
+  const assessmentSourceStatus = document.getElementById("assessment-source-status");
+  function setAssessmentSourceStatus(message, state = "") {
+    assessmentSourceStatus.textContent = message;
+    assessmentSourceStatus.classList.toggle("is-error", state === "error");
+    assessmentSourceStatus.classList.toggle("is-success", state === "success");
+  }
+  document.getElementById("assessment-clear-source").addEventListener("click", () => {
+    assessmentSourceInput.value = "";
+    document.getElementById("assessment-source-consent").checked = false;
+    setAssessmentSourceStatus("No file selected. Generated questions are drafts; review and edit every prompt and private answer key before submitting.");
+  });
+  document.getElementById("assessment-generate-questions").addEventListener("click", async (event) => {
+    const file = assessmentSourceInput.files?.[0];
+    if (!file) return setAssessmentSourceStatus("Choose a PDF, DOCX, TXT, or MD file first.", "error");
+    if (!document.getElementById("assessment-source-consent").checked) return setAssessmentSourceStatus("Confirm you have permission to upload the file for in-memory extraction and send its text to the configured AI provider.", "error");
+    if (file.size > 3 * 1024 * 1024) return setAssessmentSourceStatus("That file is over the 3 MB limit.", "error");
+    const button = event.currentTarget;
+    button.disabled = true;
+    const originalLabel = button.textContent;
+    button.textContent = "Extracting & generating…";
+    setAssessmentSourceStatus("Reading the document and drafting questions. The source file is not saved.");
+    try {
+      const data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(new Error("Could not read the selected file."));
+        reader.readAsDataURL(file);
+      });
+      const result = await api("/company/assessments/generate-questions", { method: "POST", body: JSON.stringify({ fileName: file.name, data, count: Number(document.getElementById("assessment-generated-count").value), category: document.getElementById("assessment-category").value, difficulty: document.getElementById("assessment-difficulty").value }) });
+      const questionList = document.getElementById("assessment-questions");
+      const hasDraftContent = [...questionList.querySelectorAll("[data-question-prompt]")].some((input) => input.value.trim());
+      if (hasDraftContent && !confirm("Replace your current assessment questions with the newly generated draft?")) {
+        setAssessmentSourceStatus("Draft kept unchanged. Your generated questions were not added.");
+        return;
+      }
+      questionList.innerHTML = "";
+      result.questions.forEach((question) => addAssessmentQuestion(question));
+      const title = document.getElementById("assessment-title");
+      if (!title.value.trim()) title.value = `${file.name.replace(/\.[^.]+$/, "").slice(0, 110)} assessment`;
+      const autoPass = Math.ceil(result.questions.reduce((sum, question) => sum + Number(question.marks || 1), 0) * 0.6);
+      document.getElementById("assessment-pass").value = autoPass;
+      setAssessmentSourceStatus(`${result.questions.length} draft questions generated from ${result.sourceName} (${Number(result.extractedCharacters).toLocaleString()} text characters). Review every question and answer key before submitting for admin approval.`, "success");
+    } catch (error) {
+      setAssessmentSourceStatus(error.message || "Question generation failed. You can still add questions manually.", "error");
+    } finally {
+      button.disabled = false;
+      button.textContent = originalLabel;
+    }
+  });
+  document.getElementById("assessment-add-question").addEventListener("click", () => addAssessmentQuestion());
   document.getElementById("assessment-questions").addEventListener("change", (event) => {
     const select = event.target.closest("[data-question-type]"); if (!select) return;
     const options = select.closest(".company-assessment-question").querySelector("[data-mcq-options]"); options.hidden = select.value !== "MCQ";

@@ -4,7 +4,7 @@ This Express API connects the career chatbot to OpenAI, Google Gemini, or Anthro
 
 ## Setup
 
-1. Install Node.js 18 or newer.
+1. Install Node.js 22.3 or newer (the PDF parser requires a supported Node runtime).
 2. In this folder, run `npm install`.
 3. Copy `.env.example` to `.env`.
 4. Set `AI_PROVIDER` to `openai`, `gemini`, or `anthropic`, then add that provider's key to its matching variable. The default is OpenAI with `gpt-4o-mini`.
@@ -28,6 +28,7 @@ The backend grounds internship answers in the local sample catalogue and rate-li
 
 ## Company and student workflow
 
+- Companies can upload a PDF, DOCX, TXT, or Markdown source document to draft assessment questions. The API extracts text in memory, sends the text to the configured AI provider, and returns editable question drafts; the original file and extracted text are not saved by this feature. Scanned/image-only PDFs are not supported. Companies must review every generated question and answer key before submission, and the usual admin approval is still required.
 - Recruiters submit a registration request from `company-register.html`. Requests are visible only to admins in the **Company access requests** section. An admin can approve or reject each request. Approval adds the company to the approved company list and enables login; pending or rejected companies cannot sign in. Admins can manage approved company accounts through protected `/api/admin/companies` routes.
 - Signed-in recruiters can submit internships or jobs with their eligibility, skills, location, compensation, deadline, and role details.
 - New and edited postings require admin approval before they appear in the student catalogue. Admins can approve or reject them from the Internship management review queue.

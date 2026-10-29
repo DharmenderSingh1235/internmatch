@@ -11,11 +11,13 @@
     "migrate": "node --experimental-sqlite migrate.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22.3.0"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "mammoth": "^1.13.0",
+    "pdf-parse": "^2.4.5"
   }
 }
