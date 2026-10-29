@@ -44,17 +44,54 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
   async function start(id) {
+    run.hidden = false;
+    run.innerHTML = `<section class="assessment-integrity-intro"><span class="browse-eyebrow">Before you begin</span><h2>Camera and writing-style review</h2><p>Your browser can show a live camera preview during the assessment. Video stays on this device: it is not recorded or sent to the company.</p><p>Written answers may be checked for broad style patterns. This is not a reliable AI detector and cannot prove AI use; any signals are review-only and must not determine a hiring decision by themselves.</p><label class="assessment-camera-consent"><input id="assessment-camera-consent" type="checkbox"> I understand and agree to enable my camera for a local preview during this test.</label><div class="assessment-integrity-actions"><button class="btn btn--primary" type="button" id="assessment-start-camera" disabled>Enable camera &amp; start</button><button class="btn btn--ghost" type="button" id="assessment-start-no-camera">Continue without camera</button><button class="btn btn--ghost" type="button" id="assessment-start-cancel">Cancel</button></div><p class="hint" id="assessment-camera-message" role="status"></p></section>`;
+    const consent = document.getElementById("assessment-camera-consent");
+    const withCamera = document.getElementById("assessment-start-camera");
+    const message = document.getElementById("assessment-camera-message");
+    consent.addEventListener("change", () => { withCamera.disabled = !consent.checked; });
+    document.getElementById("assessment-start-cancel").addEventListener("click", () => { run.hidden = true; run.innerHTML = ""; });
+    document.getElementById("assessment-start-no-camera").addEventListener("click", () => begin(id, null));
+    withCamera.addEventListener("click", async () => {
+      if (!consent.checked) return;
+      withCamera.disabled = true;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        begin(id, stream);
+      } catch (error) {
+        message.textContent = "Camera access was unavailable or denied. You can continue without camera.";
+        withCamera.disabled = false;
+      }
+    });
+    run.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  function writingStyleSignals(answers) {
+    const texts = answers.filter((answer) => typeof answer.text === "string" && answer.text.trim().length >= 40).map((answer) => answer.text.trim());
+    const signals = [];
+    const disclaimer = "These simple style clues are unreliable, can flag human writing, and do not establish AI use or misconduct.";
+    if (!texts.length) return { label: "Not enough written text to review", signals, disclaimer };
+    const combined = texts.join(" ").toLowerCase();
+    const genericPhrases = ["in today's fast-paced", "it is important to note", "delve into", "moreover", "furthermore", "in conclusion", "plays a crucial role"];
+    const found = genericPhrases.filter((phrase) => combined.includes(phrase));
+    if (found.length) signals.push("Some common or generic phrasing appears in written answers.");
+    if (texts.length >= 2 && texts.map((value) => value.toLowerCase().replace(/\s+/g, " ")).some((value, index, all) => all.indexOf(value) !== index)) signals.push("One or more written answers repeat the same wording.");
+    return { label: signals.length ? "Patterns for human review" : "No listed patterns found", signals, disclaimer };
+  }
+  async function begin(id, cameraStream) {
+    let interval = null;
+    const stopCamera = () => cameraStream?.getTracks().forEach((track) => track.stop());
     try {
       const { assessment } = await api(`/student/assessments/${encodeURIComponent(id)}/start`, { method: "POST", body: "{}" });
       let remaining = assessment.remainingSeconds;
-      run.hidden = false;
-      run.innerHTML = `<div class="panel__head"><div><h2>${esc(assessment.title)}</h2><p class="hint">${esc(assessment.category)} · ${assessment.totalMarks} marks · One attempt</p></div><strong id="student-assessment-timer" aria-live="polite"></strong></div><form id="student-assessment-form">${assessment.questions.map((question, index) => `<fieldset class="company-form-section"><legend><span>${String(index + 1).padStart(2, "0")}</span>${esc(question.type)} · ${question.marks} marks</legend><p><strong>${esc(question.prompt)}</strong></p>${question.type === "MCQ" ? question.options.map((option, optionIndex) => `<label class="student-assessment-option"><input type="radio" name="q-${esc(question.id)}" value="${optionIndex}"> ${String.fromCharCode(65 + optionIndex)}. ${esc(option)}</label>`).join("") : `<label class="field"><span>${question.type === "Coding" ? "Your code / solution" : "Your answer"}</span><textarea name="q-${esc(question.id)}" rows="${question.type === "Coding" ? 8 : 5}" maxlength="10000" placeholder="Write your response"></textarea></label>`}</fieldset>`).join("")}<button class="btn btn--primary" type="submit">Submit assessment</button> <button class="btn btn--ghost" type="button" id="student-assessment-cancel">Exit without submitting</button></form>`;
+      run.innerHTML = `<div class="assessment-camera-row">${cameraStream ? `<div class="assessment-camera-preview"><video id="assessment-camera-video" autoplay muted playsinline></video><span><i></i> Camera preview · on this device only</span></div>` : `<p class="hint">Camera preview was not enabled for this attempt.</p>`}<p class="assessment-integrity-note"><strong>Writing-style review:</strong> any style signals are uncertain feedback only, not proof of AI use.</p></div><div class="panel__head"><div><h2>${esc(assessment.title)}</h2><p class="hint">${esc(assessment.category)} · ${assessment.totalMarks} marks · One attempt</p></div><strong id="student-assessment-timer" aria-live="polite"></strong></div><form id="student-assessment-form">${assessment.questions.map((question, index) => `<fieldset class="company-form-section"><legend><span>${String(index + 1).padStart(2, "0")}</span>${esc(question.type)} · ${question.marks} marks</legend><p><strong>${esc(question.prompt)}</strong></p>${question.type === "MCQ" ? question.options.map((option, optionIndex) => `<label class="student-assessment-option"><input type="radio" name="q-${esc(question.id)}" value="${optionIndex}"> ${String.fromCharCode(65 + optionIndex)}. ${esc(option)}</label>`).join("") : `<label class="field"><span>${question.type === "Coding" ? "Your code / solution" : "Your answer"}</span><textarea name="q-${esc(question.id)}" rows="${question.type === "Coding" ? 8 : 5}" maxlength="10000" placeholder="Write your response"></textarea></label>`}</fieldset>`).join("")}<button class="btn btn--primary" type="submit">Submit assessment</button> <button class="btn btn--ghost" type="button" id="student-assessment-cancel">Exit without submitting</button></form>`;
+      const video = document.getElementById("assessment-camera-video");
+      if (video && cameraStream) video.srcObject = cameraStream;
       const form = document.getElementById("student-assessment-form");
       const timer = document.getElementById("student-assessment-timer");
       const format = (seconds) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
       timer.textContent = `Time remaining ${format(remaining)}`;
-      const interval = setInterval(() => { remaining -= 1; timer.textContent = `Time remaining ${format(Math.max(0, remaining))}`; if (remaining <= 0) { clearInterval(interval); form.requestSubmit(); } }, 1000);
-      document.getElementById("student-assessment-cancel").addEventListener("click", () => { clearInterval(interval); run.hidden = true; run.innerHTML = ""; });
+      interval = setInterval(() => { remaining -= 1; timer.textContent = `Time remaining ${format(Math.max(0, remaining))}`; if (remaining <= 0) { clearInterval(interval); form.requestSubmit(); } }, 1000);
+      document.getElementById("student-assessment-cancel").addEventListener("click", () => { clearInterval(interval); stopCamera(); run.hidden = true; run.innerHTML = ""; });
       form.addEventListener("submit", async (event) => {
         event.preventDefault(); clearInterval(interval);
         const answers = assessment.questions.map((question) => {
@@ -62,11 +99,11 @@ document.addEventListener("DOMContentLoaded", () => {
           return { questionId: question.id, text: form.querySelector(`[name="q-${CSS.escape(question.id)}"]`)?.value || "" };
         });
         const submit = form.querySelector('[type="submit"]'); submit.disabled = true;
-        try { const result = await api(`/student/assessments/${encodeURIComponent(id)}/submit`, { method: "POST", body: JSON.stringify({ answers }) }); run.innerHTML = `<h2>Assessment submitted</h2><p>Your MCQ score: <strong>${result.result.score}/${result.result.totalMarks}</strong></p><p>${result.result.status === "Scored" ? (result.result.passed ? "You reached the passing score." : "You did not reach the passing score.") : "Your written or coding responses are waiting for recruiter review."}</p><button type="button" class="btn btn--primary" id="assessment-done">Back to assessments</button>`; document.getElementById("assessment-done").addEventListener("click", () => { run.hidden = true; load(); }); }
+        try { const result = await api(`/student/assessments/${encodeURIComponent(id)}/submit`, { method: "POST", body: JSON.stringify({ answers, writingReview: writingStyleSignals(answers) }) }); stopCamera(); run.innerHTML = `<h2>Assessment submitted</h2><p>Your MCQ score: <strong>${result.result.score}/${result.result.totalMarks}</strong></p><p>${result.result.status === "Scored" ? (result.result.passed ? "You reached the passing score." : "You did not reach the passing score.") : "Your written or coding responses are waiting for recruiter review."}</p><p class="assessment-integrity-note">Writing-style clues are limited and cannot determine whether AI was used.</p><button type="button" class="btn btn--primary" id="assessment-done">Back to assessments</button>`; document.getElementById("assessment-done").addEventListener("click", () => { run.hidden = true; load(); }); }
         catch (error) { App.toast(error.message, "error"); submit.disabled = false; }
       });
       run.scrollIntoView({ behavior: "smooth", block: "start" });
-    } catch (error) { App.toast(error.message, "error"); }
+    } catch (error) { stopCamera(); App.toast(error.message, "error"); }
   }
   document.getElementById("company-assessments-refresh").addEventListener("click", load);
   load();

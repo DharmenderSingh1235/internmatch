@@ -684,7 +684,15 @@ app.post("/api/student/assessments/:id/submit", studentOnly, (req, res) => {
     }
     return { questionId: question.id, answer: String(answer?.text || "").slice(0, 10000), correct: null, marksAwarded: 0 };
   });
-  const submission = { id: makeId("submission"), assessmentId: assessment.id, studentId: req.session.id, answers: reviewedAnswers, score, totalMarks: assessment.totalMarks, passed: score >= assessment.passingMarks, submittedAt: new Date().toISOString(), status: assessment.questions.some((question) => question.type !== "MCQ") ? "Needs recruiter review" : "Scored" };
+  const rawWritingSignals = Array.isArray(req.body?.writingReview?.signals) ? req.body.writingReview.signals : [];
+  const writingSignals = rawWritingSignals.slice(0, 5).map((signal) => String(signal).slice(0, 180));
+  const hasReviewableText = reviewedAnswers.some((answer) => typeof answer.answer === "string" && answer.answer.trim().length >= 40);
+  const writingReview = assessment.questions.some((question) => question.type !== "MCQ") ? {
+    label: !hasReviewableText ? "Not enough written text to review" : writingSignals.length ? "Patterns for human review" : "No listed patterns found",
+    signals: writingSignals,
+    disclaimer: "Simple writing-style clues are unreliable, can flag human writing, and do not establish AI use or misconduct. Do not use them alone for hiring decisions."
+  } : null;
+  const submission = { id: makeId("submission"), assessmentId: assessment.id, studentId: req.session.id, answers: reviewedAnswers, writingReview, score, totalMarks: assessment.totalMarks, passed: score >= assessment.passingMarks, submittedAt: new Date().toISOString(), status: assessment.questions.some((question) => question.type !== "MCQ") ? "Needs recruiter review" : "Scored" };
   portalData.update("assessmentSubmissions", (items) => [...items, submission]);
   portalData.update("applications", (items) => items.map((application) => application.studentId === req.session.id && application.internshipId === assessment.internshipId && !["Rejected", "Offered", "Shortlisted"].includes(application.status) ? { ...application, status: "Assessment", history: [...(application.history || []), { status: "Assessment", at: submission.submittedAt }] } : application));
   res.status(201).json({ result: { score, totalMarks: assessment.totalMarks, passed: submission.passed, status: submission.status, submittedAt: submission.submittedAt } });
