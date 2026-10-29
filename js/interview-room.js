@@ -274,7 +274,7 @@ const InterviewRoom = (function () {
 
     async function sendSignal(type, data) {
       try {
-        const response = await fetch(`http://127.0.0.1:3002/api/interviews/${encodeURIComponent(interviewId)}/signal`, {
+        const response = await fetch(`${window.IM_API_BASE}/api/interviews/${encodeURIComponent(interviewId)}/signal`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
           body: JSON.stringify({ type, data })
@@ -296,7 +296,7 @@ const InterviewRoom = (function () {
 
     async function pollSignals() {
       try {
-        const res = await fetch(`http://127.0.0.1:3002/api/interviews/${encodeURIComponent(interviewId)}/signal?since=${lastSignalTime}`, {
+        const res = await fetch(`${window.IM_API_BASE}/api/interviews/${encodeURIComponent(interviewId)}/signal?since=${lastSignalTime}`, {
           headers: { Authorization: `Bearer ${authToken}` }
         });
         if (!res.ok) {
@@ -520,7 +520,7 @@ const InterviewRoom = (function () {
       };
 
       try {
-        const res = await fetch(`http://127.0.0.1:3002/api/company/interviews/${encodeURIComponent(interviewId)}/feedback`, {
+        const res = await fetch(`${window.IM_API_BASE}/api/company/interviews/${encodeURIComponent(interviewId)}/feedback`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

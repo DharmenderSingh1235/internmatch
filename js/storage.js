@@ -215,7 +215,7 @@ const Store = (function () {
     if (saved && token && user?.email === email && user.role === "student") {
       let consent = { profileVisible: false, cvShared: false };
       try { consent = JSON.parse(localStorage.getItem(`im_company_consent_${email.toLowerCase()}`) || "{}"); } catch (_) { /* Keep sharing disabled. */ }
-      fetch("http://127.0.0.1:3002/api/student/profile", { method: "PUT", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ profile: merged, profileVisible: consent.profileVisible === true, cvShared: consent.cvShared === true }) }).catch(() => {});
+      fetch(`${window.IM_API_BASE}/api/student/profile`, { method: "PUT", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ profile: merged, profileVisible: consent.profileVisible === true, cvShared: consent.cvShared === true }) }).catch(() => {});
     }
     return saved;
   }
@@ -348,7 +348,7 @@ const Store = (function () {
     saveApplications(email, apps);
     const user = getCurrentUser();
     const token = sessionStorage.getItem("im_student_api_token");
-    if (token && user?.email === email && user.role === "student") fetch("http://127.0.0.1:3002/api/student/applications", { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ internshipId }) }).catch(() => {});
+    if (token && user?.email === email && user.role === "student") fetch(`${window.IM_API_BASE}/api/student/applications`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ internshipId }) }).catch(() => {});
     return { ok: true, application: record };
   }
 

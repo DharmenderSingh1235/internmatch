@@ -326,7 +326,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const token = sessionStorage.getItem("im_student_api_token");
     if (!token) return;
     const scores = Store.readBlob(`im_interview_history_${user.email}`, []).filter((entry) => entry.type === "quiz" && Number(entry.total) > 0 && Number.isFinite(Number(entry.score))).slice(0, 20).map((entry) => ({ category: entry.category, score: Number(entry.score), total: Number(entry.total), date: entry.date }));
-    fetch("http://127.0.0.1:3002/api/student/interview-scores", { method: "PUT", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ scores }) }).catch(() => {});
+    fetch(`${window.IM_API_BASE}/api/student/interview-scores`, { method: "PUT", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ scores }) }).catch(() => {});
   }
 
   function fillForm() {

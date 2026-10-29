@@ -1,3 +1,8 @@
+/* API origin: local server in development, deployed API in production. */
+const isLocalInternMatchHost = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
+window.IM_API_BASE = (window.IM_API_BASE || (isLocalInternMatchHost
+  ? "http://127.0.0.1:3002"
+  : "https://internmatch-server-bj4z-7b0rtm9hx-team-7-baf1.vercel.app")).replace(/\/+$/, "");
 /* js/app.js
    Cross-cutting behaviour shared by every page: nav-link highlighting,
    guest/auth topbar toggling, the app-shell auth guard, sidebar user card,

@@ -5,7 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const currentUser = Store.getCurrentUser();
   const run = document.getElementById("student-assessment-run");
   const api = async (route, options = {}) => {
-    const response = await fetch(`http://127.0.0.1:3002/api${route}`, { ...options, headers: { authorization: `Bearer ${getToken() || ""}`, "content-type": "application/json", ...(options.headers || {}) } });
+    const response = await fetch(`${window.IM_API_BASE}/api${route}`, { ...options, headers: { authorization: `Bearer ${getToken() || ""}`, "content-type": "application/json", ...(options.headers || {}) } });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) { const error = new Error(data.error || `Student API request failed (${response.status}).`); error.status = response.status; throw error; }
     return data;
@@ -22,7 +22,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const submit = loginForm.querySelector('[type="submit"]'); const errorLabel = loginForm.querySelector("[data-assessment-login-error]");
         submit.disabled = true; errorLabel.textContent = "Signing in…";
         try {
-          const response = await fetch("http://127.0.0.1:3002/api/auth/student/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: loginForm.elements.email.value.trim(), password: loginForm.elements.password.value }) });
+          const response = await fetch(`${window.IM_API_BASE}/api/auth/student/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: loginForm.elements.email.value.trim(), password: loginForm.elements.password.value }) });
           const data = await response.json().catch(() => ({}));
           if (!response.ok) throw new Error(data.error || "Student sign-in failed.");
           sessionStorage.setItem("im_student_api_token", data.token);

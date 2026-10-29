@@ -7,7 +7,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const SESSION_KEY = "im_admin_authenticated";
   const AUDIT_KEY = "im_admin_audit_log";
   const adminApi = async (route, options = {}) => {
-    const response = await fetch(`http://127.0.0.1:3002/api${route}`, { ...options, headers: { "content-type": "application/json", authorization: `Bearer ${sessionStorage.getItem("im_admin_api_token") || ""}`, ...(options.headers || {}) } });
+    const response = await fetch(`${window.IM_API_BASE}/api${route}`, { ...options, headers: { "content-type": "application/json", authorization: `Bearer ${sessionStorage.getItem("im_admin_api_token") || ""}`, ...(options.headers || {}) } });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || `Admin API request failed (${response.status}) at ${route}.`);
     return data;

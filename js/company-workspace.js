@@ -7,7 +7,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
   const api = async (route, options = {}) => {
-    const response = await fetch(`http://127.0.0.1:3002/api${route}`, { ...options, headers: { authorization: `Bearer ${token}`, "content-type": "application/json", ...(options.headers || {}) } });
+    const response = await fetch(`${window.IM_API_BASE}/api${route}`, { ...options, headers: { authorization: `Bearer ${token}`, "content-type": "application/json", ...(options.headers || {}) } });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || `Company API request failed (${response.status}) at ${route}. If this is a new feature route, restart the server folder's API with npm start.`);
     return data;
@@ -32,7 +32,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const button = document.getElementById("settings-api-check");
     if (button) { button.disabled = true; button.textContent = "Checking…"; }
     try {
-      const response = await fetch("http://127.0.0.1:3002/api/health", { cache: "no-store" });
+      const response = await fetch(`${window.IM_API_BASE}/api/health`, { cache: "no-store" });
       if (!response.ok) throw new Error("API health check failed");
       setApiConnection(true);
       return true;
@@ -308,6 +308,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("internship-type").addEventListener("change", (event) => { const isJob = event.target.value === "Job"; document.getElementById("internship-duration-field").hidden = isJob; document.getElementById("internship-stipend-field").hidden = isJob; document.getElementById("internship-salary-field").hidden = !isJob; document.getElementById("internship-duration").required = !isJob; updateOpportunityPreview(); });
   const candidateDialog = document.getElementById("company-candidate-dialog");
   const cvDialog = document.getElementById("company-cv-dialog");
+  document.getElementById("company-candidate-close").addEventListener("click", () => candidateDialog.close());
+  document.getElementById("company-cv-close").addEventListener("click", () => {
+    document.getElementById("company-cv-frame").removeAttribute("src");
+    cvDialog.close();
+  });
   document.addEventListener("click", async (event) => {
     const profileButton = event.target.closest("[data-view-applicant]");
     const cvButton = event.target.closest("[data-view-applicant-cv]");
@@ -332,7 +337,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       finally { cvButton.disabled = false; }
     }
   });
-  document.getElementById("company-cv-close").addEventListener("click", () => { document.getElementById("company-cv-frame").removeAttribute("src"); });
   document.addEventListener("click", async (event) => {
     const rejectButton = event.target.closest("[data-reject-application]");
     if (rejectButton) {

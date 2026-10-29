@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   async function request(method, payload) {
-    const response = await fetch("http://127.0.0.1:3002/api/student/support-messages", {
+    const response = await fetch(`${window.IM_API_BASE}/api/student/support-messages`, {
       method,
       headers: { "content-type": "application/json", authorization: `Bearer ${token || ""}` },
       ...(payload ? { body: JSON.stringify(payload) } : {})

@@ -78,7 +78,7 @@ const Internships = (function () {
 
     let all = Store.getAllInternships();
     try {
-      const response = await fetch("http://127.0.0.1:3002/api/internships");
+      const response = await fetch(`${window.IM_API_BASE}/api/internships`);
       if (response.ok) {
         const payload = await response.json();
         const combined = [...all, ...(payload.items || [])];
@@ -170,7 +170,7 @@ const Internships = (function () {
     let internship = Store.getInternshipById(id);
     if (!internship) {
       try {
-        const response = await fetch("http://127.0.0.1:3002/api/internships");
+        const response = await fetch(`${window.IM_API_BASE}/api/internships`);
         if (response.ok) internship = ((await response.json()).items || []).find((item) => item.id === id);
       } catch (_) { /* Keep the local not-found state if the API is unavailable. */ }
     }
@@ -336,7 +336,7 @@ const Internships = (function () {
           const studentData = profile || (user ? { fullName: user.name, email: user.email } : { fullName: "Applicant", degree: "Undergraduate", course: "Computer Science", skills: ["JavaScript", "Python", "Problem Solving"] });
 
           try {
-            const res = await fetch("http://127.0.0.1:3002/api/generate-cover-letter", {
+            const res = await fetch(`${window.IM_API_BASE}/api/generate-cover-letter`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ student: studentData, internship })

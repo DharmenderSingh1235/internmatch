@@ -26,7 +26,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Change this if you run the proxy on a different host/port, or set it
   // to null to always use the built-in rule-based assistant.
-  const AI_BACKEND_URL = "http://localhost:3002";
+  const AI_BACKEND_URL = window.IM_API_BASE;
 
   let aiAvailable = false;
   const conversationHistory = [];

@@ -134,11 +134,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const token = sessionStorage.getItem("im_student_api_token");
   if (token) {
-    fetch("http://127.0.0.1:3002/api/student/interviews", { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${window.IM_API_BASE}/api/student/interviews`, { headers: { Authorization: `Bearer ${token}` } })
       .then((response) => response.ok ? response.json() : null)
       .then((data) => { scheduledInterviews = data?.items || []; render(); })
       .catch(() => {});
-    fetch("http://127.0.0.1:3002/api/student/applications", { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${window.IM_API_BASE}/api/student/applications`, { headers: { Authorization: `Bearer ${token}` } })
       .then((response) => response.ok ? response.json() : null)
       .then((data) => { serverApplications = data?.items || []; render(); })
       .catch(() => {});

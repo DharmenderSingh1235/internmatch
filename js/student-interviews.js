@@ -70,7 +70,7 @@ document.addEventListener("DOMContentLoaded", () => {
     summary.textContent = "Loading your schedule…";
     list.innerHTML = `<div class="interviews-empty">Loading your interviews…</div>`;
     try {
-      const response = await fetch("http://127.0.0.1:3002/api/student/interviews", { headers: { Authorization: `Bearer ${token}` } });
+      const response = await fetch(`${window.IM_API_BASE}/api/student/interviews`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "Could not load your interview schedule.");
       interviews = data.items || [];

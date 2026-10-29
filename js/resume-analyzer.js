@@ -43,7 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
   async function sendCompanyConsent(profileVisible, cvShared) {
     const token = studentToken();
     if (!token) throw new Error("Sign in while the InternMatch server is running to share your profile.");
-    const response = await fetch("http://127.0.0.1:3002/api/student/profile", {
+    const response = await fetch(`${window.IM_API_BASE}/api/student/profile`, {
       method: "PUT", headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
       body: JSON.stringify({ profile: Store.getProfile(user.email), profileVisible, cvShared })
     });
@@ -60,7 +60,7 @@ document.addEventListener("DOMContentLoaded", () => {
       reader.onerror = () => reject(new Error("Could not read the selected PDF."));
       reader.readAsDataURL(file);
     });
-    const response = await fetch("http://127.0.0.1:3002/api/student/cv", { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ fileName: file.name, mimeType: file.type, data: base64 }) });
+    const response = await fetch(`${window.IM_API_BASE}/api/student/cv`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ fileName: file.name, mimeType: file.type, data: base64 }) });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || "Could not upload the CV.");
   }
@@ -162,7 +162,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       localStorage.setItem(consentKey, JSON.stringify({ profileVisible, cvShared }));
       await sendCompanyConsent(profileVisible, cvShared);
-      if (!profileVisible) await fetch("http://127.0.0.1:3002/api/student/cv", { method: "DELETE", headers: { authorization: `Bearer ${studentToken()}` } });
+      if (!profileVisible) await fetch(`${window.IM_API_BASE}/api/student/cv`, { method: "DELETE", headers: { authorization: `Bearer ${studentToken()}` } });
       companyShareStatus.textContent = profileVisible ? "Your profile is visible to active company accounts. Your CV remains private unless separately shared." : "Company access to your profile and CV has been turned off.";
     } catch (error) {
       companyProfileShare.checked = prior.profileVisible === true;
@@ -181,7 +181,7 @@ document.addEventListener("DOMContentLoaded", () => {
         await sendCompanyConsent(true, true);
         await uploadCompanyCv(selectedFile);
       } else {
-        await fetch("http://127.0.0.1:3002/api/student/cv", { method: "DELETE", headers: { authorization: `Bearer ${studentToken()}` } });
+        await fetch(`${window.IM_API_BASE}/api/student/cv`, { method: "DELETE", headers: { authorization: `Bearer ${studentToken()}` } });
         await sendCompanyConsent(companyProfileShare.checked, false);
       }
       localStorage.setItem(consentKey, JSON.stringify({ profileVisible: companyProfileShare.checked, cvShared }));

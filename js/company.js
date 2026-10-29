@@ -1,6 +1,6 @@
 /* Company candidate search. Student profiles/CVs are returned only after consent. */
 document.addEventListener("DOMContentLoaded", async () => {
-  const API = "http://127.0.0.1:3002/api/company";
+  const API = `${window.IM_API_BASE}/api/company`;
   const statusEl = document.getElementById("company-api-status");
   const token = sessionStorage.getItem("im_company_api_token");
   const account = Store.getCurrentUser();

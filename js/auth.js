@@ -73,7 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const button = event.currentTarget.querySelector('[type="submit"]');
     button.disabled = true;
     try {
-      const response = await fetch("http://127.0.0.1:3002/api/auth/password-reset-requests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ role: document.getElementById("password-reset-role").value, email: document.getElementById("password-reset-email").value.trim() }) });
+      const response = await fetch(`${window.IM_API_BASE}/api/auth/password-reset-requests`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ role: document.getElementById("password-reset-role").value, email: document.getElementById("password-reset-email").value.trim() }) });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "Could not send reset request.");
       resetDialog.close(); event.currentTarget.reset();
@@ -93,7 +93,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (loginRole?.value === "admin") {
         const entered = document.getElementById("login-admin-password").value;
         try {
-          const response = await fetch("http://127.0.0.1:3002/api/auth/admin/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password: entered }) });
+          const response = await fetch(`${window.IM_API_BASE}/api/auth/admin/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password: entered }) });
           const data = await response.json().catch(() => ({}));
           if (!response.ok) throw new Error(data.error || "Admin sign-in failed.");
           sessionStorage.setItem("im_admin_api_token", data.token);
@@ -111,7 +111,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const email = document.getElementById("login-company-email").value.trim();
         const password = document.getElementById("login-company-password").value;
         try {
-          const response = await fetch("http://127.0.0.1:3002/api/auth/company/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) });
+          const response = await fetch(`${window.IM_API_BASE}/api/auth/company/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) });
           const data = await response.json().catch(() => ({}));
           if (!response.ok) throw new Error(data.error || "Recruiter sign-in failed.");
           sessionStorage.setItem("im_company_api_token", data.token);
@@ -127,7 +127,7 @@ document.addEventListener("DOMContentLoaded", () => {
       let serverUser = null;
       let serverError = null;
       try {
-        let response = await fetch("http://127.0.0.1:3002/api/auth/student/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) });
+        let response = await fetch(`${window.IM_API_BASE}/api/auth/student/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) });
         let data = await response.json().catch(() => ({}));
         if (response.ok) {
           sessionStorage.setItem("im_student_api_token", data.token);
@@ -136,11 +136,11 @@ document.addEventListener("DOMContentLoaded", () => {
           const localResult = Store.loginUser(email, password);
           if (!localResult.ok) { serverError = new Error(data.error || localResult.error); }
           else {
-            response = await fetch("http://127.0.0.1:3002/api/auth/student/register", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: localResult.user.name, email, password }) });
+            response = await fetch(`${window.IM_API_BASE}/api/auth/student/register`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: localResult.user.name, email, password }) });
             data = await response.json().catch(() => ({}));
             if (response.ok) { sessionStorage.setItem("im_student_api_token", data.token); serverUser = data.user; }
             else if (response.status === 409) {
-              response = await fetch("http://127.0.0.1:3002/api/auth/student/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) });
+              response = await fetch(`${window.IM_API_BASE}/api/auth/student/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) });
               data = await response.json().catch(() => ({}));
               if (response.ok) { sessionStorage.setItem("im_student_api_token", data.token); serverUser = data.user; }
               else serverError = new Error(data.error || "Student sign-in failed.");
@@ -198,7 +198,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       let remote = null;
       try {
-        const response = await fetch("http://127.0.0.1:3002/api/auth/student/register", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name, email, password }) });
+        const response = await fetch(`${window.IM_API_BASE}/api/auth/student/register`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name, email, password }) });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) { App.toast(data.error || "Could not register this account.", "error"); return; }
         remote = data;
