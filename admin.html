@@ -30,13 +30,29 @@
   .admin-profile-grid dt { color:var(--color-muted); font-size:.72rem; }
   .admin-profile-grid dd { margin:2px 0 0; overflow-wrap:anywhere; font-size:.8rem; }
   .admin-cell-tags { max-width:240px; color:var(--color-muted); font-size:.8rem; line-height:1.45; }
-  .admin-student-record { display:grid; grid-template-columns:190px minmax(0,1fr); align-items:start; gap:16px; width:auto; min-width:0; margin:0; white-space:normal; }
-  .admin-student-dialog { width:min(920px,calc(100vw - 32px)); max-height:calc(100vh - 36px); padding:0; overflow:auto; border:1px solid var(--color-border); border-radius:20px; color:var(--color-text); background:var(--color-surface); box-shadow:0 24px 80px rgba(5,14,32,.3); }
+  .admin-student-record { display:grid; grid-template-columns:210px minmax(0,1fr); align-items:start; gap:16px; width:auto; min-width:0; margin:0; white-space:normal; }
+  .admin-student-dialog { width:min(1120px,calc(100vw - 32px)); max-height:calc(100vh - 36px); padding:0; overflow:auto; border:1px solid var(--color-border); border-radius:20px; color:var(--color-text); background:var(--color-surface); box-shadow:0 24px 80px rgba(5,14,32,.3); }
   .admin-student-dialog::backdrop { background:rgba(7,15,31,.62); backdrop-filter:blur(4px); }
   .admin-student-dialog__head { position:sticky; top:0; z-index:2; display:flex; align-items:center; justify-content:space-between; gap:14px; padding:18px 22px; border-bottom:1px solid var(--color-border); background:var(--color-surface); }
   .admin-student-dialog__head h2 { margin:2px 0 0; font-size:1.25rem; }
   .admin-student-dialog__body { padding:18px 22px 22px; }
   .admin-student-dialog__body .admin-student-record { width:auto; min-width:0; margin:0; }
+  .admin-student-record__summary { grid-column:1/-1; display:flex; align-items:center; gap:14px; min-width:0; padding:16px; border:1px solid #dbe5f2; border-radius:15px; background:linear-gradient(120deg,#f2f7ff,#fff); }
+  .admin-student-record__avatar { display:grid; place-items:center; flex:0 0 52px; width:52px; height:52px; border-radius:15px; color:#fff; background:linear-gradient(145deg,#2861dc,#7757e8); font-size:1.05rem; font-weight:800; }
+  .admin-student-record__identity { min-width:0; flex:1; }
+  .admin-student-record__identity strong { display:block; font-size:1rem; }
+  .admin-student-record__identity span { display:block; margin-top:3px; color:var(--color-muted); font-size:.82rem; overflow-wrap:anywhere; }
+  .admin-student-record__stats { display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap; }
+  .admin-student-record__stats span { padding:6px 9px; border:1px solid #dbe5f2; border-radius:999px; color:#435575; background:#fff; font-size:.76rem; font-weight:700; white-space:nowrap; }
+  #admin-panel .admin-student-record__summary { border-color:#2a3a53; background:linear-gradient(120deg,#172943,#142238); }
+  #admin-panel .admin-student-record__identity span { color:#aebbd0; }
+  #admin-panel .admin-student-record__stats span { border-color:#344764; color:#d4deed; background:#1a2c47; }
+  :root[data-theme="light"] #admin-panel .admin-student-record__summary { border-color:#dbe5f2; background:linear-gradient(120deg,#f2f7ff,#fff); }
+  :root[data-theme="light"] #admin-panel .admin-student-record__identity span { color:var(--color-muted); }
+  :root[data-theme="light"] #admin-panel .admin-student-record__stats span { border-color:#dbe5f2; color:#435575; background:#fff; }
+  #admin-student-dialog-content:not(:has(.admin-student-detail-nav)) { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  #admin-student-dialog-content:not(:has(.admin-student-detail-nav)) .admin-record-section { min-width:0; padding:16px; border-radius:14px; background:var(--color-surface); box-shadow:0 3px 12px rgba(16,27,52,.045); }
+  #admin-student-dialog-content:not(:has(.admin-student-detail-nav)) .admin-record-section:nth-child(-n+2) { grid-column:1/-1; }
   .admin-cv-dialog { width:min(1100px,calc(100vw - 32px)); height:min(86vh,900px); padding:0; overflow:hidden; border:1px solid var(--color-border); border-radius:16px; color:var(--color-text); background:var(--color-surface); box-shadow:0 24px 80px rgba(5,14,32,.3); }
   .admin-cv-dialog::backdrop { background:rgba(7,15,31,.68); backdrop-filter:blur(4px); }
   .admin-cv-dialog__head { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; padding:13px 18px; border-bottom:1px solid var(--color-border); }
@@ -50,8 +66,8 @@
   .admin-cv-dialog iframe { display:block; width:100%; height:calc(100% - 126px); border:0; background:#edf1f6; }
   .admin-student-open { padding:0; border:0; color:var(--color-primary); background:none; font:inherit; font-weight:700; text-align:left; cursor:pointer; }
   .admin-student-open:hover { text-decoration:underline; }
-  .admin-record-section { min-width:0; padding:12px; border:1px solid var(--color-border); border-radius:11px; background:var(--color-bg-alt); }
-  .admin-record-section h4 { margin:0 0 8px; font-size:.82rem; }
+  .admin-record-section { min-width:0; padding:14px; border:1px solid var(--color-border); border-radius:13px; background:var(--color-bg-alt); }
+  .admin-record-section h4 { margin:0 0 10px; font-size:.9rem; letter-spacing:-.01em; }
   .admin-profile-grid { margin:0; }
   .admin-profile-grid dd { line-height:1.4; }
   .admin-record-section p { margin:0; font-size:.8rem; line-height:1.45; overflow-wrap:anywhere; }
@@ -61,7 +77,7 @@
   .admin-student-project { padding:8px 0; border-top:1px solid var(--color-border); font-size:.8rem; }
   .admin-student-project:first-child { border-top:0; padding-top:0; }
   .admin-student-project span,.admin-student-project p { display:block; margin:3px 0 0; color:var(--color-muted); }
-  .admin-student-detail-nav { position:sticky; top:76px; align-self:start; display:grid; gap:4px; max-height:calc(100vh - 150px); overflow-y:auto; padding:8px; border:1px solid var(--color-border); border-radius:12px; background:var(--color-bg-alt); }
+  .admin-student-detail-nav { position:sticky; top:76px; align-self:start; display:grid; gap:4px; max-height:calc(100vh - 150px); overflow-y:auto; padding:8px; border:1px solid var(--color-border); border-radius:14px; background:var(--color-bg-alt); }
   .admin-student-detail-nav a { display:block; padding:9px 10px; border-radius:8px; color:var(--color-muted); font-size:.8rem; font-weight:650; line-height:1.3; text-decoration:none; }
   .admin-student-detail-nav a:hover,.admin-student-detail-nav a.is-active { color:var(--color-primary); background:var(--color-primary-tint); }
   .admin-student-detail-sections { display:grid; gap:10px; min-width:0; }
@@ -172,7 +188,7 @@
   .admin-send-student-form textarea { width:100%; min-height:78px; padding:9px 10px; border:1px solid var(--color-border); border-radius:9px; color:var(--color-text); background:var(--color-surface); font:inherit; resize:vertical; }
   @media(max-width:760px) { .admin-send-student-form { grid-template-columns:1fr; } .admin-send-student-form > div:first-child,.admin-send-student-form__message { grid-column:1; } .support-ticket__controls { grid-template-columns:1fr; } }
   @media(max-width:760px) { .support-ticket__controls { grid-template-columns:1fr; } }
-  @media(max-width:760px) { #admin-panel { grid-template-columns:minmax(0,1fr); row-gap:12px; } #admin-panel > :not(.admin-menu) { grid-column:1; } #admin-panel > h1 { grid-row:auto; } #admin-panel > p { grid-row:auto; } #admin-panel > .admin-menu { grid-column:1; grid-row:auto; top:0; z-index:5; display:flex; flex-direction:row; width:100%; max-height:none; overflow-x:auto; overflow-y:hidden; padding:7px; } .admin-menu-brand { flex:none; margin:0; padding:6px 10px 6px 4px; border:0; border-right:1px solid rgba(145,168,218,.18); } .admin-menu-brand__mark { display:none; } .admin-menu-brand strong { font-size:.9rem; } .admin-menu-brand small { display:none; } #admin-panel .admin-menu a { flex:none; white-space:nowrap; } #admin-panel .admin-module-note { grid-column:1; } .admin-student-dialog__body .admin-student-record { grid-template-columns:minmax(0,1fr); } .admin-student-detail-nav { position:sticky; top:68px; z-index:1; display:flex; flex-wrap:nowrap; max-height:none; overflow-x:auto; } .admin-student-detail-nav a { flex:none; white-space:nowrap; } .admin-overview__stats,.admin-overview__lower,.admin-ops-grid { grid-template-columns:1fr; } }
+  @media(max-width:760px) { #admin-panel { grid-template-columns:minmax(0,1fr); row-gap:12px; } #admin-panel > :not(.admin-menu) { grid-column:1; } #admin-panel > h1 { grid-row:auto; } #admin-panel > p { grid-row:auto; } #admin-panel > .admin-menu { grid-column:1; grid-row:auto; top:0; z-index:5; display:flex; flex-direction:row; width:100%; max-height:none; overflow-x:auto; overflow-y:hidden; padding:7px; } .admin-menu-brand { flex:none; margin:0; padding:6px 10px 6px 4px; border:0; border-right:1px solid rgba(145,168,218,.18); } .admin-menu-brand__mark { display:none; } .admin-menu-brand strong { font-size:.9rem; } .admin-menu-brand small { display:none; } #admin-panel .admin-menu a { flex:none; white-space:nowrap; } #admin-panel .admin-module-note { grid-column:1; } .admin-student-dialog__body .admin-student-record,#admin-student-dialog-content:not(:has(.admin-student-detail-nav)) { grid-template-columns:minmax(0,1fr); } #admin-student-dialog-content:not(:has(.admin-student-detail-nav)) .admin-record-section:nth-child(-n+2) { grid-column:auto; } .admin-student-record__summary { align-items:flex-start; flex-wrap:wrap; } .admin-student-record__stats { justify-content:flex-start; width:100%; } .admin-student-detail-nav { position:sticky; top:68px; z-index:1; display:flex; flex-wrap:nowrap; max-height:none; overflow-x:auto; } .admin-student-detail-nav a { flex:none; white-space:nowrap; } .admin-overview__stats,.admin-overview__lower,.admin-ops-grid { grid-template-columns:1fr; } }
   @media(max-width:760px) { .admin-password-form { grid-template-columns:1fr; } .admin-password-form button { margin:0; } }
 .company-review-list { display:grid; gap:14px; }
 .company-review-card { padding:18px; border:1px solid var(--color-border); border-radius:16px; background:var(--color-surface); }
@@ -415,7 +431,7 @@
     </section>
 
     <dialog class="admin-student-dialog" id="admin-student-dialog" aria-labelledby="admin-student-dialog-title">
-      <div class="admin-student-dialog__head"><div><span class="admin-settings__eyebrow">Student record</span><h2 id="admin-student-dialog-title">Student details</h2></div><button type="button" class="btn btn--ghost btn--sm" id="admin-student-dialog-close" aria-label="Close student details">Close</button></div>
+      <div class="admin-student-dialog__head"><div><span class="admin-settings__eyebrow">STUDENT RECORD · ADMIN VIEW</span><h2 id="admin-student-dialog-title">Student details</h2></div><button type="button" class="btn btn--ghost btn--sm" id="admin-student-dialog-close" aria-label="Close student details">Close</button></div>
       <div class="admin-student-dialog__body"><div class="admin-student-record" id="admin-student-dialog-content"></div></div>
     </dialog>
     <dialog class="admin-student-dialog" id="admin-company-dialog" aria-labelledby="admin-company-dialog-title">
@@ -540,7 +556,7 @@
 <script src="js/app.js"></script>
 <script src="js/shared-adapter.js"></script>
 <script src="js/resume-vault.js"></script>
-<script src="js/admin.js?v=20261104-company-cv-review"></script>
+<script src="js/admin.js?v=20261104-student-record-refresh"></script>
 <script src="js/admin-analytics.js"></script>
 <script src="js/admin-practice-areas.js?v=20261103-practice-api-diagnostic"></script>
 </body>
