@@ -1,6 +1,6 @@
 /*
  * Resume Intelligence — PDF analysis runs in this browser. The PDF is sent to
- * the InternMatch server only when the student explicitly shares it with companies.
+ * the InternMatch server only when the student explicitly allows company or admin access.
  * Skills and opportunity scores are transparent heuristics; writing patterns are not an authorship detector.
  */
 document.addEventListener("DOMContentLoaded", () => {
@@ -13,6 +13,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const companyProfileShare = document.getElementById("company-profile-sharing");
   const companyCvShare = document.getElementById("company-cv-sharing");
   const companyShareStatus = document.getElementById("company-sharing-status");
+  const adminServerCvShare = document.getElementById("admin-server-cv-sharing");
+  const adminServerCvStatus = document.getElementById("admin-server-cv-sharing-status");
   const analyzeBtn = document.getElementById("analyze-btn");
   const errorEl = document.getElementById("resume-analyzer-error");
   const loadingEl = document.getElementById("resume-analyzer-loading");
@@ -32,6 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const user = Store.getCurrentUser();
   const allInternships = Store.getAllInternships();
   let selectedFile = null;
+  let serverCvUploaded = false;
   let foundSkills = [];
   let extractedResume = null;
 
@@ -92,7 +95,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const showLoginLink = (message) => {
       companyProfileShare.disabled = true;
       companyCvShare.disabled = true;
+      adminServerCvShare.disabled = true;
       companyShareStatus.innerHTML = `${App.escapeHtml(message)} <a href="${loginHref}">Sign in again</a>.`;
+      adminServerCvStatus.textContent = "Sign in with a student account to manage admin CV permission.";
     };
     const showSharingState = () => {
       companyProfileShare.disabled = false;
@@ -108,6 +113,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       companyProfileShare.disabled = true;
       companyCvShare.disabled = true;
+      adminServerCvShare.disabled = true;
       companyShareStatus.textContent = "Checking your saved sharing permissions…";
       fetch(`${window.IM_API_BASE}/api/student/profile`, { headers: { authorization: `Bearer ${studentToken()}` }, cache: "no-store" })
         .then(async (response) => {
@@ -116,6 +122,10 @@ document.addEventListener("DOMContentLoaded", () => {
           if (!response.ok) throw new Error(data.error || "Could not load sharing permissions.");
           companyProfileShare.checked = data.profileVisible === true;
           companyCvShare.checked = data.cvShared === true && data.profileVisible === true;
+          adminServerCvShare.checked = data.adminCvShared === true;
+          adminServerCvShare.disabled = false;
+          serverCvUploaded = data.cvUploaded === true;
+          adminServerCvStatus.textContent = adminServerCvShare.checked ? (serverCvUploaded ? "Admin CV review is allowed for your uploaded server copy." : "Permission is on. Select a PDF to upload it for admin review.") : "Admin CV review permission is off.";
           localStorage.setItem(consentKey, JSON.stringify({ profileVisible: companyProfileShare.checked, cvShared: companyCvShare.checked }));
           showSharingState();
         })
@@ -178,8 +188,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (selectedFile && adminShareCheckbox.checked && user) {
       saveSharedCV(selectedFile).catch(() => { adminShareStatus.textContent = "Could not save the CV locally. Try a smaller PDF or another browser."; });
     }
-    if (selectedFile && companyCvShare?.checked && companyProfileShare?.checked) {
-      uploadCompanyCv(selectedFile).then(() => { companyShareStatus.textContent = "Your updated CV is shared with active company accounts you apply to."; }).catch(async (error) => {
+    if (selectedFile && ((companyCvShare?.checked && companyProfileShare?.checked) || adminServerCvShare?.checked)) {
+      uploadCompanyCv(selectedFile).then(() => {
+        serverCvUploaded = true;
+        if (companyCvShare?.checked && companyProfileShare?.checked) companyShareStatus.textContent = "Your updated CV is shared with active company accounts you apply to.";
+        if (adminServerCvShare?.checked) adminServerCvStatus.textContent = "Your uploaded CV is available to admins for review.";
+      }).catch(async (error) => {
+        if (adminServerCvShare?.checked) adminServerCvStatus.textContent = error.message;
+        if (!companyCvShare?.checked || !companyProfileShare?.checked) return;
         companyCvShare.checked = false;
         const consent = { profileVisible: true, cvShared: false };
         try { localStorage.setItem(consentKey, JSON.stringify(consent)); await sendCompanyConsent(true, false); } catch (_) { /* Keep the upload error visible; the API may be unavailable. */ }
@@ -231,6 +247,39 @@ document.addEventListener("DOMContentLoaded", () => {
       companyCvShare.checked = prior.cvShared === true;
       companyShareStatus.textContent = error.message;
     }
+  });
+
+  adminServerCvShare?.addEventListener("change", async () => {
+    if (!user || !studentToken()) {
+      adminServerCvShare.checked = false;
+      adminServerCvStatus.textContent = "Sign in again before changing admin CV permission.";
+      return;
+    }
+    const enabled = adminServerCvShare.checked;
+    adminServerCvShare.disabled = true;
+    try {
+      const response = await fetch(`${window.IM_API_BASE}/api/student/admin-cv-sharing`, { method: "PUT", headers: { "content-type": "application/json", authorization: `Bearer ${studentToken()}` }, body: JSON.stringify({ enabled }) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Could not update admin CV permission.");
+      serverCvUploaded = data.cvUploaded === true;
+      if (enabled && selectedFile) {
+        await uploadCompanyCv(selectedFile);
+        serverCvUploaded = true;
+      } else if (enabled && !serverCvUploaded) {
+        throw new Error("Select a PDF so it can be uploaded for admin review.");
+      }
+      adminServerCvStatus.textContent = enabled ? "Admin review is allowed for your uploaded CV." : (companyCvShare?.checked ? "Admin access is off; companies you applied to can still access the CV." : "Admin permission is off and the server CV was removed.");
+    } catch (error) {
+      if (enabled) {
+        adminServerCvShare.checked = false;
+        try {
+          const rollback = await fetch(`${window.IM_API_BASE}/api/student/admin-cv-sharing`, { method: "PUT", headers: { "content-type": "application/json", authorization: `Bearer ${studentToken()}` }, body: JSON.stringify({ enabled: false }) });
+          const data = await rollback.json().catch(() => ({}));
+          serverCvUploaded = data.cvUploaded === true;
+        } catch (_) { /* Keep the original upload/permission error visible. */ }
+      } else adminServerCvShare.checked = true;
+      adminServerCvStatus.textContent = error.message;
+    } finally { adminServerCvShare.disabled = false; }
   });
 
   adminShareCheckbox.addEventListener("change", async () => {

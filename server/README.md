@@ -47,6 +47,7 @@ For Vercel or another hosted deployment, add `MONGODB_URI`, `MONGODB_DB`, and th
 - Signed-in recruiters can submit internships or jobs with their eligibility, skills, location, compensation, deadline, and role details.
 - New and edited postings require admin approval before they appear in the student catalogue. Admins can approve or reject them from the Internship management review queue.
 - Applications are linked to the owning company. Recruiters can view profiles only for students who applied to their roles; they can open CVs only when the student has enabled CV sharing.
+- Students can separately allow admin CV review from Resume Analyzer. The admin CV endpoint and review actions require that consent; turning it off revokes admin access while preserving company access when company sharing remains enabled. The same uploaded server PDF can be shared with both audiences only when the student enables both permissions.
 - Recruiters can update application stages, shortlist applicants, and schedule interviews for their own applicants.
 - Student and recruiter users can request a password reset from the login page. An admin must confirm identity and set a temporary password in **Notifications & Support**; the prototype does not send recovery emails. The admin password is changed through `ADMIN_PASSWORD` in `.env`.
 - Shortlists, interview schedules, application status updates, and CV access audit entries are stored on the server.
