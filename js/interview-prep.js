@@ -39,15 +39,22 @@ document.addEventListener("DOMContentLoaded", () => {
     "SQL & data interview": ["DB", "Data-focused SQL and database interview practice"],
     "HR / Behavioral": ["★", "Practice concise stories about your work and decisions"]
   };
-  function categoryCard(category, isHr = false) {
-    const [icon, description] = categoryInfo[category] || ["✦", "Build confidence with a focused practice session"];
-    const count = isHr ? "Open-ended practice" : `${INTERVIEW_QUESTIONS[category].length} questions · Scored quiz`;
-    return `<button type="button" class="interview-cat-btn${isHr ? " interview-cat-btn--hr" : ""}" data-cat="${isHr ? "HR" : category}">
-      <span class="interview-cat-icon" aria-hidden="true">${icon}</span>
-      <span class="interview-cat-copy"><strong>${category}</strong><small>${description}</small><span class="interview-cat-meta">${count}</span></span>
+  let customAreas = [];
+  function categoryCard(category, isHr = false, customArea = null) {
+    const [icon, description] = customArea ? [customArea.icon || "✦", customArea.description || "Admin-created practice quiz"] : categoryInfo[category] || ["✦", "Build confidence with a focused practice session"];
+    const title = customArea?.title || category;
+    const count = customArea ? `${customArea.questions.length} questions · Scored quiz` : isHr ? "Open-ended practice" : `${INTERVIEW_QUESTIONS[category].length} questions · Scored quiz`;
+    return `<button type="button" class="interview-cat-btn${isHr ? " interview-cat-btn--hr" : ""}" data-cat="${isHr ? "HR" : App.escapeHtml(title)}"${customArea ? ` data-custom-area="${App.escapeHtml(customArea.id)}"` : ""}>
+      <span class="interview-cat-icon" aria-hidden="true">${App.escapeHtml(icon)}</span>
+      <span class="interview-cat-copy"><strong>${App.escapeHtml(title)}</strong><small>${App.escapeHtml(description)}</small><span class="interview-cat-meta">${App.escapeHtml(count)}</span></span>
     </button>`;
   }
-  categoryGrid.innerHTML = categories.map((category) => categoryCard(category)).join("") + categoryCard("HR / Behavioral", true);
+  function renderCategoryGrid() {
+    const builtInNames = new Set(categories.map((category) => category.toLowerCase()));
+    const extra = customAreas.filter((area) => area.active && area.title && Array.isArray(area.questions) && area.questions.length && !builtInNames.has(area.title.toLowerCase()));
+    categoryGrid.innerHTML = categories.map((category) => categoryCard(category)).join("") + extra.map((area) => categoryCard(area.title, false, area)).join("") + categoryCard("HR / Behavioral", true);
+  }
+  renderCategoryGrid();
 
   function showOnly(panel) {
     [categoryPanel, quizPanel, hrPanel, resultsPanel].forEach((p) => (p.style.display = p === panel ? "" : "none"));
@@ -67,6 +74,32 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!token) return;
     const scores = Store.readBlob(historyKey, []).filter((entry) => entry.type === "quiz" && Number(entry.total) > 0 && Number.isFinite(Number(entry.score))).slice(0, 20).map((entry) => ({ category: entry.category, score: Number(entry.score), total: Number(entry.total), date: entry.date }));
     fetch(`${window.IM_API_BASE}/api/student/interview-scores`, { method: "PUT", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ scores }) }).catch(() => {});
+  }
+
+  async function hydrateInterviewScores() {
+    const token = sessionStorage.getItem("im_student_api_token");
+    if (!token) return;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    try {
+      const response = await fetch(`${window.IM_API_BASE}/api/student/interview-scores`, { headers: { authorization: `Bearer ${token}` }, signal: controller.signal, cache: "no-store" });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) return;
+      const history = Store.readBlob(historyKey, []);
+      const known = new Set(history.filter((entry) => entry.type === "quiz").map((entry) => `${entry.category}|${entry.score}|${entry.total}|${entry.date}`));
+      (Array.isArray(data.scores) ? data.scores : []).forEach((entry) => {
+        const key = `${entry.category}|${entry.score}|${entry.total}|${entry.date}`;
+        if (!known.has(key)) history.push({ ...entry, type: "quiz" });
+      });
+      history.sort((a, b) => Date.parse(b.date || 0) - Date.parse(a.date || 0));
+      Store.writeBlob(historyKey, history.slice(0, 100));
+      renderHistory();
+      syncInterviewScores();
+    } catch (error) {
+      if (error.name !== "AbortError") console.warn("Practice history could not sync with the server:", error.message);
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   function renderResultsSummary() {
@@ -92,8 +125,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ---------- Technical quiz ----------
 
-  function runQuiz(category) {
-    const questions = INTERVIEW_QUESTIONS[category];
+  function runQuiz(category, customQuestions = null) {
+    const questions = customQuestions || INTERVIEW_QUESTIONS[category];
     let idx = 0;
     let score = 0;
     showOnly(quizPanel);
@@ -183,12 +216,15 @@ document.addEventListener("DOMContentLoaded", () => {
     renderQuestion();
   }
 
-  categoryGrid.querySelectorAll("[data-cat]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const cat = btn.getAttribute("data-cat");
-      if (cat === "HR") runHr();
-      else runQuiz(cat);
-    });
+  categoryGrid.addEventListener("click", (event) => {
+    const btn = event.target.closest("[data-cat]");
+    if (!btn) return;
+    const cat = btn.getAttribute("data-cat");
+    if (cat === "HR") runHr();
+    else if (btn.dataset.customArea) {
+      const area = customAreas.find((item) => item.id === btn.dataset.customArea);
+      if (area) runQuiz(area.title, area.questions);
+    } else runQuiz(cat);
   });
 
   quizExitBtn.addEventListener("click", () => showOnly(categoryPanel));
@@ -197,5 +233,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   showOnly(categoryPanel);
   renderHistory();
-  syncInterviewScores();
+  hydrateInterviewScores();
+  const studentToken = sessionStorage.getItem("im_student_api_token");
+  if (studentToken && user.role === "student") {
+    fetch(`${window.IM_API_BASE}/api/student/practice-areas`, { headers: { authorization: `Bearer ${studentToken}` }, cache: "no-store" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => { if (Array.isArray(data?.items)) { customAreas = data.items; renderCategoryGrid(); } })
+      .catch((error) => console.warn("Admin-created practice areas could not load:", error.message));
+  }
 });

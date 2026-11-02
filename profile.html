@@ -98,7 +98,8 @@
   #profile-projects-card { order:8; }
   #profile-achievements-card { order:9; }
   #interview-score-card { order:10; }
-  #profile-form > .profile-save-row { order:11; }
+  #assessment-tracker-card { grid-column:1/-1; order:11; }
+  #profile-form > .profile-save-row { order:12; }
   #profile-achievements-card, #interview-score-card, #profile-intro-card, #profile-projects-card, .profile-save-row { grid-column:1/-1; }
   #profile-academic-card, #profile-contact-card, #profile-skills-card, #profile-preferences-card { grid-column:span 1; }
   #profile-form > .card h2 { margin-bottom:14px; font-size:1.3rem; }
@@ -145,6 +146,29 @@
   .score-history-item__result { flex:0 0 auto; min-width:92px; text-align:right; }
   .score-history-item__percent { display:block; color:var(--color-primary); font-size:1.05rem; font-weight:700; }
   .score-history-item__fraction { display:block; color:var(--color-muted); font-size:.8rem; }
+  .assessment-tracker-summary { display:flex; flex-wrap:wrap; gap:9px; margin:0 0 14px; }
+  .assessment-tracker-actions { display:flex; align-items:center; flex-wrap:wrap; justify-content:flex-end; gap:8px; margin-top:14px; padding-top:12px; border-top:1px solid var(--color-border); }
+  .assessment-tracker-actions__label { margin-right:auto; color:var(--color-muted); font-size:.78rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
+  .assessment-tracker-summary span { padding:7px 11px; border:1px solid var(--color-border); border-radius:999px; background:var(--color-surface); color:var(--color-muted); font-size:.82rem; }
+  .assessment-tracker-summary strong { color:var(--color-primary); margin-right:3px; }
+  .assessment-tracker-list { display:grid; gap:11px; }
+  .assessment-tracker-item { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:16px; border:1px solid var(--color-border); border-radius:15px; background:linear-gradient(135deg,var(--color-primary-tint),var(--color-surface)); }
+  .assessment-tracker-item__main { flex:1; min-width:0; }
+  .assessment-tracker-item__title { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; }
+  .assessment-tracker-item__title h3 { margin:0; font-size:1rem; }
+  .assessment-tracker-item__title p { margin:4px 0 0; color:var(--color-muted); font-size:.85rem; }
+  .assessment-tracker-status { flex:0 0 auto; padding:5px 9px; border-radius:999px; background:var(--color-surface); color:var(--color-muted); font-size:.74rem; font-weight:700; }
+  .assessment-tracker-status.is-complete { background:rgba(16,185,129,.13); color:#047857; }
+  .assessment-tracker-status.is-pending { background:rgba(245,158,11,.14); color:#a16207; }
+  .assessment-tracker-meta { display:flex; flex-wrap:wrap; gap:7px 14px; margin-top:10px; color:var(--color-muted); font-size:.78rem; }
+  .assessment-tracker-marks { display:grid; gap:5px; margin-top:12px; }
+  .assessment-tracker-marks strong { font-size:.9rem; }
+  .assessment-tracker-marks > span { color:var(--color-muted); font-size:.78rem; }
+  .assessment-tracker-bar { height:6px; overflow:hidden; border-radius:99px; background:var(--color-border); }
+  .assessment-tracker-bar span { display:block; height:100%; border-radius:inherit; background:var(--color-primary); }
+  .assessment-tracker-empty { display:flex; align-items:center; flex-wrap:wrap; gap:8px 16px; padding:16px; border:1px dashed var(--color-border); border-radius:14px; }
+  .assessment-tracker-empty strong { flex-basis:100%; }
+  .assessment-tracker-empty p { flex:1 1 260px; margin:0; color:var(--color-muted); font-size:.86rem; }
   .score-empty { display:flex; justify-content:space-between; align-items:center; gap:14px; padding:16px; border-radius:14px; background:var(--color-bg-alt); }
   .profile-insight-stats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin:14px 0; }
   .profile-insight-stat { padding:12px; border-radius:12px; background:var(--color-bg-alt); }
@@ -172,7 +196,7 @@
   .profile-page .topbar-theme-toggle { flex:0 0 auto; }
   #profile-form > .profile-save-row { position:static; padding:4px 0 20px; border:0; border-radius:0; background:transparent; backdrop-filter:none; box-shadow:none; }
   @media(max-width:760px) { #profile-form { grid-template-columns:1fr; gap:14px; } #profile-form > .card, #profile-form > .profile-save-row { grid-column:1; } #profile-preview-card { grid-column:1; } #profile-form > .card { padding:18px; } }
-  @media(max-width:600px) { .profile-preview { grid-template-columns:1fr; } #profile-insights-card .profile-completion-row { grid-template-columns:100px minmax(0,1fr); gap:12px; padding:12px; } .profile-completion-ring { width:96px; } .profile-completion-ring::before { inset:8px; } .profile-preview__photo { justify-items:start; } .profile-photo-note { text-align:left; } .score-overview { grid-template-columns:1fr; } .score-empty { align-items:flex-start; flex-direction:column; } }
+  @media(max-width:600px) { .profile-preview { grid-template-columns:1fr; } #profile-insights-card .profile-completion-row { grid-template-columns:100px minmax(0,1fr); gap:12px; padding:12px; } .profile-completion-ring { width:96px; } .profile-completion-ring::before { inset:8px; } .profile-preview__photo { justify-items:start; } .profile-photo-note { text-align:left; } .score-overview { grid-template-columns:1fr; } .score-empty { align-items:flex-start; flex-direction:column; } .assessment-tracker-item { align-items:flex-start; flex-direction:column; } .assessment-tracker-item__title { flex-direction:column; } }
 </style>
 </head>
 <body>
@@ -345,6 +369,12 @@
           <div id="interview-score-summary" aria-live="polite"></div>
         </div>
 
+        <section class="card" id="assessment-tracker-card" aria-labelledby="assessment-tracker-title">
+          <div class="profile-section-heading"><div><h2 class="mt-0" id="assessment-tracker-title">Assessment tracker</h2><p>Your assigned assessments, marks, and recruiter review status.</p></div><span class="profile-section-icon" aria-hidden="true">✓</span></div>
+          <div id="profile-assessment-tracker" class="profile-assessment-tracker" aria-live="polite"><p class="hint">Loading your assessment results…</p></div>
+          <div class="assessment-tracker-actions"><span class="assessment-tracker-actions__label">Company assessments</span><button type="button" class="btn btn--ghost btn--sm" id="profile-assessments-refresh">Refresh</button><a class="btn btn--secondary btn--sm" href="interview-prep.html#company-assessments-panel">Interview prep</a></div>
+        </section>
+
         <div class="profile-save-row"><button type="submit" class="btn btn--primary btn--lg">Save profile</button><span id="profile-save-status" class="hint" aria-live="polite"></span></div>
       </form>
     </div>
@@ -355,6 +385,6 @@
 <script src="js/storage.js"></script>
 <script src="js/recommendation.js"></script>
 <script src="js/app.js"></script>
-<script src="js/profile.js"></script>
+<script src="js/profile.js?v=20261102-assessment-tracker"></script>
 </body>
 </html>

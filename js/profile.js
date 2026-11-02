@@ -322,11 +322,115 @@ document.addEventListener("DOMContentLoaded", () => {
     `;
   }
 
+  async function renderAssessmentTracker() {
+    const target = document.getElementById("profile-assessment-tracker");
+    if (!target) return;
+    const token = sessionStorage.getItem("im_student_api_token");
+    if (!token) {
+      target.innerHTML = `<div class="assessment-tracker-empty"><strong>Sign in to view company assessment results</strong><p>Your marks and recruiter review status are linked to your student account.</p><a class="btn btn--secondary btn--sm" href="login.html?role=student">Sign in</a></div>`;
+      return;
+    }
+    target.innerHTML = '<p class="hint">Loading your assessments…</p>';
+    try {
+      const response = await fetch(`${window.IM_API_BASE}/api/student/assessment-tracker`, { headers: { authorization: `Bearer ${token}` }, cache: "no-store" });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (response.status === 404) {
+          const apiUrl = new URL(window.IM_API_BASE);
+          const isLocalApi = ["localhost", "127.0.0.1"].includes(apiUrl.hostname);
+          const guidance = isLocalApi
+            ? "Stop the old API process using port 3002, then run npm start from this project's server folder. Confirm /api/health reports studentAssessmentTracker: true."
+            : "This deployed API is older than the profile page. Redeploy the backend with the current server/server.js; restarting a local API will not update this host. Confirm /api/health reports studentAssessmentTracker: true.";
+          throw new Error(`The API at ${apiUrl.origin} does not have the assessment tracker route. ${guidance}`);
+        }
+        throw new Error(data.error || `Could not load assessments (${response.status}).`);
+      }
+      const items = Array.isArray(data.items) ? data.items : [];
+      if (!items.length) {
+        target.innerHTML = `<div class="assessment-tracker-empty"><strong>No company assessments yet</strong><p>When a company assigns an approved test to one of your applications, it will appear here with its marks and review status.</p><a class="btn btn--secondary btn--sm" href="interview-prep.html">Open interview prep</a></div>`;
+        return;
+      }
+      target.innerHTML = `<div class="assessment-tracker-summary"><span><strong>${items.filter((item) => item.result).length}</strong> submitted</span><span><strong>${items.filter((item) => item.result?.status === "Reviewed").length}</strong> recruiter reviewed</span><span><strong>${items.filter((item) => item.available).length}</strong> available</span></div><div class="assessment-tracker-list">${items.map((item) => {
+        const result = item.result;
+        const final = !!result && ["Scored", "Reviewed"].includes(result.status);
+        const score = result ? Number(result.score) || 0 : 0;
+        const total = result ? Number(result.totalMarks) || Number(item.totalMarks) || 0 : Number(item.totalMarks) || 0;
+        const percent = total ? Math.max(0, Math.min(100, Math.round(score / total * 100))) : 0;
+        const state = result ? (final ? (result.status === "Reviewed" ? "Recruiter reviewed" : "Auto-scored") : "Awaiting recruiter review") : (item.available ? "Available" : "Not open");
+        const date = result?.submittedAt ? App.formatDate(result.submittedAt) : item.endAt ? `Due ${App.formatDate(item.endAt)}` : "No deadline set";
+        const marks = result ? `${score} / ${total} marks${final ? ` · ${percent}%` : " · provisional"}` : `${total} marks available`;
+        return `<article class="assessment-tracker-item"><div class="assessment-tracker-item__main"><div class="assessment-tracker-item__title"><div><h3>${App.escapeHtml(item.title || "Company assessment")}</h3><p>${App.escapeHtml(item.companyName || "Company")} · ${App.escapeHtml(item.roleTitle || "Internship")}</p></div><span class="assessment-tracker-status ${final ? "is-complete" : result ? "is-pending" : ""}">${App.escapeHtml(state)}</span></div><div class="assessment-tracker-meta"><span>${App.escapeHtml(item.category || "Assessment")}</span><span>${App.escapeHtml(item.difficulty || "")}</span><span>${Number(item.durationMinutes) || 0} min</span><span>${App.escapeHtml(date)}</span></div>${result ? `<div class="assessment-tracker-marks"><strong>${App.escapeHtml(marks)}</strong>${final ? `<span>${result.passed ? "Pass" : "Below passing mark"} · Passing mark ${Number(item.passingMarks) || 0}</span>` : `<span>Written or coding answers are awaiting recruiter review. Final marks may change.</span>`}<div class="assessment-tracker-bar" role="progressbar" aria-label="${final ? "Final assessment score" : "Current auto-scored marks"}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><span style="width:${percent}%"></span></div></div>` : ""}</div>${!result ? `<a class="btn btn--secondary btn--sm" href="interview-prep.html">${item.available ? "Take assessment" : "View details"}</a>` : ""}</article>`;
+      }).join("")}</div>`;
+    } catch (error) {
+      target.innerHTML = `<div class="assessment-tracker-empty"><strong>Assessment results unavailable</strong><p>${App.escapeHtml(error.message)}</p></div>`;
+    }
+  }
+
   function syncInterviewScores() {
     const token = sessionStorage.getItem("im_student_api_token");
     if (!token) return;
     const scores = Store.readBlob(`im_interview_history_${user.email}`, []).filter((entry) => entry.type === "quiz" && Number(entry.total) > 0 && Number.isFinite(Number(entry.score))).slice(0, 20).map((entry) => ({ category: entry.category, score: Number(entry.score), total: Number(entry.total), date: entry.date }));
     fetch(`${window.IM_API_BASE}/api/student/interview-scores`, { method: "PUT", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ scores }) }).catch(() => {});
+  }
+
+  async function hydrateServerProfile() {
+    const token = sessionStorage.getItem("im_student_api_token");
+    if (!token || user.role !== "student") return;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    try {
+      const response = await fetch(`${window.IM_API_BASE}/api/student/profile`, { headers: { authorization: `Bearer ${token}` }, signal: controller.signal, cache: "no-store" });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || `Profile sync failed (${response.status}).`);
+
+      const localProfile = Store.getProfile(user.email);
+      const mergedProfile = { ...(data.profile || {}) };
+      Object.entries(localProfile).forEach(([key, value]) => {
+        const hasValue = Array.isArray(value) ? value.length > 0 : typeof value === "string" ? value.trim() !== "" : value != null;
+        if (hasValue || key === "photo") mergedProfile[key] = value;
+      });
+      profile = Object.assign(Store.getProfile(user.email), mergedProfile);
+      Store.writeBlob(`im_profile_${user.email}`, profile);
+      if (data.cvReview) Store.writeBlob(`im_cv_review_${user.email}`, data.cvReview);
+
+      const localHistory = Store.readBlob(`im_interview_history_${user.email}`, []);
+      const history = [...localHistory];
+      const known = new Set(history.filter((entry) => entry.type === "quiz").map((entry) => `${entry.category}|${entry.score}|${entry.total}|${entry.date}`));
+      (Array.isArray(data.interviewScores) ? data.interviewScores : []).forEach((entry) => {
+        const key = `${entry.category}|${entry.score}|${entry.total}|${entry.date}`;
+        if (!known.has(key)) history.push({ ...entry, type: "quiz" });
+      });
+      history.sort((a, b) => Date.parse(b.date || 0) - Date.parse(a.date || 0));
+      Store.writeBlob(`im_interview_history_${user.email}`, history.slice(0, 100));
+
+      fillForm();
+      renderAchievements();
+      renderInterviewScores();
+      renderAssessmentTracker();
+      renderProfileAtsSummary();
+      syncInterviewScores();
+
+      let consent = {};
+      try { consent = JSON.parse(localStorage.getItem(`im_company_consent_${user.email.toLowerCase()}`) || "{}"); } catch (_) { /* Sharing stays disabled when consent cannot be read. */ }
+      const saveController = new AbortController();
+      const saveTimeout = setTimeout(() => saveController.abort(), 8000);
+      try {
+        const saveResponse = await fetch(`${window.IM_API_BASE}/api/student/profile`, {
+          method: "PUT",
+          headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+          body: JSON.stringify({ profile, profileVisible: consent.profileVisible === true, cvShared: consent.cvShared === true }),
+          signal: saveController.signal
+        });
+        if (!saveResponse.ok) throw new Error(`Profile sync failed (${saveResponse.status}).`);
+      } finally { clearTimeout(saveTimeout); }
+
+      saveStatus.textContent = "Profile and practice scores synced with your student account.";
+    } catch (error) {
+      if (error.name !== "AbortError") console.warn("Student profile could not sync with the server:", error.message);
+      saveStatus.textContent = "Showing your saved profile from this browser; server sync is unavailable right now.";
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   function fillForm() {
@@ -544,5 +648,7 @@ document.addEventListener("DOMContentLoaded", () => {
   fillForm();
   renderAchievements();
   renderInterviewScores();
-  syncInterviewScores();
+  renderAssessmentTracker();
+  document.getElementById("profile-assessments-refresh")?.addEventListener("click", renderAssessmentTracker);
+  hydrateServerProfile();
 });

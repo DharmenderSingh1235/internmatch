@@ -1,52 +1,118 @@
-/* Small persistent store for the local InternMatch portal demo. */
+/* Synchronous in-process view of portal data with durable JSON, SQLite, or MongoDB backing. */
 const fs = require("fs");
 const path = require("path");
-let database = null;
-try {
-  database = require("./database");
-} catch (_) {}
+const crypto = require("crypto");
+const database = require("./database");
 
 const directory = path.join(__dirname, "data");
 const filename = path.join(directory, "portal-data.json");
-let state = { companies: [], companyRequests: [], students: [], internships: [], applications: [], shortlists: [], interviews: [], assessments: [], assessmentSessions: [], assessmentSubmissions: [], supportMessages: [], passwordResetRequests: [], audit: [] };
+const collectionNames = ["companies", "companyRequests", "students", "internships", "applications", "shortlists", "interviews", "assessments", "assessmentSessions", "assessmentSubmissions", "supportMessages", "passwordResetRequests", "practiceAreas", "audit"];
+let state = Object.fromEntries(collectionNames.map((name) => [name, []]));
+const mongoWriteQueue = [];
+let mongoDrain = null;
+let lastMongoError = null;
+let persistenceMode = "json";
 
 try {
-  if (fs.existsSync(filename)) {
-    state = { ...state, ...JSON.parse(fs.readFileSync(filename, "utf8")) };
-    if (database && database.isSqliteAvailable()) {
-      for (const col of ["students", "companies", "companyRequests", "internships", "applications"]) {
-        database.syncCollectionToSqlite(col, state[col]);
-      }
-    }
-  }
-} catch (error) {
-  console.error("Could not load company portal data:", error.message);
-}
+  if (fs.existsSync(filename)) state = { ...state, ...JSON.parse(fs.readFileSync(filename, "utf8")) };
+} catch (error) { console.error("Could not load company portal data:", error.message); }
+state.audit = (state.audit || []).map((entry) => entry.id ? entry : { ...entry, id: `audit-${crypto.randomUUID()}` });
 
-function save() {
+function saveJson() {
   fs.mkdirSync(directory, { recursive: true });
   const temporary = `${filename}.tmp`;
   fs.writeFileSync(temporary, JSON.stringify(state, null, 2), { mode: 0o600 });
   fs.renameSync(temporary, filename);
 }
 
-function collection(name) { return state[name]; }
+const ready = (async () => {
+  if (process.env.MONGODB_URI) {
+    await database.connectMongo();
+    const initialized = await database.isMongoInitialized();
+    if (initialized) {
+      for (const name of collectionNames) state[name] = (await database.loadMongoCollection(name)) || [];
+    } else {
+      for (const name of collectionNames) {
+        const previous = [];
+        await database.syncMongoCollection(name, previous, state[name] || []);
+      }
+      await database.markMongoInitialized();
+      console.log("✓ Existing local portal records migrated to MongoDB (first configured run)");
+    }
+    persistenceMode = "mongodb";
+    return;
+  }
+  if (database.isSqliteAvailable()) {
+    for (const name of ["students", "companies", "companyRequests", "internships", "applications"]) database.syncCollectionToSqlite(name, state[name] || []);
+    persistenceMode = "sqlite-json";
+  } else persistenceMode = "json";
+})();
+
+function collection(name) { return state[name] || []; }
+function drainMongoQueue() {
+  if (!mongoDrain) mongoDrain = (async () => {
+    while (mongoWriteQueue.length) {
+      await mongoWriteQueue[0]();
+      mongoWriteQueue.shift();
+      lastMongoError = null;
+    }
+  })().catch((error) => {
+    lastMongoError = error;
+    console.error("[MongoDB persistence error]:", error.message);
+  }).finally(() => { mongoDrain = null; });
+  return mongoDrain;
+}
+function enqueueMongoWrite(task) {
+  mongoWriteQueue.push(task);
+  void drainMongoQueue();
+}
 function update(name, transform) {
-  state[name] = transform(state[name]);
-  save();
-  if (database && database.isSqliteAvailable()) {
-    database.syncCollectionToSqlite(name, state[name]);
+  const previous = state[name] || [];
+  const next = transform(previous);
+  state[name] = next;
+  if (persistenceMode === "mongodb") enqueueMongoWrite(() => database.syncMongoCollection(name, previous, next));
+  else {
+    saveJson();
+    if (database.isSqliteAvailable()) database.syncCollectionToSqlite(name, state[name]);
   }
   return state[name];
 }
 function addAudit(entry) {
-  const record = { ...entry, at: new Date().toISOString() };
-  state.audit.unshift(record);
-  state.audit = state.audit.slice(0, 2000);
-  save();
-  if (database && database.isSqliteAvailable()) {
-    database.recordAuditToSqlite(record);
+  const previous = (state.audit || []).slice();
+  const record = { ...entry, id: `audit-${crypto.randomUUID()}`, at: new Date().toISOString() };
+  const next = [record, ...previous].slice(0, 2000);
+  state.audit = next;
+  if (persistenceMode === "mongodb") enqueueMongoWrite(() => database.syncMongoCollection("audit", previous, next));
+  else {
+    saveJson();
+    if (database.isSqliteAvailable()) database.recordAuditToSqlite(record);
   }
 }
+async function flush() {
+  await drainMongoQueue();
+  if (lastMongoError) throw lastMongoError;
+}
 
-module.exports = { collection, update, addAudit, isSqlite: () => (database ? database.isSqliteAvailable() : false) };
+const mongoSessions = process.env.MONGODB_URI ? {
+  put: (...args) => database.mongoSessionStore()?.put(...args),
+  get: (...args) => database.mongoSessionStore()?.get(...args),
+  delete: (...args) => database.mongoSessionStore()?.delete(...args),
+  deleteForAccount: (...args) => database.mongoSessionStore()?.deleteForAccount(...args),
+  prune: (...args) => database.mongoSessionStore()?.prune(...args)
+} : null;
+const sqliteSessions = !process.env.MONGODB_URI && database.isSqliteAvailable() ? {
+  put: database.putSession, get: database.getSession, delete: database.deleteSession,
+  deleteForAccount: database.deleteSessionsForAccount, prune: database.deleteExpiredSessions
+} : null;
+
+module.exports = {
+  ready,
+  flush,
+  collection,
+  update,
+  addAudit,
+  isSqlite: () => persistenceMode === "sqlite-json",
+  storageMode: () => persistenceMode,
+  sessionStore: mongoSessions || sqliteSessions,
+  close: database.closeDatabase
+};

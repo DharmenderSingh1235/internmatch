@@ -1306,3 +1306,13 @@ input:focus, select:focus, textarea:focus {
   background: #b91c1c;
 }
 
+.admin-practice-manager__upload {
+  margin: 1rem 0 1.25rem;
+  padding: 1rem;
+  border: 1px solid var(--border, #dbe3ef);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface, #fff) 88%, #eef4ff);
+}
+.admin-practice-manager__upload h4 { margin: 0 0 .35rem; }
+.admin-practice-manager__upload .panel__head { align-items: center; gap: .8rem; flex-wrap: wrap; }
+#admin-practice-generation-status { flex: 1 1 260px; }

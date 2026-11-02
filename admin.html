@@ -201,6 +201,51 @@
 .company-access-state { display:inline-flex; padding:4px 9px; border-radius:999px; color:#76551a; background:#fff2cd; font-size:.75rem; font-weight:700; }
 @media(max-width:760px) { .admin-reset-request { grid-template-columns:1fr; } }
 @media(max-width:760px) { .company-access-request__meta { grid-template-columns:1fr 1fr; } .company-access-request__head { display:block; } }
+.admin-practice-manager { margin-top:22px; padding:20px; border:1px solid var(--color-border); border-radius:16px; background:var(--color-bg-alt); }
+.admin-practice-manager__head { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:14px; }
+.admin-practice-manager__head h3 { margin:0 0 4px; }
+.admin-practice-manager__head p { margin:0; color:var(--color-muted); font-size:.84rem; }
+.admin-practice-form-grid { display:grid; grid-template-columns:minmax(0,1fr) 120px; gap:0 12px; }
+.admin-practice-form-grid .field:last-child { grid-column:1/-1; }
+.admin-practice-question-list { display:grid; gap:10px; margin:12px 0; }
+.admin-practice-question { padding:14px; border:1px solid var(--color-border); border-radius:12px; background:var(--color-surface); }
+.admin-practice-question__head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:9px; }
+.admin-practice-question__head strong { font-size:.86rem; }
+.admin-practice-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 10px; }
+.admin-practice-area-list { display:grid; gap:9px; margin-top:18px; }
+.admin-practice-area-row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 14px; border:1px solid var(--color-border); border-radius:11px; background:var(--color-surface); }
+.admin-practice-area-row p { margin:3px 0 0; color:var(--color-muted); font-size:.8rem; }
+.admin-practice-area-row__actions { display:flex; gap:7px; flex:0 0 auto; }
+@media(max-width:600px) { .admin-practice-form-grid,.admin-practice-options { grid-template-columns:1fr; } .admin-practice-area-row { align-items:flex-start; flex-direction:column; } }
+.admin-practice-manager { margin-top:24px; padding:clamp(16px,2.4vw,26px); border:1px solid #dce5f2; border-radius:20px; background:linear-gradient(145deg,#f8fbff,#f0f5fc); box-shadow:0 14px 36px rgba(27,54,94,.07); }
+.admin-practice-manager__head { margin-bottom:20px; padding-bottom:17px; border-bottom:1px solid #dce5f2; }
+.admin-practice-manager__head h3 { margin:5px 0; font-size:1.2rem; letter-spacing:-.02em; }
+.admin-practice-manager__head p { max-width:720px; font-size:.88rem; line-height:1.55; }
+.admin-practice-manager__head .admin-settings__eyebrow { display:inline-flex; padding:5px 9px; border:1px solid #d5e4fa; border-radius:999px; background:#eaf2ff; color:#2857a5; }
+.admin-practice-manager .field label { font-weight:650; }
+.admin-practice-manager input,.admin-practice-manager textarea,.admin-practice-manager select { border-radius:10px; }
+.admin-practice-manager__upload { margin:18px 0 22px; padding:18px; border:1px solid #d4e2f3; border-radius:16px; background:linear-gradient(135deg,#fff,#f1f7ff); }
+.admin-practice-manager__upload h4 { margin:0 0 4px; font-size:1rem; }
+.admin-practice-manager__upload > p { margin:0 0 14px; max-width:760px; line-height:1.55; }
+.admin-practice-manager__upload .admin-practice-form-grid { grid-template-columns:minmax(0,1fr) 170px; align-items:end; }
+.admin-practice-manager__upload .admin-practice-form-grid .field:last-child { grid-column:auto; }
+.admin-practice-manager__upload input[type="file"] { min-height:44px; padding:8px; background:#fff; }
+.admin-practice-manager__upload .panel__head { display:flex; align-items:center; justify-content:flex-start; gap:12px; flex-wrap:wrap; margin:0; }
+#admin-practice-generation-status { flex:1 1 280px; margin:0; line-height:1.45; }
+.admin-practice-manager .panel__head:has(#admin-practice-question-add) { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 0 8px; border-bottom:1px solid #dce5f2; }
+.admin-practice-manager .panel__head h4 { margin:0; font-size:1rem; }
+.admin-practice-question { padding:16px; border-color:#dce5f2; border-radius:14px; box-shadow:0 4px 14px rgba(28,54,91,.04); }
+.admin-practice-question__head strong { color:#2857a5; font-size:.9rem; }
+.admin-practice-manager #admin-practice-area-save { min-height:44px; padding-inline:20px; }
+.admin-practice-area-list__heading { margin-top:22px; padding-top:18px; border-top:1px solid #dce5f2; }
+.admin-practice-area-list__heading h4 { margin:0 0 3px; font-size:1rem; }
+.admin-practice-area-list__heading p { margin:0; color:var(--color-muted); font-size:.84rem; }
+.admin-practice-area-list { gap:10px; margin-top:12px; }
+.admin-practice-area-row { padding:15px 16px; border-color:#dce5f2; border-radius:14px; box-shadow:0 4px 14px rgba(28,54,91,.04); }
+.admin-practice-area-row > div:first-child { min-width:0; }
+.admin-practice-area-row > div:first-child strong { font-size:.94rem; }
+.admin-practice-area-row p { margin-top:5px; font-size:.82rem; line-height:1.5; }
+@media(max-width:600px) { .admin-practice-manager__upload .admin-practice-form-grid { grid-template-columns:1fr; } .admin-practice-manager__upload .admin-practice-form-grid .field:last-child { grid-column:auto; } .admin-practice-manager__head { flex-direction:column; } }
 </style>
 </head>
 <body>
@@ -347,7 +392,10 @@
 
     <div class="panel" id="admin-students">
       <h2 class="mt-0">Student directory</h2>
-      <p class="hint">Select a student to open their saved profile and activity record.</p>
+      <p class="hint">The server directory shows registered student accounts and server-backed records. Select a student to open their profile, applications, interview scores, and uploaded CV.</p>
+      <div class="panel__head"><h3 class="mt-0">Registered student accounts</h3><button type="button" class="btn btn--ghost btn--sm" id="admin-server-students-refresh">Refresh server directory</button></div>
+      <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Student</th><th>Education</th><th>Skills</th><th>Applications</th><th>CV access</th><th>Action</th></tr></thead><tbody id="admin-server-student-tbody"><tr><td colspan="6">Loading registered students…</td></tr></tbody></table></div>
+      <h3>Browser demo profiles</h3><p class="hint">These legacy demo records exist only in this browser.</p>
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead><tr><th>Student profile</th><th>Education</th><th>Skills &amp; interests</th><th>Preferences</th><th>Applications</th></tr></thead>
@@ -363,12 +411,16 @@
     </section>
     <section class="panel" id="admin-company-list" style="display:none;">
       <div class="panel__head"><div><span class="admin-settings__eyebrow">Approved recruiters</span><h2 class="mt-0">Company list</h2></div></div>
-      <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Company</th><th>Contact</th><th>Work email</th><th>Industry</th><th>Location</th><th>Status</th></tr></thead><tbody id="admin-company-tbody"></tbody></table></div>
+      <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Company</th><th>Contact</th><th>Work email</th><th>Industry</th><th>Location</th><th>Status</th><th>Actions</th></tr></thead><tbody id="admin-company-tbody"></tbody></table></div>
     </section>
 
     <dialog class="admin-student-dialog" id="admin-student-dialog" aria-labelledby="admin-student-dialog-title">
       <div class="admin-student-dialog__head"><div><span class="admin-settings__eyebrow">Student record</span><h2 id="admin-student-dialog-title">Student details</h2></div><button type="button" class="btn btn--ghost btn--sm" id="admin-student-dialog-close" aria-label="Close student details">Close</button></div>
       <div class="admin-student-dialog__body"><div class="admin-student-record" id="admin-student-dialog-content"></div></div>
+    </dialog>
+    <dialog class="admin-student-dialog" id="admin-company-dialog" aria-labelledby="admin-company-dialog-title">
+      <div class="admin-student-dialog__head"><div><span class="admin-settings__eyebrow">Company record</span><h2 id="admin-company-dialog-title">Company details</h2></div><button type="button" class="btn btn--ghost btn--sm" id="admin-company-dialog-close" aria-label="Close company details">Close</button></div>
+      <div class="admin-student-dialog__body" id="admin-company-dialog-content"></div>
     </dialog>
     <dialog class="admin-cv-dialog" id="admin-cv-dialog" aria-labelledby="admin-cv-dialog-title">
       <div class="admin-cv-dialog__head">
@@ -420,6 +472,30 @@
       <p class="hint">Review company-created assessments before publishing them to applicants. MCQ answer keys remain private to the server; submitted results are available to the recruiting company.</p>
       <div class="panel__head"><h3>Company assessments awaiting review</h3><button type="button" class="btn btn--ghost btn--sm" id="admin-assessments-refresh">Refresh queue</button></div>
       <div id="admin-assessment-review-list" class="company-review-list"></div>
+      <section class="admin-practice-manager" aria-labelledby="admin-practice-area-title">
+        <div class="admin-practice-manager__head"><div><span class="admin-settings__eyebrow">STUDENT LEARNING</span><h3 id="admin-practice-area-title">Student interview practice areas</h3><p>Build focused practice sets from your question bank or learning materials. Active topics appear in Interview Prep → Choose a practice area.</p></div><span class="admin-settings__eyebrow">Admin managed</span></div>
+        <form id="admin-practice-area-form">
+          <div class="admin-practice-form-grid">
+            <div class="field"><label for="practice-area-title">Practice area name</label><input id="practice-area-title" maxlength="80" required placeholder="e.g. Networking fundamentals" /></div>
+            <div class="field"><label for="practice-area-icon">Icon</label><input id="practice-area-icon" maxlength="12" value="✦" /></div>
+            <div class="field"><label for="practice-area-description">Short description</label><input id="practice-area-description" maxlength="240" placeholder="What students will practice" /></div>
+          </div>
+          <div class="admin-practice-manager__upload">
+            <h4>Draft questions from a file</h4>
+            <p class="hint">Upload study material or an interview guide. PDF, TXT, and DOCX files up to 3 MB are supported. Extracted text is sent to your configured AI provider; the source file is not stored.</p>
+            <div class="admin-practice-form-grid">
+              <div class="field"><label for="practice-area-source-file">Source file</label><input id="practice-area-source-file" type="file" accept=".pdf,.txt,.docx,application/pdf,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document" /></div>
+              <div class="field"><label for="practice-area-question-count">Questions to draft</label><select id="practice-area-question-count"><option>5</option><option>10</option><option>15</option><option>20</option></select></div>
+            </div>
+            <div class="panel__head"><button type="button" class="btn btn--secondary" id="admin-practice-generate-questions">Generate editable questions</button><span class="hint" id="admin-practice-generation-status" role="status" aria-live="polite"></span></div>
+          </div>
+          <div class="panel__head"><h4>Multiple-choice questions</h4><button type="button" class="btn btn--ghost btn--sm" id="admin-practice-question-add">＋ Add question</button></div>
+          <div class="admin-practice-question-list" id="admin-practice-question-list"></div>
+          <button type="submit" class="btn btn--primary" id="admin-practice-area-save">Save practice area</button>
+        </form>
+        <div class="admin-practice-area-list__heading"><div><h4>Published practice areas</h4><p>Manage which question sets students can access.</p></div></div>
+        <div class="admin-practice-area-list" id="admin-practice-area-list"><p class="hint">Loading admin-created practice areas…</p></div>
+      </section>
       <div class="admin-overview__stats admin-overview__stats--compact">
         <article class="stat-card"><div class="stat-card__label">Quiz attempts</div><div class="stat-card__value" id="admin-assessment-attempts">0</div></article>
         <article class="stat-card"><div class="stat-card__label">Average practice score</div><div class="stat-card__value" id="admin-assessment-average">—</div></article>
@@ -466,5 +542,6 @@
 <script src="js/resume-vault.js"></script>
 <script src="js/admin.js?v=20261027-assessment-approval-inbox"></script>
 <script src="js/admin-analytics.js"></script>
+<script src="js/admin-practice-areas.js?v=20261103-practice-api-diagnostic"></script>
 </body>
 </html>

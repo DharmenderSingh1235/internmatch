@@ -1,6 +1,6 @@
 # InternMatch AI chatbot backend
 
-This Express API connects the career chatbot to OpenAI, Google Gemini, or Anthropic Claude and provides shared accounts and data for the student, admin, and company workflows. Provider API keys stay on the server and are never placed in browser JavaScript. Portal records are stored in `server/data/portal-data.json`.
+This Express API connects the career chatbot to OpenAI, Google Gemini, or Anthropic Claude and provides shared accounts and data for the student, admin, and company workflows. Provider API keys and database credentials stay on the server and are never placed in browser JavaScript. The API supports managed MongoDB via `MONGODB_URI`; without it, local development uses SQLite with a JSON backup when available, or JSON storage as a fallback.
 
 ## Setup
 
@@ -20,15 +20,29 @@ The API key must be supplied by you. Keep `.env` private; it is excluded by `.gi
 | `AI_PROVIDER` | `openai` (default), `gemini`, or `anthropic` |
 | `OPENAI_API_KEY`, `GEMINI_API_KEY`, `ANTHROPIC_API_KEY` | Provider key matching `AI_PROVIDER` |
 | `OPENAI_MODEL`, `GEMINI_MODEL`, `ANTHROPIC_MODEL` | Optional model override for that provider |
+| `GEMINI_FALLBACK_MODEL` | Gemini model used for assessment drafts when the primary model is temporarily overloaded (default `gemini-2.5-flash`) |
 | `PORT` | Proxy port (default `3002`) |
-| `ALLOWED_ORIGIN` | Exact deployed site origin; localhost origins are allowed for development |
+| `ALLOWED_ORIGIN` | Exact deployed site origin(s), comma-separated; localhost origins are allowed for development |
+| `TRUST_PROXY` | Set to `true` only when exactly one trusted reverse proxy sits in front of the API; otherwise leave `false` |
 | `ADMIN_PASSWORD` | Password for the admin login; set a private value before using the portal |
+| `MONGODB_URI` | Optional MongoDB Atlas or MongoDB connection string. Set this to make MongoDB the primary portal store. |
+| `MONGODB_DB` | Database name (default: the database name in the connection string) |
+| `MONGODB_MAX_POOL_SIZE` | Maximum MongoDB connection pool size per server instance (default: 20) |
 
-The backend grounds internship answers in the local sample catalogue and rate-limits chat requests to 20 per five minutes per IP. Sample listings are fictional. The in-memory rate limiter is suitable for demos; deploy behind a production rate limiter for public use.
+The backend grounds internship answers in the local sample catalogue and rate-limits chat requests to 20 per five minutes per IP. Sign-in, registration, and reset requests have both per-account limits and higher per-IP limits so students sharing a campus network are less likely to block one another. Password hashing is asynchronous. With MongoDB enabled, portal records and hashed login sessions are stored in shared MongoDB collections; API writes wait for MongoDB persistence before returning success. On the first MongoDB startup, existing `server/data/portal-data.json` records are imported if MongoDB has not already been initialized. After that, MongoDB is authoritative. Without `MONGODB_URI`, the local SQLite/JSON fallback remains available. The API adds security headers, disables response caching for API data, limits interview signaling payloads, and returns JSON errors for API failures. MongoDB is a stronger shared storage foundation, but does not guarantee a 1,000-user capacity by itself; load-test the deployed API and size the host/database for expected traffic. Sample listings are fictional.
+
+## Enable MongoDB Atlas
+
+1. Create a MongoDB Atlas cluster, a database user, and a network access rule for the API host. Prefer a narrow IP allowlist where your host provides stable egress IPs; avoid opening database access to all IPs for production.
+2. Copy `server/.env.example` to `server/.env` and replace the `MONGODB_URI` placeholders with the Atlas connection string. Keep the URI out of Git, frontend files, and chat messages.
+3. Run `npm install` from the `server` folder so the MongoDB Node driver is installed, then start with `npm start`.
+4. Open `/api/health`; it should report `"storage":"mongodb"` and `"sessionStorage":"mongodb"`.
+
+For Vercel or another hosted deployment, add `MONGODB_URI`, `MONGODB_DB`, and the existing AI/admin secrets in that project's server environment settings, then redeploy the API. Do not copy the local `.env` file to the frontend project.
 
 ## Company and student workflow
 
-- Companies can upload a PDF, DOCX, TXT, or Markdown source document to draft assessment questions. The API extracts text in memory, sends the text to the configured AI provider, and returns editable question drafts; the original file and extracted text are not saved by this feature. Scanned/image-only PDFs are not supported. Companies must review every generated question and answer key before submission, and the usual admin approval is still required.
+- Companies can upload a PDF, DOCX, TXT, or Markdown source document to draft assessment questions. The API extracts text in memory, sends the text to the configured AI provider, and returns editable question drafts; the original file and extracted text are not saved by this feature. Gemini assessment generation retries temporary capacity errors once and then tries `GEMINI_FALLBACK_MODEL`. Scanned/image-only PDFs are not supported. Companies must review every generated question and answer key before submission, and the usual admin approval is still required.
 - Recruiters submit a registration request from `company-register.html`. Requests are visible only to admins in the **Company access requests** section. An admin can approve or reject each request. Approval adds the company to the approved company list and enables login; pending or rejected companies cannot sign in. Admins can manage approved company accounts through protected `/api/admin/companies` routes.
 - Signed-in recruiters can submit internships or jobs with their eligibility, skills, location, compensation, deadline, and role details.
 - New and edited postings require admin approval before they appear in the student catalogue. Admins can approve or reject them from the Internship management review queue.

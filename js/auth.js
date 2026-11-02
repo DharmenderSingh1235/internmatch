@@ -183,7 +183,6 @@ document.addEventListener("DOMContentLoaded", () => {
       e.preventDefault();
       const name = document.getElementById("reg-name").value.trim();
       const email = document.getElementById("reg-email").value.trim();
-      const college = document.getElementById("reg-college").value.trim();
       const role = "student";
       const password = document.getElementById("reg-password").value;
       const confirm = document.getElementById("reg-confirm").value;
@@ -203,14 +202,14 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!response.ok) { App.toast(data.error || "Could not register this account.", "error"); return; }
         remote = data;
       } catch (_) { /* Local demo account can still be created while the server is offline. */ }
-      const result = Store.registerUser({ name, email, password, college, role });
+      const result = Store.registerUser({ name, email, password, role });
       if (!result.ok) {
         App.toast(result.error, "error");
         return;
       }
       if (remote?.token) sessionStorage.setItem("im_student_api_token", remote.token);
       else App.toast("Account saved in this browser only. Start the server to sync your account.", "warning");
-      Store.saveProfile(result.user.email, { fullName: name, college });
+      Store.saveProfile(result.user.email, { fullName: name });
       App.toast("Account created. Let's build your profile.");
       window.location.href = "profile.html";
     });

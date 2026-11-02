@@ -88,12 +88,42 @@ document.addEventListener("DOMContentLoaded", () => {
     const consent = getCompanyConsent();
     companyProfileShare.checked = consent.profileVisible === true;
     companyCvShare.checked = consent.cvShared === true;
-    companyProfileShare.disabled = !user || !studentToken();
-    companyCvShare.disabled = !user || !studentToken() || !companyProfileShare.checked;
-    if (!user || !studentToken()) companyShareStatus.textContent = "Sign in with the InternMatch server running to share your profile with companies.";
-    else if (companyCvShare.checked) companyShareStatus.textContent = "Your profile and CV are shared with active company accounts. You can revoke access here.";
-    else if (companyProfileShare.checked) companyShareStatus.textContent = "Your profile is visible to active company accounts. Your CV remains private.";
-    else companyShareStatus.textContent = "Your profile and CV are private from companies until you opt in.";
+    const loginHref = "login.html?role=student&next=resume-analyzer.html";
+    const showLoginLink = (message) => {
+      companyProfileShare.disabled = true;
+      companyCvShare.disabled = true;
+      companyShareStatus.innerHTML = `${App.escapeHtml(message)} <a href="${loginHref}">Sign in again</a>.`;
+    };
+    const showSharingState = () => {
+      companyProfileShare.disabled = false;
+      companyCvShare.disabled = !companyProfileShare.checked;
+      if (companyCvShare.checked) companyShareStatus.textContent = "Your profile is discoverable; your CV is shared with companies you apply to. You can revoke either permission here.";
+      else if (companyProfileShare.checked) companyShareStatus.textContent = "Your profile is discoverable by active companies. Your CV remains private.";
+      else companyShareStatus.textContent = "Your profile and CV are private from companies until you opt in.";
+    };
+    if (!user || user.role !== "student") {
+      showLoginLink("Sign in with a student account and the InternMatch API to manage company sharing.");
+    } else if (!studentToken()) {
+      showLoginLink("Your browser has no server sign-in session, so sharing controls are paused.");
+    } else {
+      companyProfileShare.disabled = true;
+      companyCvShare.disabled = true;
+      companyShareStatus.textContent = "Checking your saved sharing permissions…";
+      fetch(`${window.IM_API_BASE}/api/student/profile`, { headers: { authorization: `Bearer ${studentToken()}` }, cache: "no-store" })
+        .then(async (response) => {
+          const data = await response.json().catch(() => ({}));
+          if (response.status === 401) throw new Error("SESSION_EXPIRED");
+          if (!response.ok) throw new Error(data.error || "Could not load sharing permissions.");
+          companyProfileShare.checked = data.profileVisible === true;
+          companyCvShare.checked = data.cvShared === true && data.profileVisible === true;
+          localStorage.setItem(consentKey, JSON.stringify({ profileVisible: companyProfileShare.checked, cvShared: companyCvShare.checked }));
+          showSharingState();
+        })
+        .catch((error) => {
+          if (error.message === "SESSION_EXPIRED") sessionStorage.removeItem("im_student_api_token");
+          showLoginLink(error.message === "SESSION_EXPIRED" ? "Your server session expired. Sign in again to update sharing permissions." : error.message);
+        });
+    }
   }
 
   allInternships.slice().sort((a, b) => a.title.localeCompare(b.title)).forEach((internship) => {
@@ -149,7 +179,12 @@ document.addEventListener("DOMContentLoaded", () => {
       saveSharedCV(selectedFile).catch(() => { adminShareStatus.textContent = "Could not save the CV locally. Try a smaller PDF or another browser."; });
     }
     if (selectedFile && companyCvShare?.checked && companyProfileShare?.checked) {
-      uploadCompanyCv(selectedFile).then(() => { companyShareStatus.textContent = "Your updated CV is shared with active company accounts."; }).catch((error) => { companyCvShare.checked = false; companyShareStatus.textContent = error.message; });
+      uploadCompanyCv(selectedFile).then(() => { companyShareStatus.textContent = "Your updated CV is shared with active company accounts you apply to."; }).catch(async (error) => {
+        companyCvShare.checked = false;
+        const consent = { profileVisible: true, cvShared: false };
+        try { localStorage.setItem(consentKey, JSON.stringify(consent)); await sendCompanyConsent(true, false); } catch (_) { /* Keep the upload error visible; the API may be unavailable. */ }
+        companyShareStatus.textContent = error.message;
+      });
     }
   });
 
@@ -160,11 +195,11 @@ document.addEventListener("DOMContentLoaded", () => {
     companyCvShare.disabled = !profileVisible || !studentToken();
     if (!profileVisible) companyCvShare.checked = false;
     try {
-      localStorage.setItem(consentKey, JSON.stringify({ profileVisible, cvShared }));
       await sendCompanyConsent(profileVisible, cvShared);
-      if (!profileVisible) await fetch(`${window.IM_API_BASE}/api/student/cv`, { method: "DELETE", headers: { authorization: `Bearer ${studentToken()}` } });
-      companyShareStatus.textContent = profileVisible ? "Your profile is visible to active company accounts. Your CV remains private unless separately shared." : "Company access to your profile and CV has been turned off.";
+      localStorage.setItem(consentKey, JSON.stringify({ profileVisible, cvShared }));
+      companyShareStatus.textContent = profileVisible ? "Your profile is discoverable by active company accounts. Your CV remains private unless separately shared." : "Company access to your profile and CV has been turned off.";
     } catch (error) {
+      try { localStorage.setItem(consentKey, JSON.stringify(prior)); } catch (_) { /* Leave the last saved browser preference unchanged. */ }
       companyProfileShare.checked = prior.profileVisible === true;
       companyCvShare.checked = prior.cvShared === true;
       companyCvShare.disabled = !companyProfileShare.checked || !studentToken();
@@ -174,19 +209,25 @@ document.addEventListener("DOMContentLoaded", () => {
   companyCvShare?.addEventListener("change", async () => {
     const cvShared = companyCvShare.checked;
     const prior = getCompanyConsent();
+    let serverConsentUpdated = false;
     try {
       if (cvShared) {
         if (!companyProfileShare.checked) throw new Error("Enable profile sharing first.");
         if (!selectedFile) throw new Error("Select a PDF before sharing your CV.");
         await sendCompanyConsent(true, true);
+        serverConsentUpdated = true;
         await uploadCompanyCv(selectedFile);
       } else {
-        await fetch(`${window.IM_API_BASE}/api/student/cv`, { method: "DELETE", headers: { authorization: `Bearer ${studentToken()}` } });
         await sendCompanyConsent(companyProfileShare.checked, false);
+        serverConsentUpdated = true;
       }
       localStorage.setItem(consentKey, JSON.stringify({ profileVisible: companyProfileShare.checked, cvShared }));
-      companyShareStatus.textContent = cvShared ? "Your PDF is shared with active company accounts." : "Your CV has been removed from company access.";
+      companyShareStatus.textContent = cvShared ? "Your PDF is shared with active companies you apply to." : "Your CV has been removed from company access.";
     } catch (error) {
+      if (cvShared && serverConsentUpdated && prior.cvShared !== true) {
+        try { await sendCompanyConsent(companyProfileShare.checked, false); } catch (_) { /* Server may be offline; preserve the original failure below. */ }
+      }
+      try { localStorage.setItem(consentKey, JSON.stringify(prior)); } catch (_) { /* Leave the last saved browser preference unchanged. */ }
       companyCvShare.checked = prior.cvShared === true;
       companyShareStatus.textContent = error.message;
     }

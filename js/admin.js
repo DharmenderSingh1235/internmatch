@@ -42,6 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (viewName === "notifications") { renderSupportInbox(); renderPasswordResetRequests(); }
     if (viewName === "internships") renderCompanyReviewQueue();
     if (viewName === "companies") renderCompanyAccounts();
+    if (viewName === "users") renderAdminServerStudents();
     if (viewName === "assessments") renderAssessmentReviewQueue();
   }
   async function renderAssessmentReviewQueue() {
@@ -89,13 +90,19 @@ document.addEventListener("DOMContentLoaded", () => {
     const companyBody = document.getElementById("admin-company-tbody");
     if (!requestsList || !companyBody) return;
     requestsList.innerHTML = '<p class="hint">Loading company requests…</p>';
-    companyBody.innerHTML = '<tr><td colspan="6">Loading approved companies…</td></tr>';
+    companyBody.innerHTML = '<tr><td colspan="7">Loading approved companies…</td></tr>';
     try {
       const [requestData, companyData] = await Promise.all([adminApi("/admin/company-requests"), adminApi("/admin/companies")]);
       const requests = requestData.items || [];
       requestsList.innerHTML = requests.length ? requests.map((item) => `<article class="company-access-request" data-company-request="${App.escapeHtml(item.id)}"><div class="company-access-request__head"><div><span class="company-access-state">Pending admin approval</span><h3>${App.escapeHtml(item.name)}</h3><p>${App.escapeHtml(item.contact || "Contact not provided")} · ${App.escapeHtml(item.email)}</p></div><strong>Requested ${App.escapeHtml(App.formatDate(item.requestedAt))}</strong></div><div class="company-access-request__meta"><span><b>Industry</b>${App.escapeHtml(item.industry || "—")}</span><span><b>Location</b>${App.escapeHtml(item.location || "—")}</span><span><b>Website</b>${App.escapeHtml(item.website || "—")}</span></div>${item.about ? `<p>${App.escapeHtml(item.about)}</p>` : ""}<div class="company-access-request__actions"><button type="button" class="btn btn--primary btn--sm" data-company-decision="approve">Approve &amp; add to company list</button><button type="button" class="btn btn--ghost btn--sm" data-company-decision="reject">Reject request</button></div></article>`).join("") : '<div class="admin-panel-note">No pending company registration requests.</div>';
-      companyBody.innerHTML = (companyData.items || []).length ? companyData.items.map((company) => `<tr><td>${App.escapeHtml(company.name)}</td><td>${App.escapeHtml(company.contact || "—")}</td><td>${App.escapeHtml(company.email)}</td><td>${App.escapeHtml(company.industry || "—")}</td><td>${App.escapeHtml(company.location || "—")}</td><td>${App.escapeHtml(company.status || "active")}</td></tr>`).join("") : '<tr><td colspan="6">No approved company accounts yet.</td></tr>';
+      companyBody.innerHTML = (companyData.items || []).length ? companyData.items.map((company) => `<tr><td>${App.escapeHtml(company.name)}</td><td>${App.escapeHtml(company.contact || "—")}</td><td>${App.escapeHtml(company.email)}</td><td>${App.escapeHtml(company.industry || "—")}</td><td>${App.escapeHtml(company.location || "—")}</td><td>${App.escapeHtml(company.status || "active")}<div class="admin-cell-tags">${Number(company.roleCount)||0} roles · ${Number(company.applicantCount)||0} applicants · ${Number(company.interviewCount)||0} interviews</div></td><td><button class="btn btn--secondary btn--sm" data-company-open="${App.escapeHtml(company.id)}">Open record</button> <button class="btn btn--ghost btn--sm" data-company-status="${App.escapeHtml(company.id)}" data-next-status="${company.status === "suspended" ? "active" : "suspended"}">${company.status === "suspended" ? "Reactivate" : "Suspend"}</button></td></tr>`).join("") : '<tr><td colspan="7">No approved company accounts yet.</td></tr>';
       const stat = document.getElementById("admin-stat-companies"); if (stat) stat.textContent = (companyData.items || []).filter((company) => company.status === "active").length;
+      companyBody.querySelectorAll("[data-company-open]").forEach((button) => button.addEventListener("click", () => openAdminCompany(button.dataset.companyOpen)));
+      companyBody.querySelectorAll("[data-company-status]").forEach((button) => button.addEventListener("click", async () => {
+        button.disabled = true;
+        try { await adminApi(`/admin/companies/${encodeURIComponent(button.dataset.companyStatus)}/status`, { method: "PATCH", body: JSON.stringify({ status: button.dataset.nextStatus }) }); App.toast(`Company ${button.dataset.nextStatus === "active" ? "reactivated" : "suspended"}.`); await renderCompanyAccounts(); }
+        catch (error) { App.toast(error.message, "error"); button.disabled = false; }
+      }));
       requestsList.querySelectorAll("[data-company-decision]").forEach((button) => button.addEventListener("click", async () => {
         const card = button.closest("[data-company-request]");
         const decision = button.dataset.companyDecision;
@@ -104,7 +111,33 @@ document.addEventListener("DOMContentLoaded", () => {
         try { await adminApi(`/admin/company-requests/${encodeURIComponent(card.dataset.companyRequest)}`, { method: "PATCH", body: JSON.stringify({ decision }) }); App.toast(decision === "approve" ? "Company approved and added to the company list." : "Company request rejected."); renderCompanyAccounts(); }
         catch (error) { App.toast(error.message, "error"); button.disabled = false; }
       }));
-    } catch (error) { requestsList.innerHTML = `<p class="hint">${App.escapeHtml(error.message)}</p>`; companyBody.innerHTML = `<tr><td colspan="6">${App.escapeHtml(error.message)}</td></tr>`; }
+    } catch (error) { requestsList.innerHTML = `<p class="hint">${App.escapeHtml(error.message)}</p>`; companyBody.innerHTML = `<tr><td colspan="7">${App.escapeHtml(error.message)}</td></tr>`; }
+  }
+  const adminCompanyDialog = document.getElementById("admin-company-dialog");
+  document.getElementById("admin-company-dialog-close")?.addEventListener("click", () => adminCompanyDialog.close());
+  async function openServerStudentCv(student) {
+    const response = await fetch(`${window.IM_API_BASE}/api/admin/students/${encodeURIComponent(student.id)}/cv`, { headers: { authorization: `Bearer ${sessionStorage.getItem("im_admin_api_token") || ""}` } });
+    if (!response.ok) { const message = await response.json().catch(()=>({})); throw new Error(message.error || `CV request failed (${response.status}).`); }
+    if (activeCvUrl) URL.revokeObjectURL(activeCvUrl);
+    activeCvUrl = URL.createObjectURL(await response.blob()); cvFrame.src = activeCvUrl;
+    activeCvEmail = student.email || ""; activeCvStudentId = student.id;
+    document.getElementById("admin-cv-dialog-title").textContent = `${student.name || "Student"} · CV`;
+    showCvReviewState(student.cvReview || null); cvDialog.showModal();
+  }
+  async function openAdminCompany(id) {
+    const content = document.getElementById("admin-company-dialog-content");
+    content.innerHTML = '<p class="hint">Loading company record…</p>';
+    adminCompanyDialog.showModal();
+    try {
+      const data = await adminApi(`/admin/companies/${encodeURIComponent(id)}`);
+      const c = data.company || {};
+      document.getElementById("admin-company-dialog-title").textContent = c.name || "Company details";
+      const safe = (v) => App.escapeHtml(v == null || v === "" ? "—" : String(v));
+      const detail = (label, value) => `<div><dt>${label}</dt><dd>${value}</dd></div>`;
+      const roles = data.roles || [], apps = data.applications || [], meetings = data.interviews || [], assessments = data.assessments || [];
+      content.innerHTML = `<section class="admin-record-section"><h4>Company profile</h4><dl class="admin-profile-grid">${detail("Work email", safe(c.email))}${detail("Contact", safe(c.contact))}${detail("Industry", safe(c.industry))}${detail("Location", safe(c.location))}${detail("Website", c.website ? `<a href="${safe(c.website)}" target="_blank" rel="noopener noreferrer">Open website ↗</a>` : "—")}${detail("Account status", safe(c.status))}${detail("About", safe(c.about))}</dl></section><section class="admin-record-section"><h4>Opportunity listings · ${roles.length}</h4>${roles.length ? `<ul class="admin-record-list">${roles.map(r=>`<li><strong>${safe(r.title)}</strong> · ${safe(r.status)} · ${safe(r.location)}<small>${safe(r.sector)} · ${safe((r.skills||[]).join(", "))}</small></li>`).join("")}</ul>` : "No listings"}</section><section class="admin-record-section"><h4>Applicants · ${apps.length}</h4>${apps.length ? `<ul class="admin-record-list">${apps.map(a=>`<li><strong>${safe(a.student?.name||"Student")}</strong> · ${safe(a.student?.email)} · ${safe(a.internshipTitle)} · ${safe(a.status)}<small>Skills: ${safe((a.student?.skills||[]).join(", "))} · Applied ${safe(a.appliedAt||a.appliedOn)}</small>${a.student?.cvUploaded?`<button type="button" class="btn btn--secondary btn--sm" data-company-applicant-cv="${safe(a.student.id)}" data-student-email="${safe(a.student.email)}" data-student-name="${safe(a.student.name)}" style="margin-top:6px">Open uploaded CV</button>`:""}</li>`).join("")}</ul>` : "No applicants"}</section><section class="admin-record-section"><h4>Interviews · ${meetings.length}</h4>${meetings.length ? `<ul class="admin-record-list">${meetings.map(m=>`<li><strong>${safe(m.studentName||m.studentEmail||"Candidate")}</strong> · ${safe(m.title||m.type||"Interview")} · ${safe(m.status)}<small>${safe(m.scheduledAt||m.date)} · ${safe(m.meetingLink||m.location)}</small></li>`).join("")}</ul>` : "No interviews"}</section><section class="admin-record-section"><h4>Assessments · ${assessments.length}</h4>${assessments.length ? `<ul class="admin-record-list">${assessments.map(a=>`<li><strong>${safe(a.title)}</strong> · ${safe(a.status)} · ${Number(a.questions?.length)||0} questions</li>`).join("")}</ul>` : "No assessments"}</section>`;
+      content.querySelectorAll("[data-company-applicant-cv]").forEach((button) => button.addEventListener("click", async () => { button.disabled = true; try { await openServerStudentCv({ id: button.dataset.companyApplicantCv, email: button.dataset.studentEmail, name: button.dataset.studentName, cvReview: (apps.find(a=>a.student?.id===button.dataset.companyApplicantCv)?.student?.cvReview) }); } catch(error) { App.toast(error.message,"error"); } finally { button.disabled = false; } }));
+    } catch (error) { content.innerHTML = `<p class="hint">${App.escapeHtml(error.message)}</p>`; }
   }
   async function renderSupportInbox() {
     const container = document.getElementById("admin-support-list");
@@ -162,6 +195,40 @@ document.addEventListener("DOMContentLoaded", () => {
       select.innerHTML = students.length ? '<option value="">Select a student…</option>' + students.map((student) => `<option value="${App.escapeHtml(student.id)}">${App.escapeHtml(student.name)} · ${App.escapeHtml(student.email)}</option>`).join("") : '<option value="">No students found</option>';
     } catch (error) { select.innerHTML = `<option value="">${App.escapeHtml(error.message)}</option>`; }
   }
+  async function renderAdminServerStudents() {
+    const body = document.getElementById("admin-server-student-tbody");
+    if (!body) return;
+    body.innerHTML = '<tr><td colspan="6">Loading registered students…</td></tr>';
+    try {
+      const { items = [] } = await adminApi("/admin/students");
+      window.__adminServerStudents = items;
+      body.innerHTML = items.length ? items.map((student) => `<tr><td><strong>${App.escapeHtml(student.name || "Student")}</strong><div class="admin-cell-tags">${App.escapeHtml(student.email || "")}</div></td><td>${App.escapeHtml([student.degree, student.course, student.college].filter(Boolean).join(" · ") || "Not provided")}</td><td>${App.escapeHtml((student.skills || []).join(", ") || "Not provided")}</td><td>${(student.applications || []).length}</td><td>${student.cvUploaded ? "Uploaded · shared with platform" : "Not uploaded"}${student.cvReview?.status ? `<div class="admin-cell-tags">Review: ${App.escapeHtml(student.cvReview.status)}</div>` : ""}</td><td><button type="button" class="btn btn--secondary btn--sm" data-server-student="${App.escapeHtml(student.id)}">Open record</button></td></tr>`).join("") : '<tr><td colspan="6">No registered student accounts found on the server.</td></tr>';
+      body.querySelectorAll("[data-server-student]").forEach((button) => button.addEventListener("click", () => openAdminServerStudent(button.dataset.serverStudent)));
+      const stat = document.getElementById("admin-stat-students"); if (stat) stat.textContent = items.length;
+      const appStat = document.getElementById("admin-stat-applications"); if (appStat) appStat.textContent = items.reduce((sum, student) => sum + (student.applications || []).length, 0);
+    } catch (error) { body.innerHTML = `<tr><td colspan="6">${App.escapeHtml(error.message)}</td></tr>`; }
+  }
+  function openAdminServerStudent(id) {
+    const student = (window.__adminServerStudents || []).find((item) => item.id === id);
+    if (!student) return;
+    const profile = student.profile || {};
+    const body = document.getElementById("admin-student-dialog-content");
+    const safe = (v) => App.escapeHtml(v == null || v === "" ? "—" : String(v));
+    const detail = (label, value) => `<div><dt>${label}</dt><dd>${value}</dd></div>`;
+    const apps = student.applications || [];
+    const projects = profile.projects || [];
+    const sections = `<section class="admin-record-section"><h4>Account &amp; academic details</h4><dl class="admin-profile-grid">${detail("Email",safe(student.email))}${detail("Mobile",safe(profile.mobileNumber))}${detail("Degree",safe(student.degree))}${detail("Course",safe(student.course))}${detail("College",safe(student.college))}${detail("Academic year",safe(student.year))}${detail("Graduation year",safe(student.graduationYear))}${detail("Location",safe(student.location))}${detail("Created",safe(student.createdAt))}${detail("Profile visible to active companies",student.profileVisible?"Yes":"No")}${detail("CV sharing enabled",student.cvShared?"Yes":"No")}</dl></section><section class="admin-record-section"><h4>Profile, skills &amp; goals</h4><dl class="admin-profile-grid">${detail("Headline",safe(profile.headline))}${detail("Introduction",safe(profile.summary))}${detail("Skills",safe((student.skills||[]).join(", ")))}${detail("Interests",safe((student.interests||[]).join(", ")))}${detail("Preferred sector",safe(profile.preferredSector))}${detail("Preferred location",safe(profile.preferredLocation))}${detail("Preferences",safe(profile.preferences))}</dl></section><section class="admin-record-section"><h4>Professional links</h4><dl class="admin-profile-grid">${[ ["LinkedIn",profile.linkedIn], ["GitHub",profile.github], ["Portfolio",profile.portfolio] ].map(([label,url])=>detail(label, /^https?:\/\//i.test(url||"")?`<a href="${safe(url)}" target="_blank" rel="noopener noreferrer">Open link ↗</a>`:"—")).join("")}</dl></section><section class="admin-record-section"><h4>Projects · ${projects.length}</h4>${projects.length?`<ul class="admin-record-list">${projects.map(p=>`<li><strong>${safe(p.title||p.name)}</strong> · ${safe(p.technologies||p.skills)}<small>${safe(p.description)}</small></li>`).join("")}</ul>`:"No projects recorded"}</section><section class="admin-record-section"><h4>Applications &amp; saved opportunities</h4>${apps.length?`<ul class="admin-record-list">${apps.map(a=>`<li><strong>${safe(a.internshipTitle||a.title||a.internshipId)}</strong> · ${safe(a.companyName||a.org)} · ${safe(a.status||"Applied")}<small>Applied ${safe(a.appliedAt||a.appliedOn)} · ${safe(a.updatedAt)}</small></li>`).join("")}</ul>`:"No applications recorded"}<p>Saved opportunity IDs: ${safe((student.savedIds||[]).join(", ")||"None")}</p></section><section class="admin-record-section"><h4>Interview practice scores</h4>${(student.interviewScores||[]).length?`<ul class="admin-record-list">${student.interviewScores.map(s=>`<li><strong>${safe(s.category)}</strong> · ${safe(s.score)}/${safe(s.total)} (${Math.round(Number(s.score)/Number(s.total)*100)}%) · ${safe(s.date)}</li>`).join("")}</ul>`:"No server-synced practice scores"}</section><section class="admin-record-section"><h4>CV access &amp; review</h4><p>Review status: ${safe(student.cvReview?.status||"Not reviewed")}${student.cvReview?.note?` · ${safe(student.cvReview.note)}`:""}</p>${student.cvUploaded?`<button type="button" class="btn btn--secondary btn--sm" data-open-server-cv="${safe(student.id)}" data-student-email="${safe(student.email)}" data-student-name="${safe(student.name)}">Open uploaded CV</button>`:"No server-uploaded CV. The admin endpoint cannot view browser-only files."}</section>`;
+    body.innerHTML = sections;
+    body.querySelector("[data-open-server-cv]")?.addEventListener("click", async (event) => {
+      const button = event.currentTarget; button.disabled = true;
+      try {
+        await openServerStudentCv({ id, email: button.dataset.studentEmail, name: button.dataset.studentName, cvReview: student.cvReview });
+      } catch (error) { App.toast(error.message,"error"); }
+      finally { button.disabled = false; }
+    });
+    studentDialogTitle.textContent = student.name || "Student details";
+    studentDialog.showModal();
+  }
   const readAuditLog = () => {
     try { const items = JSON.parse(localStorage.getItem(AUDIT_KEY) || "[]"); return Array.isArray(items) ? items : []; }
     catch (_) { return []; }
@@ -205,6 +272,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const cvFrame = document.getElementById("admin-cv-frame");
   let activeCvUrl = "";
   let activeCvEmail = "";
+  let activeCvStudentId = "";
   const cvReviewStatus = document.getElementById("admin-cv-review-status");
   const cvReviewNote = document.getElementById("admin-cv-review-note");
   function showCvReviewState(review) {
@@ -215,10 +283,18 @@ document.addEventListener("DOMContentLoaded", () => {
     const statusValue = studentDialogContent.querySelector("[data-cv-review-status]");
     if (statusValue) statusValue.textContent = status;
   }
-  function saveCvReview(status) {
+  async function saveCvReview(status) {
     if (!activeCvEmail) return;
-    const review = { status, note: cvReviewNote.value.trim(), reviewedAt: new Date().toISOString(), reviewer: "Admin" };
-    Store.writeBlob(`im_cv_review_${activeCvEmail}`, review);
+    let review = { status, note: cvReviewNote.value.trim(), reviewedAt: new Date().toISOString(), reviewer: "Admin" };
+    if (activeCvStudentId) {
+      try {
+        const result = await adminApi(`/admin/students/${encodeURIComponent(activeCvStudentId)}/cv-review`, { method: "PATCH", body: JSON.stringify({ status, note: cvReviewNote.value.trim() }) });
+        review = result.cvReview || review;
+        const student = (window.__adminServerStudents || []).find((item) => item.id === activeCvStudentId);
+        if (student) student.cvReview = review;
+        await renderAdminServerStudents();
+      } catch (error) { App.toast(error.message, "error"); return; }
+    } else Store.writeBlob(`im_cv_review_${activeCvEmail}`, review);
     logAdminAction(status === "Approved" ? "Approved student CV" : "Requested student CV changes", activeCvEmail);
     showCvReviewState(review);
     App.toast(status === "Approved" ? "CV approved for the student." : "CV marked as needing changes.");
@@ -231,6 +307,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (activeCvUrl) URL.revokeObjectURL(activeCvUrl);
     activeCvUrl = "";
     activeCvEmail = "";
+    activeCvStudentId = "";
   });
   document.getElementById("admin-student-dialog-close").addEventListener("click", () => studentDialog.close());
   studentDialog.addEventListener("click", (event) => {
@@ -520,6 +597,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderAll() {
     renderInternshipTable();
     renderStudentTable();
+    renderAdminServerStudents();
     renderCompanyAccounts();
     if (window.AdminAnalytics) window.AdminAnalytics.render();
     renderControlCenter();
@@ -536,6 +614,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("admin-assessments-refresh")?.addEventListener("click", renderAssessmentReviewQueue);
   document.getElementById("admin-open-assessments")?.addEventListener("click", () => { selectAdminView("assessments"); window.scrollTo({ top: 0, behavior: "smooth" }); });
   document.getElementById("admin-company-requests-refresh")?.addEventListener("click", renderCompanyAccounts);
+  document.getElementById("admin-server-students-refresh")?.addEventListener("click", renderAdminServerStudents);
   document.getElementById("admin-send-student-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = event.currentTarget;

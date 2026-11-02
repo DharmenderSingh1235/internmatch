@@ -5,8 +5,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const currentUser = Store.getCurrentUser();
   const run = document.getElementById("student-assessment-run");
   const api = async (route, options = {}) => {
-    const response = await fetch(`${window.IM_API_BASE}/api${route}`, { ...options, headers: { authorization: `Bearer ${getToken() || ""}`, "content-type": "application/json", ...(options.headers || {}) } });
-    const data = await response.json().catch(() => ({}));
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    let response, data;
+    try {
+      response = await fetch(`${window.IM_API_BASE}/api${route}`, { ...options, signal: controller.signal, headers: { authorization: `Bearer ${getToken() || ""}`, "content-type": "application/json", ...(options.headers || {}) } });
+      data = await response.json().catch(() => ({}));
+    } catch (error) {
+      if (error.name === "AbortError") throw new Error("The assessment service did not respond within 10 seconds. Check that the API is running, then refresh.");
+      throw new Error("Could not reach the assessment service. Check that the API is running, then refresh.");
+    } finally { clearTimeout(timeout); }
     if (!response.ok) { const error = new Error(data.error || `Student API request failed (${response.status}).`); error.status = response.status; throw error; }
     return data;
   };
@@ -40,7 +48,8 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (error) {
       list.innerHTML = error.status === 401
         ? '<p class="hint">Your student server session expired. <a href="login.html?role=student&amp;next=interview-prep.html%23company-assessments-panel">Sign in again and return here</a>.</p>'
-        : `<p class="hint">${esc(error.message)} Make sure the InternMatch API is running.</p>`;
+        : `<p class="hint" role="status">${esc(error.message)} <button class="btn btn--ghost btn--sm" type="button" data-assessment-retry>Try again</button></p>`;
+      list.querySelector("[data-assessment-retry]")?.addEventListener("click", load);
     }
   }
   async function start(id) {

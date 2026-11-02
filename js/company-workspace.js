@@ -217,11 +217,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
   function setPageFromHash() {
     const id = window.location.hash.slice(1) || "overview";
-    const valid = ["overview", "internships", "applicants", "interviews", "company-profile", "settings"];
+    const valid = ["overview", "internships", "applicants", "assessments", "interviews", "company-profile", "settings"];
     const current = valid.includes(id) ? id : "overview";
     document.querySelectorAll("[data-company-section]").forEach((el) => { el.hidden = el.dataset.companySection !== current; });
     document.querySelectorAll("[data-company-nav]").forEach((link) => { if (link.dataset.companyNav === current) link.setAttribute("aria-current", "page"); else link.removeAttribute("aria-current"); });
-    document.getElementById("company-page-heading").textContent = ({ overview: "Overview", internships: "Internships", applicants: "Applicants", interviews: "Assessments & interviews", "company-profile": "Company profile", settings: "Settings" })[current];
+    document.getElementById("company-page-heading").textContent = ({ overview: "Overview", internships: "Internships", applicants: "Applicants", assessments: "Assessments", interviews: "Interviews", "company-profile": "Company profile", settings: "Settings" })[current];
     if (current === "internships" && new URLSearchParams(window.location.search).get("new") === "1") document.getElementById("internship-title").focus();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
