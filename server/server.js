@@ -356,7 +356,7 @@ function candidateMatch(candidate, internship) {
 app.get("/", (req, res) => {
   res.type("html").send(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>InternMatch AI backend</title><body style="font:16px system-ui;max-width:680px;margin:12vh auto;padding:24px;color:#17233b"><h1>InternMatch AI backend is running</h1><p>This address serves the chatbot API, not the website interface.</p><p>Open <a href="http://127.0.0.1:5500/chatbot.html">chatbot.html through Live Server</a> to use the chatbot. If your Live Server uses another port, use that address instead.</p><p>Backend status: <a href="/api/health">/api/health</a></p></body></html>`);
 });
-app.get("/api/health", (req, res) => res.json({ ok: true, apiVersion: "2026-11-03-admin-practice-file-drafts", assessmentApprovals: true, assessmentDocumentDrafts: true, studentAssessmentTracker: true, adminPracticeAreaManagement: true, adminPracticeFileQuestionDrafts: true, studentPracticeAreas: true, profileCvSharing: true, studentProfileSync: true, studentInterviewScores: true, adminStudentRecords: true, adminStudentCvReview: true, adminCompanyRecords: true, keyConfigured: !!selected.key, provider: PROVIDER, model: selected.model, catalogueSize: INTERNSHIP_DATA.length, storage: portalData.storageMode(), sessionStorage: portalData.sessionStore ? (portalData.storageMode() === "mongodb" ? "mongodb" : "sqlite") : "memory" }));
+app.get("/api/health", (req, res) => res.json({ ok: true, apiVersion: "2026-11-04-company-cv-review", assessmentApprovals: true, assessmentDocumentDrafts: true, studentAssessmentTracker: true, adminPracticeAreaManagement: true, adminPracticeFileQuestionDrafts: true, studentPracticeAreas: true, profileCvSharing: true, companyCvReview: true, studentProfileSync: true, studentInterviewScores: true, adminStudentRecords: true, adminStudentCvReview: true, adminCompanyRecords: true, keyConfigured: !!selected.key, provider: PROVIDER, model: selected.model, catalogueSize: INTERNSHIP_DATA.length, storage: portalData.storageMode(), sessionStorage: portalData.sessionStore ? (portalData.storageMode() === "mongodb" ? "mongodb" : "sqlite") : "memory" }));
 app.get("/api/internships", (req, res) => {
   const listings = portalData.collection("internships").filter((listing) => String(listing.status).toLowerCase() === "active").map((listing) => {
     const company = portalData.collection("companies").find((item) => item.id === listing.companyId && String(item.status).toLowerCase() === "active");
@@ -725,7 +725,9 @@ app.get("/api/student/profile", studentOnly, (req, res) => {
   if (!student) return res.status(404).json({ error: "Student account not found." });
   res.set("Cache-Control", "no-store");
   const { photo, ...profile } = student.profile || {};
-  res.json({ profile, interviewScores: student.interviewScores || [], profileVisible: !!student.profileVisible, cvShared: !!student.cvShared, cvUploaded: !!student.cvPdf, cvReview: student.cvReview || null });
+  const companies = new Map(portalData.collection("companies").map((company) => [company.id, company.name]));
+  const companyCvReviews = (student.companyCvReviews || []).map((review) => ({ status: review.status, note: review.note, reviewedAt: review.reviewedAt, companyName: companies.get(review.companyId) || review.companyName || "Company" }));
+  res.json({ profile, interviewScores: student.interviewScores || [], profileVisible: !!student.profileVisible, cvShared: !!student.cvShared, cvUploaded: !!student.cvPdf, cvReview: student.cvReview || null, companyCvReviews });
 });
 app.put("/api/student/profile", studentOnly, (req, res) => {
   const students = portalData.collection("students");
@@ -829,7 +831,8 @@ app.patch("/api/company/me", companyOnly, (req, res) => {
 app.get("/api/company/applications", companyOnly, (req, res) => {
   const items = portalData.collection("applications").filter((application) => application.companyId === req.session.id).map((application) => {
     const student = portalData.collection("students").find((item) => item.id === application.studentId);
-    return { ...application, student: student ? { ...safeStudent(student, true), cvAvailableToCompany: !!student.cvShared && !!student.cvPdf } : null };
+    const cvReview = student?.companyCvReviews?.find((review) => review.companyId === req.session.id) || null;
+    return { ...application, student: student ? { ...safeStudent(student, true), cvAvailableToCompany: !!student.cvShared && !!student.cvPdf, cvReview: cvReview ? { status: cvReview.status, note: cvReview.note, reviewedAt: cvReview.reviewedAt } : null } : null };
   });
   res.json({ items });
 });
@@ -868,7 +871,21 @@ app.get("/api/company/students/:id/cv", companyOnly, (req, res) => {
   const student = applied && portalData.collection("students").find((item) => item.id === req.params.id && item.cvShared && item.cvPdf);
   if (!student) return res.status(404).json({ error: "This student has not shared a CV with companies." });
   logCompanyAction(req, "Opened student-shared CV", student.id);
-  res.json({ fileName: student.cvPdf.fileName, mimeType: student.cvPdf.mimeType, data: student.cvPdf.data });
+  const cvReview = (student.companyCvReviews || []).find((review) => review.companyId === req.session.id) || null;
+  res.json({ fileName: student.cvPdf.fileName, mimeType: student.cvPdf.mimeType, data: student.cvPdf.data, cvReview });
+});
+app.patch("/api/company/students/:id/cv-review", companyOnly, (req, res) => {
+  const status = String(req.body?.status || "");
+  if (!["Approved", "Needs changes"].includes(status)) return res.status(400).json({ error: "Choose Approved or Needs changes." });
+  const applied = portalData.collection("applications").some((application) => application.companyId === req.session.id && application.studentId === req.params.id);
+  const student = applied && portalData.collection("students").find((item) => item.id === req.params.id && item.cvShared && item.cvPdf);
+  if (!student) return res.status(404).json({ error: "A shared CV is available only for applicants who enabled CV sharing and uploaded a CV." });
+  const company = portalData.collection("companies").find((item) => item.id === req.session.id);
+  const cvReview = { companyId: req.session.id, companyName: company?.name || "Company", status, note: String(req.body?.note || "").trim().slice(0, 1000), reviewedAt: new Date().toISOString(), reviewer: req.session.email };
+  const reviews = (student.companyCvReviews || []).filter((review) => review.companyId !== req.session.id);
+  portalData.update("students", (items) => items.map((item) => item.id === student.id ? { ...item, companyCvReviews: [...reviews, cvReview] } : item));
+  logCompanyAction(req, `Reviewed applicant CV (${status})`, student.id);
+  res.json({ cvReview: { status: cvReview.status, note: cvReview.note, reviewedAt: cvReview.reviewedAt, companyName: cvReview.companyName } });
 });
 app.get("/api/company/shortlists", companyOnly, (req, res) => {
   const applications = portalData.collection("applications");

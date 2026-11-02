@@ -327,6 +327,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.addEventListener("click", async (event) => {
     const profileButton = event.target.closest("[data-view-applicant]");
     const cvButton = event.target.closest("[data-view-applicant-cv]");
+    const cvReviewButton = event.target.closest("[data-cv-review-status]");
     if (profileButton) {
       profileButton.disabled = true;
       try {
@@ -343,9 +344,34 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     if (cvButton) {
       cvButton.disabled = true;
-      try { const result = await api(`/company/students/${encodeURIComponent(cvButton.dataset.viewApplicantCv)}/cv`); document.getElementById("company-cv-title").textContent = result.fileName || "Student CV"; document.getElementById("company-cv-frame").src = `data:application/pdf;base64,${result.data}`; cvDialog.showModal(); }
+      try {
+        const studentId = cvButton.dataset.viewApplicantCv;
+        const result = await api(`/company/students/${encodeURIComponent(studentId)}/cv`);
+        cvDialog.dataset.studentId = studentId;
+        document.getElementById("company-cv-title").textContent = result.fileName || "Student CV";
+        document.getElementById("company-cv-frame").src = `data:application/pdf;base64,${result.data}`;
+        document.getElementById("company-cv-review-note").value = result.cvReview?.note || "";
+        document.getElementById("company-cv-review-status").textContent = result.cvReview ? `${result.cvReview.status} · ${dateLabel(result.cvReview.reviewedAt?.slice(0, 10))}` : "Not reviewed yet";
+        cvDialog.showModal();
+      }
       catch (error) { alertError(error); }
       finally { cvButton.disabled = false; }
+    }
+    if (cvReviewButton) {
+      const studentId = cvDialog.dataset.studentId;
+      if (!studentId) return;
+      cvReviewButton.disabled = true;
+      const statusNode = document.getElementById("company-cv-review-status");
+      statusNode.textContent = "Saving feedback…";
+      try {
+        const result = await api(`/company/students/${encodeURIComponent(studentId)}/cv-review`, { method: "PATCH", body: JSON.stringify({ status: cvReviewButton.dataset.cvReviewStatus, note: document.getElementById("company-cv-review-note").value.trim() }) });
+        const review = result.cvReview;
+        applicants = applicants.map((item) => item.student?.id === studentId ? { ...item, student: { ...item.student, cvReview: review } } : item);
+        render();
+        statusNode.textContent = `${review.status} · ${dateLabel(review.reviewedAt?.slice(0, 10))}. Feedback is now visible in the student’s profile.`;
+        App.toast(review.status === "Approved" ? "CV approved; the student can see the result in their profile." : "CV changes requested; your feedback is in the student’s profile.");
+      } catch (error) { statusNode.textContent = error.message; alertError(error); }
+      finally { cvReviewButton.disabled = false; }
     }
   });
   document.addEventListener("click", async (event) => {

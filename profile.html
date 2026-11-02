@@ -192,6 +192,10 @@
   .profile-ats-summary__details span { display:block; margin-top:4px; color:var(--color-muted); font-size:.78rem; }
   .profile-cv-review { display:flex; align-items:flex-start; gap:8px; margin-top:9px; padding:10px 12px; border:1px solid var(--color-border); border-radius:10px; color:var(--color-muted); background:var(--color-bg-alt); font-size:.8rem; line-height:1.45; }
   .profile-cv-review strong { color:var(--color-text); }
+  .profile-company-cv-reviews { display:grid; gap:8px; margin-top:10px; }
+  .profile-company-cv-review { padding:11px 12px; border:1px solid var(--color-border); border-radius:11px; background:var(--color-surface); font-size:.8rem; line-height:1.45; }
+  .profile-company-cv-review__head { display:flex; justify-content:space-between; gap:8px; margin-bottom:4px; }
+  .profile-company-cv-review__status { color:var(--color-primary); font-weight:700; }
   .profile-page .profile-project-form { border-style:solid; }
   .profile-page .topbar-theme-toggle { flex:0 0 auto; }
   #profile-form > .profile-save-row { position:static; padding:4px 0 20px; border:0; border-radius:0; background:transparent; backdrop-filter:none; box-shadow:none; }
@@ -289,6 +293,7 @@
           <ul class="profile-checklist" id="profile-checklist"></ul>
           <div class="profile-ats-summary" id="profile-ats-summary" aria-live="polite"></div>
           <div class="profile-cv-review" id="profile-cv-review" aria-live="polite"></div>
+          <div class="profile-company-cv-reviews" id="profile-company-cv-reviews" aria-live="polite"></div>
         </aside>
 
         <div class="card" id="profile-intro-card">
@@ -385,6 +390,6 @@
 <script src="js/storage.js?v=20261104-cv-consent-preservation"></script>
 <script src="js/recommendation.js"></script>
 <script src="js/app.js"></script>
-<script src="js/profile.js?v=20261104-cv-consent-preservation"></script>
+<script src="js/profile.js?v=20261104-company-cv-review"></script>
 </body>
 </html>

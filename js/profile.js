@@ -114,6 +114,13 @@ document.addEventListener("DOMContentLoaded", () => {
         reviewTarget.innerHTML = `<span aria-hidden="true">${cvReview.status === "Approved" ? "✓" : "!"}</span><span><strong>CV review · ${App.escapeHtml(cvReview.status)}</strong><br>${message}${reviewedDate ? ` · ${App.escapeHtml(reviewedDate)}` : ""}${note}</span>`;
       }
     }
+    const companyReviewTarget = document.getElementById("profile-company-cv-reviews");
+    if (companyReviewTarget) {
+      const reviews = Store.readBlob(`im_company_cv_reviews_${user.email}`, []);
+      companyReviewTarget.innerHTML = reviews.length
+        ? reviews.slice().sort((a, b) => Date.parse(b.reviewedAt || 0) - Date.parse(a.reviewedAt || 0)).map((review) => `<article class="profile-company-cv-review"><div class="profile-company-cv-review__head"><strong>${App.escapeHtml(review.companyName || "Company")}</strong><span class="profile-company-cv-review__status">${App.escapeHtml(review.status)}</span></div><span>${review.status === "Approved" ? "Your CV was approved by this company." : "This company requested CV changes."}${review.reviewedAt ? ` · ${App.escapeHtml(App.formatDate(review.reviewedAt))}` : ""}</span>${review.note ? `<p style="margin:6px 0 0;">${App.escapeHtml(review.note)}</p>` : ""}</article>`).join("")
+        : `<div class="profile-cv-review"><span aria-hidden="true">✉</span><span><strong>Company CV feedback</strong><br>Company review decisions and change requests will appear here.</span></div>`;
+    }
     const result = Store.readBlob(`im_profile_ats_${user.email}`, null);
     const validScore = Number.isFinite(Number(result?.score)) && result?.score !== "";
     if (!validScore) {
@@ -392,6 +399,7 @@ document.addEventListener("DOMContentLoaded", () => {
       profile = Object.assign(Store.getProfile(user.email), mergedProfile);
       Store.writeBlob(`im_profile_${user.email}`, profile);
       if (data.cvReview) Store.writeBlob(`im_cv_review_${user.email}`, data.cvReview);
+      Store.writeBlob(`im_company_cv_reviews_${user.email}`, Array.isArray(data.companyCvReviews) ? data.companyCvReviews : []);
 
       const localHistory = Store.readBlob(`im_interview_history_${user.email}`, []);
       const history = [...localHistory];
