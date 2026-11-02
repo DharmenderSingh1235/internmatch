@@ -356,7 +356,7 @@ function candidateMatch(candidate, internship) {
 app.get("/", (req, res) => {
   res.type("html").send(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>InternMatch AI backend</title><body style="font:16px system-ui;max-width:680px;margin:12vh auto;padding:24px;color:#17233b"><h1>InternMatch AI backend is running</h1><p>This address serves the chatbot API, not the website interface.</p><p>Open <a href="http://127.0.0.1:5500/chatbot.html">chatbot.html through Live Server</a> to use the chatbot. If your Live Server uses another port, use that address instead.</p><p>Backend status: <a href="/api/health">/api/health</a></p></body></html>`);
 });
-app.get("/api/health", (req, res) => res.json({ ok: true, apiVersion: "2026-11-04-company-cv-review", assessmentApprovals: true, assessmentDocumentDrafts: true, studentAssessmentTracker: true, adminPracticeAreaManagement: true, adminPracticeFileQuestionDrafts: true, studentPracticeAreas: true, profileCvSharing: true, companyCvReview: true, studentProfileSync: true, studentInterviewScores: true, adminStudentRecords: true, adminStudentCvReview: true, adminCompanyRecords: true, keyConfigured: !!selected.key, provider: PROVIDER, model: selected.model, catalogueSize: INTERNSHIP_DATA.length, storage: portalData.storageMode(), sessionStorage: portalData.sessionStore ? (portalData.storageMode() === "mongodb" ? "mongodb" : "sqlite") : "memory" }));
+app.get("/api/health", (req, res) => res.json({ ok: true, apiVersion: "2026-11-04-admin-company-cv-review", assessmentApprovals: true, assessmentDocumentDrafts: true, studentAssessmentTracker: true, adminPracticeAreaManagement: true, adminPracticeFileQuestionDrafts: true, studentPracticeAreas: true, profileCvSharing: true, companyCvReview: true, adminCompanyCvReviewHistory: true, studentProfileSync: true, studentInterviewScores: true, adminStudentRecords: true, adminStudentCvReview: true, adminCompanyRecords: true, keyConfigured: !!selected.key, provider: PROVIDER, model: selected.model, catalogueSize: INTERNSHIP_DATA.length, storage: portalData.storageMode(), sessionStorage: portalData.sessionStore ? (portalData.storageMode() === "mongodb" ? "mongodb" : "sqlite") : "memory" }));
 app.get("/api/internships", (req, res) => {
   const listings = portalData.collection("internships").filter((listing) => String(listing.status).toLowerCase() === "active").map((listing) => {
     const company = portalData.collection("companies").find((item) => item.id === listing.companyId && String(item.status).toLowerCase() === "active");
@@ -528,6 +528,7 @@ app.patch("/api/admin/companies/:id/status", adminOnly, (req, res) => {
   res.json({ ok: true });
 });
 app.get("/api/admin/students", adminOnly, (req, res) => {
+  const companyNames = new Map(portalData.collection("companies").map((company) => [company.id, company.name]));
   const items = portalData.collection("students").map((student) => {
     const { photo, ...profile } = student.profile || {};
     return {
@@ -537,6 +538,7 @@ app.get("/api/admin/students", adminOnly, (req, res) => {
       cvShared: !!student.cvShared,
       cvUploaded: !!student.cvPdf,
       cvReview: student.cvReview || null,
+      companyCvReviews: (student.companyCvReviews || []).map((review) => ({ companyName: companyNames.get(review.companyId) || review.companyName || "Company", status: review.status, note: review.note || "", reviewedAt: review.reviewedAt || null })),
       createdAt: student.createdAt || null,
       applications: portalData.collection("applications").filter((item) => item.studentId === student.id),
       savedIds: Array.isArray(student.savedIds) ? student.savedIds : []
