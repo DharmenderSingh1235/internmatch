@@ -733,8 +733,8 @@ app.put("/api/student/profile", studentOnly, (req, res) => {
   if (!student) return res.status(404).json({ error: "Student account not found." });
   const profile = req.body?.profile && typeof req.body.profile === "object" ? req.body.profile : {};
   const { photo, ...shareableProfile } = profile;
-  const profileVisible = req.body?.profileVisible === true;
-  const cvShared = profileVisible && req.body?.cvShared === true;
+  const profileVisible = typeof req.body?.profileVisible === "boolean" ? req.body.profileVisible : student.profileVisible === true;
+  const cvShared = profileVisible && (typeof req.body?.cvShared === "boolean" ? req.body.cvShared : student.cvShared === true);
   portalData.update("students", (items) => items.map((item) => item.id === student.id ? { ...item, name: String(shareableProfile.fullName || item.name).slice(0, 120), profile: shareableProfile, profileVisible, cvShared, cvPdf: cvShared ? item.cvPdf : null, consentUpdatedAt: new Date().toISOString() } : item));
   res.json({ ok: true, profileVisible, cvShared });
 });
@@ -829,7 +829,7 @@ app.patch("/api/company/me", companyOnly, (req, res) => {
 app.get("/api/company/applications", companyOnly, (req, res) => {
   const items = portalData.collection("applications").filter((application) => application.companyId === req.session.id).map((application) => {
     const student = portalData.collection("students").find((item) => item.id === application.studentId);
-    return { ...application, student: student ? safeStudent(student, true) : null };
+    return { ...application, student: student ? { ...safeStudent(student, true), cvAvailableToCompany: !!student.cvShared && !!student.cvPdf } : null };
   });
   res.json({ items });
 });

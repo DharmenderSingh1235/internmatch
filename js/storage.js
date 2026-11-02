@@ -213,9 +213,8 @@ const Store = (function () {
     const user = getCurrentUser();
     const token = sessionStorage.getItem("im_student_api_token");
     if (saved && token && user?.email === email && user.role === "student") {
-      let consent = { profileVisible: false, cvShared: false };
-      try { consent = JSON.parse(localStorage.getItem(`im_company_consent_${email.toLowerCase()}`) || "{}"); } catch (_) { /* Keep sharing disabled. */ }
-      fetch(`${window.IM_API_BASE}/api/student/profile`, { method: "PUT", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ profile: merged, profileVisible: consent.profileVisible === true, cvShared: consent.cvShared === true }) }).catch(() => {});
+      // Profile edits must not silently revoke server-side CV consent. Consent has its own explicit controls.
+      fetch(`${window.IM_API_BASE}/api/student/profile`, { method: "PUT", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ profile: merged }) }).catch(() => {});
     }
     return saved;
   }

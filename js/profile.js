@@ -410,15 +410,14 @@ document.addEventListener("DOMContentLoaded", () => {
       renderProfileAtsSummary();
       syncInterviewScores();
 
-      let consent = {};
-      try { consent = JSON.parse(localStorage.getItem(`im_company_consent_${user.email.toLowerCase()}`) || "{}"); } catch (_) { /* Sharing stays disabled when consent cannot be read. */ }
       const saveController = new AbortController();
       const saveTimeout = setTimeout(() => saveController.abort(), 8000);
       try {
         const saveResponse = await fetch(`${window.IM_API_BASE}/api/student/profile`, {
           method: "PUT",
           headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
-          body: JSON.stringify({ profile, profileVisible: consent.profileVisible === true, cvShared: consent.cvShared === true }),
+          // Server CV-sharing preferences are independent of profile edits; do not infer consent from browser storage.
+          body: JSON.stringify({ profile }),
           signal: saveController.signal
         });
         if (!saveResponse.ok) throw new Error(`Profile sync failed (${saveResponse.status}).`);
