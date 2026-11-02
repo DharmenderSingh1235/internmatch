@@ -45,6 +45,10 @@
   .resume-section-empty{color:var(--color-muted,#737b89);font-size:.9rem}
   .resume-match-score{font-weight:700;color:var(--color-primary,#2a5bd7)}
   .resume-match-reasons{font-size:.88rem;line-height:1.5}
+  .writing-scan-result{display:flex;align-items:flex-start;gap:10px;margin:0 0 12px;padding:11px 12px;border:1px solid #d8e4f4;border-radius:12px;background:var(--color-bg-alt)}
+  .writing-scan-result__icon{display:grid;place-items:center;flex:0 0 28px;width:28px;height:28px;border-radius:9px;background:var(--color-primary-tint);color:var(--color-primary);font-weight:800}
+  .writing-scan-result strong{display:block;margin-bottom:2px;font-size:.9rem}
+  .writing-scan-result span{display:block;color:var(--color-muted);font-size:.8rem;line-height:1.45}
   .ats-role-row{display:grid;grid-template-columns:minmax(220px,1fr);gap:14px;align-items:end;margin:16px 0 12px}
   .ats-role-row--custom{grid-column:1/-1;grid-template-columns:repeat(2,minmax(0,1fr))}
   .ats-role-row .field{margin:0}
@@ -165,7 +169,7 @@
           <section class="resume-intel-card"><h3>Education</h3><div id="education-summary"></div></section>
           <section class="resume-intel-card"><h3>Projects</h3><div id="projects-summary"></div></section>
           <section class="resume-intel-card"><h3>Experience</h3><div id="experience-summary"></div></section>
-          <section class="resume-intel-card"><h3>Writing-style signals</h3><div id="writing-signals"></div><p class="hint" style="margin-top:10px;"><strong>Low confidence:</strong> these patterns cannot tell whether a CV was written by a person or AI. Detectors can wrongly flag human writing, including writing by non-native English speakers (<a href="https://doi.org/10.1016/j.patter.2023.100779" target="_blank" rel="noopener noreferrer">research in <em>Patterns</em></a>). Use signals as writing feedback, never as proof or a reason to reject someone. To understand experience, ask candidates to explain their projects and decisions.</p></section>
+          <section class="resume-intel-card"><h3>AI-writing clue estimate</h3><div id="writing-signals"></div><p class="hint" style="margin-top:10px;"><strong>Low confidence:</strong> this simple scan only flags formulaic wording patterns. It cannot determine whether AI was used or distinguish AI writing from human writing. Use it as writing feedback, never as proof or a reason to reject someone. To understand experience, ask candidates to explain their projects and decisions.</p></section>
         </div>
 
         <section class="resume-intel-card" style="margin-top:14px;">

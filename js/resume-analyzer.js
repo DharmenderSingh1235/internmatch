@@ -438,9 +438,13 @@ document.addEventListener("DOMContentLoaded", () => {
     renderList("projects-summary", projects, "No clear projects section was detected.");
     renderList("experience-summary", experience, "No clear experience section was detected.");
     const signalsContainer = document.getElementById("writing-signals");
-    signalsContainer.innerHTML = styleSignals.length
+    const signalTitle = styleSignals.length >= 2 ? "Some formulaic writing clues found" : styleSignals.length === 1 ? "One formulaic writing clue found" : "No obvious formulaic clues flagged";
+    const signalDetail = styleSignals.length
+      ? `${styleSignals.length} writing pattern${styleSignals.length === 1 ? " was" : "s were"} flagged for review. This is not proof of AI use.`
+      : "The scan found no listed patterns. AI use may still have occurred.";
+    signalsContainer.innerHTML = `<div class="writing-scan-result"><span class="writing-scan-result__icon" aria-hidden="true">${styleSignals.length ? "!" : "i"}</span><div><strong>${signalTitle}</strong><span>${signalDetail}</span></div></div>${styleSignals.length
       ? `<ul class="resume-list">${styleSignals.map((signal) => `<li>${App.escapeHtml(signal)}</li>`).join("")}</ul>`
-      : `<p class="resume-section-empty">The simple scan found no listed wording patterns. This does not indicate whether AI was or was not used.</p>`;
+      : `<p class="resume-section-empty">No generic phrases, repeated wording, or uniform sentence patterns were flagged.</p>`}`;
 
     const profile = user ? Store.getProfile(user.email) : null;
     renderProfileComparison(profile);
