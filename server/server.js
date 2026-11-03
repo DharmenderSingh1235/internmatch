@@ -356,7 +356,7 @@ function candidateMatch(candidate, internship) {
 app.get("/", (req, res) => {
   res.type("html").send(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>InternMatch AI backend</title><body style="font:16px system-ui;max-width:680px;margin:12vh auto;padding:24px;color:#17233b"><h1>InternMatch AI backend is running</h1><p>This address serves the chatbot API, not the website interface.</p><p>Open <a href="http://127.0.0.1:5500/chatbot.html">chatbot.html through Live Server</a> to use the chatbot. If your Live Server uses another port, use that address instead.</p><p>Backend status: <a href="/api/health">/api/health</a></p></body></html>`);
 });
-app.get("/api/health", (req, res) => res.json({ ok: true, apiVersion: "2026-11-05-cv-consent-approval", assessmentApprovals: true, assessmentDocumentDrafts: true, studentAssessmentTracker: true, adminPracticeAreaManagement: true, adminPracticeFileQuestionDrafts: true, studentPracticeAreas: true, profileCvSharing: true, adminCvConsent: true, adminCvApproval: true, companyCvApprovalGate: true, companyCvReview: true, adminCompanyCvReviewHistory: true, studentProfileSync: true, studentInterviewScores: true, adminStudentRecords: true, adminStudentCvReview: true, adminCompanyRecords: true, keyConfigured: !!selected.key, provider: PROVIDER, model: selected.model, catalogueSize: INTERNSHIP_DATA.length, storage: portalData.storageMode(), sessionStorage: portalData.sessionStore ? (portalData.storageMode() === "mongodb" ? "mongodb" : "sqlite") : "memory" }));
+app.get("/api/health", (req, res) => res.json({ ok: true, apiVersion: "2026-11-05-assessment-writing-review", assessmentApprovals: true, assessmentDocumentDrafts: true, assessmentWritingReview: true, assessmentCameraRequired: false, studentAssessmentTracker: true, adminPracticeAreaManagement: true, adminPracticeFileQuestionDrafts: true, studentPracticeAreas: true, profileCvSharing: true, adminCvConsent: true, adminCvApproval: true, companyCvApprovalGate: true, companyCvReview: true, adminCompanyCvReviewHistory: true, studentProfileSync: true, studentInterviewScores: true, adminStudentRecords: true, adminStudentCvReview: true, adminCompanyRecords: true, keyConfigured: !!selected.key, provider: PROVIDER, model: selected.model, catalogueSize: INTERNSHIP_DATA.length, storage: portalData.storageMode(), sessionStorage: portalData.sessionStore ? (portalData.storageMode() === "mongodb" ? "mongodb" : "sqlite") : "memory" }));
 app.get("/api/internships", (req, res) => {
   const listings = portalData.collection("internships").filter((listing) => String(listing.status).toLowerCase() === "active").map((listing) => {
     const company = portalData.collection("companies").find((item) => item.id === listing.companyId && String(item.status).toLowerCase() === "active");
@@ -1280,13 +1280,22 @@ app.post("/api/student/assessments/:id/submit", studentOnly, (req, res) => {
     }
     return { questionId: question.id, answer: String(answer?.text || "").slice(0, 10000), correct: null, marksAwarded: 0 };
   });
-  const rawWritingSignals = Array.isArray(req.body?.writingReview?.signals) ? req.body.writingReview.signals : [];
-  const writingSignals = rawWritingSignals.slice(0, 5).map((signal) => String(signal).slice(0, 180));
-  const hasReviewableText = reviewedAnswers.some((answer) => typeof answer.answer === "string" && answer.answer.trim().length >= 40);
-  const writingReview = assessment.questions.some((question) => question.type !== "MCQ") ? {
-    label: !hasReviewableText ? "Not enough written text to review" : writingSignals.length ? "Patterns for human review" : "No listed patterns found",
+  const answerByQuestion = new Map(reviewedAnswers.map((answer) => [answer.questionId, answer.answer]));
+  const reviewTexts = assessment.questions
+    .filter((question) => question.type === "Descriptive")
+    .map((question) => String(answerByQuestion.get(question.id) || "").trim())
+    .filter((answer) => answer.length >= 40);
+  const writingSignals = [];
+  const genericPhrases = ["it is important to note", "in conclusion", "plays a crucial role", "in today's fast-paced", "furthermore", "moreover"];
+  const foundPhrases = genericPhrases.filter((phrase) => reviewTexts.some((answer) => answer.toLowerCase().includes(phrase)));
+  if (foundPhrases.length) writingSignals.push(`Common or generic phrasing appears (${foundPhrases.slice(0, 3).join(", ")}).`);
+  const normalizedSentences = reviewTexts.flatMap((answer) => answer.split(/[.!?]+/).map((sentence) => sentence.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim()).filter((sentence) => sentence.split(" ").length >= 8));
+  if (normalizedSentences.some((sentence, index) => normalizedSentences.indexOf(sentence) !== index)) writingSignals.push("A long sentence is repeated across written responses.");
+  const writingReview = assessment.questions.some((question) => question.type === "Descriptive") ? {
+    label: !reviewTexts.length ? "Not enough descriptive text to review" : writingSignals.length ? "Possible writing patterns for recruiter review" : "No listed patterns found",
     signals: writingSignals,
-    disclaimer: "Simple writing-style clues are unreliable, can flag human writing, and do not establish AI use or misconduct. Do not use them alone for hiring decisions."
+    method: "Limited server-side text heuristics; coding and MCQ answers are excluded.",
+    disclaimer: "These patterns cannot reliably detect AI use or prove authorship. They may flag human writing. Use them only as a prompt for a fair follow-up conversation, never as proof or an automatic hiring decision."
   } : null;
   const submission = { id: makeId("submission"), assessmentId: assessment.id, studentId: req.session.id, answers: reviewedAnswers, writingReview, score, totalMarks: assessment.totalMarks, passed: score >= assessment.passingMarks, submittedAt: new Date().toISOString(), status: assessment.questions.some((question) => question.type !== "MCQ") ? "Needs recruiter review" : "Scored" };
   portalData.update("assessmentSubmissions", (items) => [...items, submission]);
