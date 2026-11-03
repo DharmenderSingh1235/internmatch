@@ -61,6 +61,7 @@
   .admin-cv-dialog__title #admin-cv-review-status { display:inline-block; width:max-content; padding:3px 8px; border:1px solid var(--color-border); border-radius:999px; background:var(--color-bg-alt); }
   #admin-cv-review-status.is-approved { border-color:var(--color-success); color:var(--color-success); background:var(--color-success-tint); }
   #admin-cv-review-status.is-needs-changes { border-color:var(--color-warn); color:var(--color-warn); background:var(--color-warn-tint); }
+  #admin-cv-review-status.is-pending { border-color:#ea580c; color:#ea580c; background:rgba(234,88,12,0.12); }
   .admin-cv-review-actions { display:flex; flex-wrap:wrap; align-items:center; gap:7px; }
   .admin-cv-review-note { width:calc(100% - 36px); margin:10px 18px; padding:8px 10px; border:1px solid var(--color-border); border-radius:9px; color:var(--color-text); background:var(--color-bg-alt); font:inherit; font-size:.84rem; }
   .admin-cv-dialog iframe { display:block; width:100%; height:calc(100% - 126px); border:0; background:#edf1f6; }
@@ -318,6 +319,7 @@
       <div class="panel__head"><div><span class="admin-settings__eyebrow">Overview</span><h2 class="mt-0" id="admin-overview-title">Today at a glance</h2></div><span class="hint">Counts update from available demo records</span></div>
       <div class="stat-grid admin-overview__stats">
         <article class="stat-card"><div class="stat-card__label">Students</div><div class="stat-card__value" id="admin-stat-students">0</div><small>Demo accounts</small></article>
+        <article class="stat-card"><div class="stat-card__label">Pending CV reviews</div><div class="stat-card__value" id="admin-stat-pending-cvs">0</div><small>Awaiting admin approval</small></article>
         <article class="stat-card"><div class="stat-card__label">Companies</div><div class="stat-card__value" id="admin-stat-companies">0</div><small>From listed opportunities</small></article>
         <article class="stat-card"><div class="stat-card__label">Internship listings</div><div class="stat-card__value" id="admin-stat-internships">0</div><small>Visible in catalogue</small></article>
         <article class="stat-card"><div class="stat-card__label">Applications</div><div class="stat-card__value" id="admin-stat-applications">0</div><small>Across student accounts</small></article>
@@ -556,7 +558,7 @@
 <script src="js/app.js"></script>
 <script src="js/shared-adapter.js"></script>
 <script src="js/resume-vault.js"></script>
-<script src="js/admin.js?v=20261104-admin-cv-permission"></script>
+<script src="js/admin.js?v=20261105-cv-consent-approval"></script>
 <script src="js/admin-analytics.js"></script>
 <script src="js/admin-practice-areas.js?v=20261103-practice-api-diagnostic"></script>
 </body>

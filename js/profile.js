@@ -106,12 +106,18 @@ document.addEventListener("DOMContentLoaded", () => {
     const cvReview = Store.readBlob(`im_cv_review_${user.email}`, null);
     if (reviewTarget) {
       if (!cvReview?.status) {
-        reviewTarget.innerHTML = `<span aria-hidden="true">▤</span><span><strong>CV review</strong><br>No admin review yet. You can share a CV from Resume Analyzer.</span>`;
+        reviewTarget.innerHTML = `<span aria-hidden="true">▤</span><span><strong>Admin CV Verification</strong><br>No CV submitted for admin review yet. Upload a PDF in <a href="resume-analyzer.html">Resume Analyzer</a> to submit for Admin approval.</span>`;
       } else {
         const reviewedDate = cvReview.reviewedAt ? App.formatDate(cvReview.reviewedAt) : "";
-        const message = cvReview.status === "Approved" ? "Your CV has been approved." : "Your CV needs changes.";
-        const note = cvReview.note ? `<br>${App.escapeHtml(cvReview.note)}` : "";
-        reviewTarget.innerHTML = `<span aria-hidden="true">${cvReview.status === "Approved" ? "✓" : "!"}</span><span><strong>CV review · ${App.escapeHtml(cvReview.status)}</strong><br>${message}${reviewedDate ? ` · ${App.escapeHtml(reviewedDate)}` : ""}${note}</span>`;
+        const isApproved = cvReview.status === "Approved";
+        const isPending = cvReview.status === "Pending review";
+        const message = isApproved
+          ? "Your CV has been approved by admin and is eligible to be shared with companies."
+          : isPending
+          ? "Your CV is pending Admin approval. It cannot be viewed by companies until approved."
+          : "Admin requested changes on your CV. Please update and resubmit in Resume Analyzer.";
+        const note = cvReview.note ? `<br><strong>Feedback:</strong> ${App.escapeHtml(cvReview.note)}` : "";
+        reviewTarget.innerHTML = `<span aria-hidden="true">${isApproved ? "✓" : isPending ? "⏳" : "!"}</span><span><strong>Admin CV Status · ${App.escapeHtml(cvReview.status)}</strong><br>${message}${reviewedDate ? ` · ${App.escapeHtml(reviewedDate)}` : ""}${note}</span>`;
       }
     }
     const companyReviewTarget = document.getElementById("profile-company-cv-reviews");

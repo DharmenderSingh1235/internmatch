@@ -1,6 +1,6 @@
 /*
  * Resume Intelligence — PDF analysis runs in this browser. The PDF is sent to
- * the InternMatch server only when the student explicitly allows company or admin access.
+ * the InternMatch server only after the student explicitly allows admin review.
  * Skills and opportunity scores are transparent heuristics; writing patterns are not an authorship detector.
  */
 document.addEventListener("DOMContentLoaded", () => {
@@ -35,6 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const allInternships = Store.getAllInternships();
   let selectedFile = null;
   let serverCvUploaded = false;
+  let serverCvReview = null;
   let foundSkills = [];
   let extractedResume = null;
 
@@ -66,6 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const response = await fetch(`${window.IM_API_BASE}/api/student/cv`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ fileName: file.name, mimeType: file.type, data: base64 }) });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || "Could not upload the CV.");
+    return data;
   }
 
   async function saveSharedCV(file) {
@@ -101,10 +103,23 @@ document.addEventListener("DOMContentLoaded", () => {
     };
     const showSharingState = () => {
       companyProfileShare.disabled = false;
-      companyCvShare.disabled = !companyProfileShare.checked;
-      if (companyCvShare.checked) companyShareStatus.textContent = "Your profile is discoverable; your CV is shared with companies you apply to. You can revoke either permission here.";
-      else if (companyProfileShare.checked) companyShareStatus.textContent = "Your profile is discoverable by active companies. Your CV remains private.";
-      else companyShareStatus.textContent = "Your profile and CV are private from companies until you opt in.";
+      const isApproved = serverCvReview?.status === "Approved";
+      if (!isApproved) {
+        companyCvShare.checked = false;
+        companyCvShare.disabled = true;
+        if (!serverCvUploaded) {
+          companyShareStatus.innerHTML = '<span class="pill pill--warning" style="display:inline-block;margin-bottom:4px;">Admin Approval Required</span><br>Upload your CV for Admin review first. Once an Admin approves your CV, you will be able to share it with companies.';
+        } else if (serverCvReview?.status === "Needs changes") {
+          companyShareStatus.innerHTML = `<span class="pill pill--danger" style="display:inline-block;margin-bottom:4px;">Admin Requested Changes</span><br>Admin feedback: ${App.escapeHtml(serverCvReview.note || "Please revise your CV and re-upload.")}<br>Upload an updated CV for Admin approval before sharing with companies.`;
+        } else {
+          companyShareStatus.innerHTML = '<span class="pill pill--warning" style="display:inline-block;margin-bottom:4px;">Pending Admin Approval</span><br>Your CV has been submitted and is waiting for Admin approval. It cannot be uploaded to or viewed by companies until approved.';
+        }
+      } else {
+        companyCvShare.disabled = !companyProfileShare.checked;
+        if (companyCvShare.checked) companyShareStatus.innerHTML = '<span class="pill pill--primary" style="display:inline-block;margin-bottom:4px;">Admin Approved ✓</span><br>Your CV is approved by Admin and shared with active companies you apply to.';
+        else if (companyProfileShare.checked) companyShareStatus.innerHTML = '<span class="pill pill--primary" style="display:inline-block;margin-bottom:4px;">Admin Approved ✓</span><br>Your CV is approved by Admin! Check the box above to share it with companies.';
+        else companyShareStatus.innerHTML = '<span class="pill pill--primary" style="display:inline-block;margin-bottom:4px;">Admin Approved ✓</span><br>Enable profile sharing first to share your approved CV with companies.';
+      }
     };
     if (!user || user.role !== "student") {
       showLoginLink("Sign in with a student account and the InternMatch API to manage company sharing.");
@@ -120,12 +135,23 @@ document.addEventListener("DOMContentLoaded", () => {
           const data = await response.json().catch(() => ({}));
           if (response.status === 401) throw new Error("SESSION_EXPIRED");
           if (!response.ok) throw new Error(data.error || "Could not load sharing permissions.");
+          serverCvReview = data.cvReview || null;
+          if (data.cvReview) Store.writeBlob(`im_cv_review_${user.email}`, data.cvReview);
           companyProfileShare.checked = data.profileVisible === true;
-          companyCvShare.checked = data.cvShared === true && data.profileVisible === true;
+          const isApproved = serverCvReview?.status === "Approved";
+          companyCvShare.checked = isApproved && data.cvShared === true && data.profileVisible === true;
           adminServerCvShare.checked = data.adminCvShared === true;
           adminServerCvShare.disabled = false;
           serverCvUploaded = data.cvUploaded === true;
-          adminServerCvStatus.textContent = adminServerCvShare.checked ? (serverCvUploaded ? "Admin CV review is allowed for your uploaded server copy." : "Permission is on. Select a PDF to upload it for admin review.") : "Admin CV review permission is off.";
+          if (isApproved) {
+            adminServerCvStatus.textContent = "Admin has approved your CV. It is eligible to be shared with companies.";
+          } else if (serverCvReview?.status === "Needs changes") {
+            adminServerCvStatus.textContent = `Admin requested changes: ${serverCvReview.note || "Please upload an updated version."}`;
+          } else if (serverCvUploaded) {
+            adminServerCvStatus.textContent = "Your uploaded CV is currently waiting for Admin review.";
+          } else {
+            adminServerCvStatus.textContent = "Select a PDF to upload and submit for Admin review.";
+          }
           localStorage.setItem(consentKey, JSON.stringify({ profileVisible: companyProfileShare.checked, cvShared: companyCvShare.checked }));
           showSharingState();
         })
@@ -188,37 +214,41 @@ document.addEventListener("DOMContentLoaded", () => {
     if (selectedFile && adminShareCheckbox.checked && user) {
       saveSharedCV(selectedFile).catch(() => { adminShareStatus.textContent = "Could not save the CV locally. Try a smaller PDF or another browser."; });
     }
-    if (selectedFile && ((companyCvShare?.checked && companyProfileShare?.checked) || adminServerCvShare?.checked)) {
-      uploadCompanyCv(selectedFile).then(() => {
+    if (selectedFile && studentToken() && user?.role === "student" && adminServerCvShare?.checked) {
+      uploadCompanyCv(selectedFile).then((data) => {
         serverCvUploaded = true;
-        if (companyCvShare?.checked && companyProfileShare?.checked) companyShareStatus.textContent = "Your updated CV is shared with active company accounts you apply to.";
-        if (adminServerCvShare?.checked) adminServerCvStatus.textContent = "Your uploaded CV is available to admins for review.";
+        serverCvReview = data?.cvReview || { status: "Pending review", note: "" };
+        companyCvShare.checked = false;
+        companyCvShare.disabled = true;
+        adminServerCvStatus.textContent = "Your CV was uploaded and submitted for Admin review. Waiting for Admin approval.";
+        localStorage.setItem(consentKey, JSON.stringify({ profileVisible: companyProfileShare.checked, cvShared: false }));
+        Store.writeBlob(`im_cv_review_${user.email}`, serverCvReview);
+        showSharingState();
+        App.toast("CV uploaded and submitted for Admin approval.");
       }).catch(async (error) => {
         if (adminServerCvShare?.checked) adminServerCvStatus.textContent = error.message;
-        if (!companyCvShare?.checked || !companyProfileShare?.checked) return;
-        companyCvShare.checked = false;
-        const consent = { profileVisible: true, cvShared: false };
-        try { localStorage.setItem(consentKey, JSON.stringify(consent)); await sendCompanyConsent(true, false); } catch (_) { /* Keep the upload error visible; the API may be unavailable. */ }
         companyShareStatus.textContent = error.message;
       });
+    } else if (selectedFile && user?.role === "student" && studentToken()) {
+      adminServerCvStatus.textContent = "Your PDF stays in this browser. Enable ‘Allow admin to review my CV’ to upload it for review.";
     }
   });
 
   companyProfileShare?.addEventListener("change", async () => {
     const profileVisible = companyProfileShare.checked;
     const prior = getCompanyConsent();
-    const cvShared = profileVisible && prior.cvShared === true;
-    companyCvShare.disabled = !profileVisible || !studentToken();
-    if (!profileVisible) companyCvShare.checked = false;
+    const cvShared = profileVisible && prior.cvShared === true && serverCvReview?.status === "Approved";
+    companyCvShare.disabled = !profileVisible || !studentToken() || serverCvReview?.status !== "Approved";
+    if (!profileVisible || serverCvReview?.status !== "Approved") companyCvShare.checked = false;
     try {
       await sendCompanyConsent(profileVisible, cvShared);
       localStorage.setItem(consentKey, JSON.stringify({ profileVisible, cvShared }));
-      companyShareStatus.textContent = profileVisible ? "Your profile is discoverable by active company accounts. Your CV remains private unless separately shared." : "Company access to your profile and CV has been turned off.";
+      showSharingState();
     } catch (error) {
       try { localStorage.setItem(consentKey, JSON.stringify(prior)); } catch (_) { /* Leave the last saved browser preference unchanged. */ }
       companyProfileShare.checked = prior.profileVisible === true;
-      companyCvShare.checked = prior.cvShared === true;
-      companyCvShare.disabled = !companyProfileShare.checked || !studentToken();
+      companyCvShare.checked = prior.cvShared === true && serverCvReview?.status === "Approved";
+      companyCvShare.disabled = !companyProfileShare.checked || !studentToken() || serverCvReview?.status !== "Approved";
       companyShareStatus.textContent = error.message;
     }
   });
@@ -229,22 +259,22 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       if (cvShared) {
         if (!companyProfileShare.checked) throw new Error("Enable profile sharing first.");
-        if (!selectedFile) throw new Error("Select a PDF before sharing your CV.");
+        if (serverCvReview?.status !== "Approved") throw new Error("Admin approval is required before sharing your CV with companies.");
         await sendCompanyConsent(true, true);
         serverConsentUpdated = true;
-        await uploadCompanyCv(selectedFile);
       } else {
         await sendCompanyConsent(companyProfileShare.checked, false);
         serverConsentUpdated = true;
       }
       localStorage.setItem(consentKey, JSON.stringify({ profileVisible: companyProfileShare.checked, cvShared }));
-      companyShareStatus.textContent = cvShared ? "Your PDF is shared with active companies you apply to." : "Your CV has been removed from company access.";
+      showSharingState();
+      App.toast(cvShared ? "CV is now shared with companies you apply to." : "CV sharing with companies disabled.");
     } catch (error) {
       if (cvShared && serverConsentUpdated && prior.cvShared !== true) {
         try { await sendCompanyConsent(companyProfileShare.checked, false); } catch (_) { /* Server may be offline; preserve the original failure below. */ }
       }
       try { localStorage.setItem(consentKey, JSON.stringify(prior)); } catch (_) { /* Leave the last saved browser preference unchanged. */ }
-      companyCvShare.checked = prior.cvShared === true;
+      companyCvShare.checked = prior.cvShared === true && serverCvReview?.status === "Approved";
       companyShareStatus.textContent = error.message;
     }
   });
@@ -263,12 +293,22 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!response.ok) throw new Error(data.error || "Could not update admin CV permission.");
       serverCvUploaded = data.cvUploaded === true;
       if (enabled && selectedFile) {
-        await uploadCompanyCv(selectedFile);
+        const uploaded = await uploadCompanyCv(selectedFile);
         serverCvUploaded = true;
+        serverCvReview = uploaded?.cvReview || { status: "Pending review", note: "" };
+        companyCvShare.checked = false;
+        companyCvShare.disabled = true;
+        localStorage.setItem(consentKey, JSON.stringify({ profileVisible: companyProfileShare.checked, cvShared: false }));
+        Store.writeBlob(`im_cv_review_${user.email}`, serverCvReview);
+        showSharingState();
+        adminServerCvStatus.textContent = "Your CV was uploaded for admin review. Company access stays off until approval.";
       } else if (enabled && !serverCvUploaded) {
         throw new Error("Select a PDF so it can be uploaded for admin review.");
+      } else {
+        adminServerCvStatus.textContent = enabled
+          ? "Admin review is allowed for your uploaded CV."
+          : (companyCvShare?.checked ? "Admin access is off; companies can still access your approved shared CV." : "Admin permission is off and the server CV was removed.");
       }
-      adminServerCvStatus.textContent = enabled ? "Admin review is allowed for your uploaded CV." : (companyCvShare?.checked ? "Admin access is off; companies you applied to can still access the CV." : "Admin permission is off and the server CV was removed.");
     } catch (error) {
       if (enabled) {
         adminServerCvShare.checked = false;

@@ -38,7 +38,7 @@ The backend grounds internship answers in the local sample catalogue and rate-li
 3. Run `npm install` from the `server` folder so the MongoDB Node driver is installed, then start with `npm start`.
 4. Open `/api/health`; it should report `"storage":"mongodb"` and `"sessionStorage":"mongodb"`.
 
-For Vercel or another hosted deployment, add `MONGODB_URI`, `MONGODB_DB`, and the existing AI/admin secrets in that project's server environment settings, then redeploy the API. Do not copy the local `.env` file to the frontend project.
+For Vercel or another hosted deployment, add `MONGODB_URI`, `MONGODB_DB`, `ALLOWED_ORIGIN` (the exact public frontend origin, such as `https://your-site.vercel.app`), and the existing AI/admin secrets in the API project's server environment settings, then redeploy the API. Keep the API deployment publicly reachable for browser requests and allow only its expected origins. Do not copy the local `.env` file to the frontend project.
 
 ## Company and student workflow
 

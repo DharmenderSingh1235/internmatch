@@ -217,8 +217,45 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const { items = [] } = await adminApi("/admin/students");
       window.__adminServerStudents = items;
-      body.innerHTML = items.length ? items.map((student) => `<tr><td><strong>${App.escapeHtml(student.name || "Student")}</strong><div class="admin-cell-tags">${App.escapeHtml(student.email || "")}</div></td><td>${App.escapeHtml([student.degree, student.course, student.college].filter(Boolean).join(" · ") || "Not provided")}</td><td>${App.escapeHtml((student.skills || []).join(", ") || "Not provided")}</td><td>${(student.applications || []).length}</td><td>${student.cvUploaded ? "CV uploaded" : "CV not uploaded"}<div class="admin-cell-tags">Admin access: ${student.adminCvShared ? "Allowed" : "Not allowed"}</div>${student.cvReview?.status ? `<div class="admin-cell-tags">Review: ${App.escapeHtml(student.cvReview.status)}</div>` : ""}</td><td><button type="button" class="btn btn--secondary btn--sm" data-server-student="${App.escapeHtml(student.id)}">Open record</button></td></tr>`).join("") : '<tr><td colspan="6">No registered student accounts found on the server.</td></tr>';
+      const pendingCount = items.filter((s) => s.cvUploaded && s.cvReview?.status !== "Approved").length;
+      const pendingStat = document.getElementById("admin-stat-pending-cvs");
+      if (pendingStat) pendingStat.textContent = pendingCount;
+      body.innerHTML = items.length ? items.map((student) => {
+        let cvBadge = '<span class="pill pill--muted">No CV uploaded</span>';
+        if (student.cvUploaded) {
+          if (student.cvReview?.status === "Approved") {
+            cvBadge = '<span class="pill pill--primary" style="background:#059669;color:#fff;">Approved ✓</span><div class="admin-cell-tags" style="color:#059669;">Eligible for company sharing</div>';
+          } else if (student.cvReview?.status === "Needs changes") {
+            cvBadge = '<span class="pill pill--danger">Needs changes ⚠️</span><div class="admin-cell-tags">Company sharing blocked</div>';
+          } else {
+            cvBadge = '<span class="pill pill--warning" style="background:#ea580c;color:#fff;">Pending Approval ⏳</span><div class="admin-cell-tags" style="color:#ea580c;font-weight:600;">Action required</div>';
+          }
+        }
+        return `<tr>
+          <td><strong>${App.escapeHtml(student.name || "Student")}</strong><div class="admin-cell-tags">${App.escapeHtml(student.email || "")}</div></td>
+          <td>${App.escapeHtml([student.degree, student.course, student.college].filter(Boolean).join(" · ") || "Not provided")}</td>
+          <td>${App.escapeHtml((student.skills || []).join(", ") || "Not provided")}</td>
+          <td>${(student.applications || []).length}</td>
+          <td>${cvBadge}</td>
+          <td style="white-space:nowrap;">
+            <button type="button" class="btn btn--secondary btn--sm" data-server-student="${App.escapeHtml(student.id)}">Open record</button>
+            ${student.cvUploaded && student.adminCvShared ? `<button type="button" class="btn btn--primary btn--sm" data-quick-cv="${App.escapeHtml(student.id)}" data-student-email="${App.escapeHtml(student.email)}" data-student-name="${App.escapeHtml(student.name)}">${student.cvReview?.status === "Approved" ? "View CV" : "Review &amp; Approve CV"}</button>` : student.cvUploaded ? '<span class="admin-cell-tags">Admin review permission not granted</span>' : ""}
+          </td>
+        </tr>`;
+      }).join("") : '<tr><td colspan="6">No registered student accounts found on the server.</td></tr>';
       body.querySelectorAll("[data-server-student]").forEach((button) => button.addEventListener("click", () => openAdminServerStudent(button.dataset.serverStudent)));
+      body.querySelectorAll("[data-quick-cv]").forEach((button) => button.addEventListener("click", async () => {
+        const student = (window.__adminServerStudents || []).find((s) => s.id === button.dataset.quickCv);
+        if (!student) return;
+        button.disabled = true;
+        try {
+          await openServerStudentCv({ id: student.id, email: student.email, name: student.name, cvReview: student.cvReview });
+        } catch (error) {
+          App.toast(error.message, "error");
+        } finally {
+          button.disabled = false;
+        }
+      }));
       const stat = document.getElementById("admin-stat-students"); if (stat) stat.textContent = items.length;
       const appStat = document.getElementById("admin-stat-applications"); if (appStat) appStat.textContent = items.reduce((sum, student) => sum + (student.applications || []).length, 0);
     } catch (error) { body.innerHTML = `<tr><td colspan="6">${App.escapeHtml(error.message)}</td></tr>`; }
@@ -318,13 +355,18 @@ document.addEventListener("DOMContentLoaded", () => {
         const result = await adminApi(`/admin/students/${encodeURIComponent(activeCvStudentId)}/cv-review`, { method: "PATCH", body: JSON.stringify({ status, note: cvReviewNote.value.trim() }) });
         review = result.cvReview || review;
         const student = (window.__adminServerStudents || []).find((item) => item.id === activeCvStudentId);
-        if (student) student.cvReview = review;
+        if (student) {
+          student.cvReview = review;
+          if (status !== "Approved") student.cvShared = false;
+        }
         await renderAdminServerStudents();
       } catch (error) { App.toast(error.message, "error"); return; }
-    } else Store.writeBlob(`im_cv_review_${activeCvEmail}`, review);
+    }
+    Store.writeBlob(`im_cv_review_${activeCvEmail}`, review);
     logAdminAction(status === "Approved" ? "Approved student CV" : "Requested student CV changes", activeCvEmail);
+    renderAuditLog();
     showCvReviewState(review);
-    App.toast(status === "Approved" ? "CV approved for the student." : "CV marked as needing changes.");
+    App.toast(status === "Approved" ? "CV approved! Student can now upload/share their CV with companies." : "CV marked as needing changes. Company access remains blocked.");
   }
   document.getElementById("admin-cv-approve").addEventListener("click", () => saveCvReview("Approved"));
   document.getElementById("admin-cv-request-changes").addEventListener("click", () => saveCvReview("Needs changes"));

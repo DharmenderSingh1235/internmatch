@@ -138,7 +138,7 @@
         <div class="resume-form-heading"><div><span class="resume-intel-kicker">Start your review</span><h2>Analyze your resume</h2><p>Select a target internship and upload a text-based PDF.</p></div><span class="resume-intel-icon" aria-hidden="true">▤</span></div>
         <details class="resume-note">
           <summary>Privacy and writing-style limitations</summary>
-          <p style="margin:10px 0 0;"><strong>Private by design:</strong> Your PDF is analyzed in this browser and is never sent to an AI service. It is uploaded to the InternMatch server only when you separately allow company CV sharing or admin review. You can turn either permission off at any time. Writing-style clues cannot determine whether a person or AI wrote a resume.</p>
+          <p style="margin:10px 0 0;"><strong>Private by design:</strong> Your PDF is analyzed in this browser and is never sent to an AI service. It is uploaded to the InternMatch server only after you enable admin review and submit it. Company access is a separate choice available after approval. You can revoke admin and company access separately. Writing-style clues cannot determine whether a person or AI wrote a resume.</p>
         </details>
         <div class="resume-upload-grid">
           <div class="ats-role-row" id="ats-role-row"><div class="field"><label for="ats-role">Target internship role</label><select id="ats-role" aria-label="Target internship role"></select></div><div class="field" id="ats-other-role-wrap" hidden><label for="ats-other-role">Other role title</label><input type="text" id="ats-other-role" maxlength="80" placeholder="e.g. Product design intern" /></div><p class="ats-other-role" id="ats-other-role-note" hidden>Because this role is not in the demo catalogue, role-skill feedback will use requirements from available internship listings.</p></div>
@@ -146,10 +146,10 @@
             <label for="resume-file-input">Resume (PDF only)</label>
             <input type="file" id="resume-file-input" accept="application/pdf" />
             <p class="hint" id="resume-analyzer-filename">No file selected</p>
-            <label class="resume-admin-sharing"><input type="checkbox" id="company-profile-sharing" /> <span><strong>Allow active companies to view my profile</strong><small>Your profile is discoverable by admin-approved company accounts. Contact details are shared only with companies you apply to. Turn this off any time.</small></span></label>
-            <label class="resume-admin-sharing"><input type="checkbox" id="company-cv-sharing" disabled /> <span><strong>Allow companies I apply to to open my CV</strong><small>Optional and separate from profile sharing. Your PDF is uploaded to the InternMatch server only when you enable this permission.</small></span></label>
+            <label class="resume-admin-sharing"><input type="checkbox" id="company-profile-sharing" /> <span><strong>Allow active companies to view my profile</strong><small>Your profile is discoverable by admin-approved company accounts. Contact details are shared only with companies you apply to.</small></span></label>
+            <label class="resume-admin-sharing"><input type="checkbox" id="company-cv-sharing" disabled /> <span><strong>Share CV with companies I apply to</strong><small>Requires Admin approval first. Once an Admin reviews and approves your CV, you can share it with companies.</small></span></label>
             <p class="hint" id="company-sharing-status" role="status" aria-live="polite"></p>
-            <label class="resume-admin-sharing"><input type="checkbox" id="admin-server-cv-sharing" disabled /> <span><strong>Allow admin to review my CV</strong><small>Separate from company access. If the CV is on the server, admins can open it for review; turn this off any time.</small></span></label>
+            <label class="resume-admin-sharing"><input type="checkbox" id="admin-server-cv-sharing" disabled /> <span><strong>Admin CV review &amp; verification</strong><small>Your uploaded CV is automatically submitted to administrators for verification before company access.</small></span></label>
             <p class="hint" id="admin-server-cv-sharing-status" role="status" aria-live="polite"></p>
             <details style="margin-top:10px;"><summary class="hint">Browser-only admin copy</summary><label class="resume-admin-sharing"><input type="checkbox" id="resume-admin-sharing" /> <span><strong>Allow admin to open this CV from this browser only</strong><small>Local demo storage; this does not upload the PDF or grant server access.</small></span></label><p class="hint" id="resume-admin-sharing-status" role="status" aria-live="polite"></p></details>
           </div>
@@ -204,6 +204,6 @@
 <script src="js/skills-vocabulary.js"></script>
 <script src="js/resume-vault.js"></script>
 <script src="js/ats-score.js"></script>
-<script src="js/resume-analyzer.js?v=20261104-admin-cv-permission"></script>
+<script src="js/resume-analyzer.js?v=20261105-cv-consent-approval"></script>
 </body>
 </html>
