@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 3002;
 const PROVIDER = (process.env.AI_PROVIDER || "openai").toLowerCase();
 const PROVIDER_CONFIG = {
   openai: { key: process.env.OPENAI_API_KEY, model: process.env.OPENAI_MODEL || "gpt-4o-mini" },
-  gemini: { key: process.env.GEMINI_API_KEY, model: process.env.GEMINI_MODEL || "gemini-3.6-flash" },
+  gemini: { key: process.env.GEMINI_API_KEY, model: process.env.GEMINI_MODEL || "gemini-3.8-flash" },
   anthropic: { key: process.env.ANTHROPIC_API_KEY, model: process.env.ANTHROPIC_MODEL || "claude-3-5-haiku-latest" }
 };
 const selected = PROVIDER_CONFIG[PROVIDER];
@@ -153,7 +153,7 @@ async function callGemini(message, history) {
     { role: "user", parts: [{ text: message }] }];
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(selected.model)}:generateContent?key=${encodeURIComponent(selected.key)}`;
   const response = await fetch(url, { method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ systemInstruction: { parts: [{ text: systemPrompt() }] }, contents, generationConfig: { maxOutputTokens: 450, temperature: 0.4 } }) });
+    body: JSON.stringify({ systemInstruction: { parts: [{ text: systemPrompt() }] }, contents, generationConfig: { maxOutputTokens: 450 } }) });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(`Gemini API error ${response.status}: ${data.error?.message || "request failed"}`);
   return data.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("").trim();
@@ -191,7 +191,7 @@ async function generateAssessmentDraft(sourceText, { category, difficulty, count
   } else if (PROVIDER === "gemini") {
     const requestGeminiDraft = async (model) => {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(selected.key)}`;
-      const response = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: [{ role: "user", parts: [{ text: user }] }], generationConfig: { responseMimeType: "application/json", maxOutputTokens: 3500, temperature: 0.25 } }) });
+      const response = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: [{ role: "user", parts: [{ text: user }] }], generationConfig: { responseMimeType: "application/json", maxOutputTokens: 3500 } }) });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(`Gemini ${model} API error ${response.status}: ${data.error?.message || "request failed"}`);
       return data.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("") || "";
@@ -206,7 +206,7 @@ async function generateAssessmentDraft(sourceText, { category, difficulty, count
         responseText = await requestGeminiDraft(selected.model);
       } catch (retryError) {
         if (!isTemporaryCapacityError(retryError)) throw retryError;
-        const fallbackModel = process.env.GEMINI_FALLBACK_MODEL || "gemini-2.5-flash";
+        const fallbackModel = process.env.GEMINI_FALLBACK_MODEL || "gemini-3.6-flash";
         if (fallbackModel === selected.model) throw retryError;
         responseText = await requestGeminiDraft(fallbackModel);
       }

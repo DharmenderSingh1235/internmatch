@@ -20,7 +20,7 @@ The API key must be supplied by you. Keep `.env` private; it is excluded by `.gi
 | `AI_PROVIDER` | `openai` (default), `gemini`, or `anthropic` |
 | `OPENAI_API_KEY`, `GEMINI_API_KEY`, `ANTHROPIC_API_KEY` | Provider key matching `AI_PROVIDER` |
 | `OPENAI_MODEL`, `GEMINI_MODEL`, `ANTHROPIC_MODEL` | Optional model override for that provider |
-| `GEMINI_FALLBACK_MODEL` | Gemini model used for assessment drafts when the primary model is temporarily overloaded (default `gemini-2.5-flash`) |
+| `GEMINI_FALLBACK_MODEL` | Gemini model used for assessment drafts when the primary model is temporarily overloaded (default `gemini-3.6-flash`) |
 | `PORT` | Proxy port (default `3002`) |
 | `ALLOWED_ORIGIN` | Exact deployed site origin(s), comma-separated; localhost origins are allowed for development |
 | `TRUST_PROXY` | Set to `true` only when exactly one trusted reverse proxy sits in front of the API; otherwise leave `false` |
