@@ -9,7 +9,7 @@ const sqliteFile = path.join(dataDir, "portal.sqlite");
 let sqliteDb = null;
 let mongoClient = null;
 let mongoDb = null;
-const MONGO_COLLECTIONS = new Set(["students", "companies", "companyRequests", "internships", "applications", "shortlists", "interviews", "assessments", "assessmentSessions", "assessmentSubmissions", "supportMessages", "passwordResetRequests", "practiceAreas", "audit"]);
+const MONGO_COLLECTIONS = new Set(["students", "companies", "companyRequests", "internships", "applications", "shortlists", "interviews", "assessments", "assessmentSessions", "assessmentSubmissions", "assessmentObserverInvites", "supportMessages", "passwordResetRequests", "practiceAreas", "audit"]);
 
 try {
   const { DatabaseSync } = require("node:sqlite");

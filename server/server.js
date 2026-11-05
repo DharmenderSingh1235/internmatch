@@ -10,7 +10,7 @@ const mammoth = require("mammoth");
 const INTERNSHIP_DATA = require(path.join(__dirname, "..", "data", "internships.js"));
 const COMPANY_CANDIDATES = require("./company-data");
 const portalData = require("./portal-data");
-const PORT = process.env.PORT || 3002;
+const PORT = process.env.PORT || 3003;
 const PROVIDER = (process.env.AI_PROVIDER || "openai").toLowerCase();
 const PROVIDER_CONFIG = {
   openai: { key: process.env.OPENAI_API_KEY, model: process.env.OPENAI_MODEL || "gpt-4o-mini" },
@@ -206,9 +206,28 @@ async function generateAssessmentDraft(sourceText, { category, difficulty, count
         responseText = await requestGeminiDraft(selected.model);
       } catch (retryError) {
         if (!isTemporaryCapacityError(retryError)) throw retryError;
-        const fallbackModel = process.env.GEMINI_FALLBACK_MODEL || "gemini-3.6-flash";
-        if (fallbackModel === selected.model) throw retryError;
-        responseText = await requestGeminiDraft(fallbackModel);
+        const configuredFallbacks = [
+          ...(process.env.GEMINI_FALLBACK_MODELS || "").split(","),
+          process.env.GEMINI_FALLBACK_MODEL || ""
+        ].map((model) => model.trim()).filter(Boolean);
+        const fallbackModels = [...new Set([
+          ...configuredFallbacks,
+          "gemini-3.7-flash",
+          "gemini-3.5-flash",
+          "gemini-3.5-flash-lite"
+        ])].filter((model) => model !== selected.model);
+        let lastCapacityError = retryError;
+        for (const model of fallbackModels) {
+          try {
+            responseText = await requestGeminiDraft(model);
+            console.warn(`[assessment-drafts] Gemini ${selected.model} was busy; generated using ${model}.`);
+            break;
+          } catch (fallbackError) {
+            if (!isTemporaryCapacityError(fallbackError) && !/\b404\b|not found|unsupported model|unavailable/i.test(String(fallbackError?.message || fallbackError))) throw fallbackError;
+            lastCapacityError = fallbackError;
+          }
+        }
+        if (!responseText) throw new Error(`Gemini question generation is temporarily unavailable on ${selected.model} and its fallback models. Last error: ${lastCapacityError.message}`);
       }
     }
   } else {
@@ -270,7 +289,7 @@ async function passwordMatches(password, record) {
 }
 async function issueToken(user) {
   const token = crypto.randomBytes(32).toString("base64url");
-  const session = { role: user.role, id: user.id, email: user.email, expiresAt: Date.now() + TOKEN_TTL_MS };
+  const session = { role: user.role, id: user.id, email: user.email, ...(user.companyId ? { companyId: user.companyId } : {}), ...(user.assessmentId ? { assessmentId: user.assessmentId } : {}), ...(user.inviteId ? { inviteId: user.inviteId } : {}), expiresAt: Date.now() + (Number(user.sessionTtlMs) || TOKEN_TTL_MS) };
   sessions.set(token, session);
   if (portalData.sessionStore) await portalData.sessionStore.put(tokenDigest(token), session);
   return token;
@@ -295,6 +314,19 @@ function requireRole(role) {
 const adminOnly = requireRole("admin");
 const companyOnly = requireRole("company");
 const studentOnly = requireRole("student");
+const observerOnly = asyncRoute(async (req, res, next) => {
+  const token = String(req.headers.authorization || "").replace(/^Bearer\\s+/i, "");
+  const session = await getSession(token);
+  if (!session || session.expiresAt < Date.now() || session.role !== "assessment_observer") return res.status(401).json({ error: "Open a current teacher invitation link to continue." });
+  const invite = portalData.collection("assessmentObserverInvites").find((entry) => entry.id === session.inviteId && entry.redeemedAt && !entry.revokedAt && Date.parse(entry.redeemedAt) + 8 * 60 * 60 * 1000 > Date.now());
+  const assessment = invite && portalData.collection("assessments").find((entry) => entry.id === invite.assessmentId && entry.companyId === invite.companyId && entry.status === "approved");
+  if (!invite || !assessment || session.assessmentId !== invite.assessmentId || session.companyId !== invite.companyId) return res.status(403).json({ error: "This teacher invitation has expired or been revoked." });
+  req.session = session;
+  req.observerInvite = invite;
+  req.observerAssessment = assessment;
+  next();
+});
+
 function safeCompany(company) {
   const { salt, hash, passwordHash, ...publicFields } = company;
   return publicFields;
@@ -356,7 +388,7 @@ function candidateMatch(candidate, internship) {
 app.get("/", (req, res) => {
   res.type("html").send(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>InternMatch AI backend</title><body style="font:16px system-ui;max-width:680px;margin:12vh auto;padding:24px;color:#17233b"><h1>InternMatch AI backend is running</h1><p>This address serves the chatbot API, not the website interface.</p><p>Open <a href="http://127.0.0.1:5500/chatbot.html">chatbot.html through Live Server</a> to use the chatbot. If your Live Server uses another port, use that address instead.</p><p>Backend status: <a href="/api/health">/api/health</a></p></body></html>`);
 });
-app.get("/api/health", (req, res) => res.json({ ok: true, apiVersion: "2026-11-05-assessment-writing-review", assessmentApprovals: true, assessmentDocumentDrafts: true, assessmentWritingReview: true, assessmentCameraRequired: false, studentAssessmentTracker: true, adminPracticeAreaManagement: true, adminPracticeFileQuestionDrafts: true, studentPracticeAreas: true, profileCvSharing: true, adminCvConsent: true, adminCvApproval: true, companyCvApprovalGate: true, companyCvReview: true, adminCompanyCvReviewHistory: true, studentProfileSync: true, studentInterviewScores: true, adminStudentRecords: true, adminStudentCvReview: true, adminCompanyRecords: true, keyConfigured: !!selected.key, provider: PROVIDER, model: selected.model, catalogueSize: INTERNSHIP_DATA.length, storage: portalData.storageMode(), sessionStorage: portalData.sessionStore ? (portalData.storageMode() === "mongodb" ? "mongodb" : "sqlite") : "memory" }));
+app.get("/api/health", (req, res) => res.json({ ok: true, apiVersion: "2026-11-05-verified-assessment-observers", assessmentVerifiedTeacherInvites: true, assessmentApprovals: true, assessmentRejectFeedback: true, assessmentDocumentDrafts: true, assessmentWritingReview: true, assessmentCameraRequired: true, assessmentLocalSignals: true, assessmentLocalFaceDetection: true, assessmentContextChangeTermination: true, assessmentRecruiterLiveView: true, assessmentGeminiFallbackChain: true, assessmentMonitoringPolicy: true, assessmentWarningSignals: true, assessmentFourWarningTermination: true, studentAssessmentTracker: true, adminPracticeAreaManagement: true, adminPracticeFileQuestionDrafts: true, studentPracticeAreas: true, profileCvSharing: true, adminCvConsent: true, adminCvApproval: true, companyCvApprovalGate: true, companyCvReview: true, adminCompanyCvReviewHistory: true, studentProfileSync: true, studentInterviewScores: true, adminStudentRecords: true, adminStudentCvReview: true, adminCompanyRecords: true, keyConfigured: !!selected.key, provider: PROVIDER, model: selected.model, catalogueSize: INTERNSHIP_DATA.length, storage: portalData.storageMode(), mongodbConnected: portalData.storageMode() === "mongodb", sessionStorage: portalData.sessionStore ? (portalData.storageMode() === "mongodb" ? "mongodb" : "sqlite") : "memory" }));
 app.get("/api/internships", (req, res) => {
   const listings = portalData.collection("internships").filter((listing) => String(listing.status).toLowerCase() === "active").map((listing) => {
     const company = portalData.collection("companies").find((item) => item.id === listing.companyId && String(item.status).toLowerCase() === "active");
@@ -365,6 +397,11 @@ app.get("/api/internships", (req, res) => {
   }).filter(Boolean);
   res.json({ items: [...INTERNSHIP_DATA, ...listings] });
 });
+app.post("/api/auth/logout", asyncRoute(async (req, res) => {
+  const token = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+  if (token) await revokeSession(token);
+  res.json({ ok: true });
+}));
 app.post("/api/auth/admin/login", limitAuthRequests, asyncRoute(async (req, res) => {
   const expected = process.env.ADMIN_PASSWORD;
   if (!expected) return res.status(503).json({ error: "Set ADMIN_PASSWORD in server/.env before using admin management." });
@@ -694,15 +731,29 @@ app.delete("/api/admin/practice-areas/:id", adminOnly, (req, res) => {
 app.get("/api/admin/assessments", adminOnly, (req, res) => {
   const companies = new Map(portalData.collection("companies").map((company) => [company.id, company]));
   const roles = new Map(portalData.collection("internships").map((role) => [role.id, role]));
-  const items = portalData.collection("assessments").filter((item) => ["pending_approval", "rejected"].includes(item.status)).map((item) => ({ ...item, questions: item.questions.map(({ correctIndex, explanation, ...question }) => question), companyName: companies.get(item.companyId)?.name || "Company", roleTitle: roles.get(item.internshipId)?.title || "Role" }));
+  const items = portalData.collection("assessments").filter((item) => item.status === "pending_approval").map((item) => ({ ...item, questions: item.questions.map(({ correctIndex, explanation, ...question }) => question), companyName: companies.get(item.companyId)?.name || "Company", roleTitle: roles.get(item.internshipId)?.title || "Role" }));
+  res.json({ items });
+});
+app.get("/api/admin/assessment-activity", adminOnly, (req, res) => {
+  const assessments = new Map(portalData.collection("assessments").map((item) => [item.id, item]));
+  const companies = new Map(portalData.collection("companies").map((item) => [item.id, item]));
+  const students = new Map(portalData.collection("students").map((item) => [item.id, item]));
+  const items = portalData.collection("assessmentSubmissions").filter((entry) => (entry.integrityEvents || []).length || entry.status === "Terminated for review").sort((a, b) => String(b.submittedAt || "").localeCompare(String(a.submittedAt || ""))).slice(0, 100).map((entry) => {
+    const assessment = assessments.get(entry.assessmentId);
+    const student = students.get(entry.studentId);
+    return { assessmentTitle: assessment?.title || "Assessment", companyName: companies.get(assessment?.companyId)?.name || "Company", studentName: student?.profile?.fullName || student?.name || "Student", studentEmail: student?.email || "", status: entry.status, warningCount: Number(entry.warningCount) || 0, submittedAt: entry.submittedAt || "", events: (entry.integrityEvents || []).slice(0, 20).map((event) => ({ reason: String(event.reason || "Activity signal").slice(0, 160), at: event.at || "", warning: Number(event.warning) || 0 })) };
+  });
+  res.set("Cache-Control", "no-store");
   res.json({ items });
 });
 app.patch("/api/admin/assessments/:id/review", adminOnly, (req, res) => {
   const decision = String(req.body?.decision || "").toLowerCase();
   if (!["approve", "reject"].includes(decision)) return res.status(400).json({ error: "Choose approve or reject." });
-  const item = portalData.collection("assessments").find((assessment) => assessment.id === req.params.id && ["pending_approval", "rejected"].includes(assessment.status));
+  const note = String(req.body?.note || "").trim().slice(0, 500);
+  if (decision === "reject" && !note) return res.status(400).json({ error: "Add feedback before rejecting this assessment." });
+  const item = portalData.collection("assessments").find((assessment) => assessment.id === req.params.id && assessment.status === "pending_approval");
   if (!item) return res.status(404).json({ error: "Assessment not found in the review queue." });
-  const updated = { ...item, status: decision === "approve" ? "approved" : "rejected", adminReviewNote: String(req.body?.note || "").trim().slice(0, 500), reviewedAt: new Date().toISOString(), reviewedBy: req.session.email };
+  const updated = { ...item, status: decision === "approve" ? "approved" : "rejected", adminReviewNote: note, reviewedAt: new Date().toISOString(), reviewedBy: req.session.email };
   portalData.update("assessments", (items) => items.map((entry) => entry.id === item.id ? updated : entry));
   portalData.addAudit({ actorRole: "admin", actorEmail: req.session.email, action: `${decision === "approve" ? "Approved" : "Rejected"} company assessment`, targetId: item.id });
   res.json({ assessment: updated });
@@ -934,6 +985,7 @@ app.patch("/api/company/me", companyOnly, (req, res) => {
   res.json({ company: safeCompany(company) });
 });
 app.get("/api/company/applications", companyOnly, (req, res) => {
+  res.set("Cache-Control", "no-store");
   const items = portalData.collection("applications").filter((application) => application.companyId === req.session.id).map((application) => {
     const student = portalData.collection("students").find((item) => item.id === application.studentId);
     const cvReview = student?.companyCvReviews?.find((review) => review.companyId === req.session.id) || null;
@@ -1072,17 +1124,189 @@ app.delete("/api/company/interviews/:id", companyOnly, (req, res) => {
   res.json({ ok: true });
 });
 
+const assessmentLiveRooms = new Map();
+const assessmentLiveKey = (assessmentId, studentId) => `${assessmentId}:${studentId}`;
+async function sendAssessmentObserverInvite(to, companyName, assessmentTitle, inviteUrl) {
+  if (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM || !process.env.PUBLIC_APP_URL) throw new Error("Teacher invitations need RESEND_API_KEY, EMAIL_FROM, and PUBLIC_APP_URL configured in server/.env.");
+  let publicUrl;
+  try { publicUrl = new URL(process.env.PUBLIC_APP_URL); } catch { throw new Error("PUBLIC_APP_URL must be the frontend website origin, such as https://internmatch.example."); }
+  if (publicUrl.protocol !== "https:" && !["localhost", "127.0.0.1"].includes(publicUrl.hostname)) throw new Error("PUBLIC_APP_URL must use HTTPS outside local development.");
+  const safe = (value) => String(value || "").replace(/[&<>\"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[character]);
+  const response = await fetch("https://api.resend.com/emails", { method: "POST", headers: { authorization: `Bearer ${process.env.RESEND_API_KEY}`, "content-type": "application/json" }, body: JSON.stringify({ from: process.env.EMAIL_FROM, to: [to], subject: `Invitation to observe ${assessmentTitle} on InternMatch`, html: `<div style=\"font:16px system-ui;line-height:1.5;color:#17233b;max-width:600px;margin:auto\"><h2>Assessment observer invitation</h2><p>${safe(companyName)} invited you to view the live, consented camera feed during <strong>${safe(assessmentTitle)}</strong>.</p><p>This invitation is personal, expires in 60 minutes, and grants access only to this assessment. The student must separately opt in to live camera sharing. Video is not recorded.</p><p><a href=\"${safe(inviteUrl)}\" style=\"display:inline-block;padding:12px 18px;background:#2456d8;color:white;text-decoration:none;border-radius:8px\">Verify email and open observer view</a></p><p>If you were not expecting this message, ignore it.</p></div>` }) });
+  if (!response.ok) {
+    const detail = await response.json().catch(() => ({}));
+    console.error("[Resend invite error]", response.status, detail?.message || detail?.name || "email service error");
+    throw new Error(response.status === 401 || response.status === 403 ? "Email provider rejected its credentials or sender. Check the Resend API key and verified sender." : "Could not send the teacher invitation email. Check the email provider configuration and try again.");
+  }
+}
+app.post("/api/auth/assessment-observer/redeem", asyncRoute(async (req, res) => {
+  const token = String(req.body?.token || "");
+  if (!/^[A-Za-z0-9_-]{40,80}$/.test(token)) return res.status(400).json({ error: "This teacher invitation link is invalid." });
+  const invite = portalData.collection("assessmentObserverInvites").find((entry) => entry.tokenHash === tokenDigest(token));
+  if (!invite || invite.revokedAt || invite.redeemedAt || Date.parse(invite.expiresAt) <= Date.now()) return res.status(410).json({ error: "This invitation has expired, was already used, or was revoked. Ask the company to send a new one." });
+  const assessment = portalData.collection("assessments").find((entry) => entry.id === invite.assessmentId && entry.companyId === invite.companyId && entry.status === "approved");
+  const company = portalData.collection("companies").find((entry) => entry.id === invite.companyId && entry.status === "active");
+  if (!assessment || !company) return res.status(403).json({ error: "The assessment or company is no longer active." });
+  const redeemedAt = new Date().toISOString();
+  portalData.update("assessmentObserverInvites", (items) => items.map((entry) => entry.id === invite.id ? { ...entry, redeemedAt, tokenHash: "" } : entry));
+  const observer = { id: invite.id, inviteId: invite.id, email: invite.email, role: "assessment_observer", companyId: invite.companyId, assessmentId: invite.assessmentId, sessionTtlMs: 8 * 60 * 60 * 1000 };
+  res.json({ token: await issueToken(observer), email: invite.email, assessment: { id: assessment.id, title: assessment.title, companyName: company.name } });
+}));
+app.post("/api/company/assessments/:id/observers/invite", companyOnly, asyncRoute(async (req, res) => {
+  const assessment = portalData.collection("assessments").find((entry) => entry.id === req.params.id && entry.companyId === req.session.id && entry.status === "approved");
+  const email = safeEmail(req.body?.email);
+  if (!assessment) return res.status(404).json({ error: "Only an approved assessment can have an observer invitation." });
+  if (!/^\S+@\S+\.\S+$/.test(email) || email.length > 254) return res.status(400).json({ error: "Enter a valid teacher or observer email address." });
+  const latestInvite = portalData.collection("assessmentObserverInvites").find((entry) => entry.assessmentId === assessment.id && entry.email === email && !entry.revokedAt);
+  if (latestInvite && Date.now() - Date.parse(latestInvite.createdAt) < 60_000) return res.status(429).json({ error: "An invitation was sent to this email recently. Wait one minute before sending another." });
+  const activeInvites = portalData.collection("assessmentObserverInvites").filter((entry) => entry.assessmentId === assessment.id && !entry.revokedAt && Date.parse(entry.expiresAt) > Date.now());
+  if (activeInvites.length >= 20) return res.status(429).json({ error: "This assessment already has the maximum number of active observer invitations." });
+  const rawToken = crypto.randomBytes(32).toString("base64url");
+  const invite = { id: makeId("observer-invite"), companyId: req.session.id, assessmentId: assessment.id, email, tokenHash: tokenDigest(rawToken), createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(), redeemedAt: "", revokedAt: "" };
+  portalData.update("assessmentObserverInvites", (items) => [...items.filter((entry) => !(entry.assessmentId === assessment.id && entry.email === email && !entry.redeemedAt && !entry.revokedAt)), invite]);
+  const base = String(process.env.PUBLIC_APP_URL || "").replace(/\/+$/, "");
+  const inviteUrl = `${base}/assessment-observer.html?token=${encodeURIComponent(rawToken)}`;
+  try { await sendAssessmentObserverInvite(email, portalData.collection("companies").find((entry) => entry.id === req.session.id)?.name || "The company", assessment.title, inviteUrl); }
+  catch (error) {
+    portalData.update("assessmentObserverInvites", (items) => items.filter((entry) => entry.id !== invite.id));
+    return res.status(503).json({ error: error.message || "Could not send the invitation." });
+  }
+  res.status(201).json({ ok: true, invitation: { id: invite.id, email, createdAt: invite.createdAt, expiresAt: invite.expiresAt, redeemedAt: "", revokedAt: "" }, message: "A one-time verification link was emailed to the observer." });
+}));
+app.delete("/api/company/assessments/:id/observers/:inviteId", companyOnly, (req, res) => {
+  const invite = portalData.collection("assessmentObserverInvites").find((entry) => entry.id === req.params.inviteId && entry.assessmentId === req.params.id && entry.companyId === req.session.id);
+  if (!invite) return res.status(404).json({ error: "Observer invitation not found." });
+  portalData.update("assessmentObserverInvites", (items) => items.map((entry) => entry.id === invite.id ? { ...entry, revokedAt: new Date().toISOString() } : entry));
+  for (const [key, rooms] of assessmentLiveRooms) {
+    for (const [viewerId, room] of rooms) if (room.observerInviteId === invite.id) rooms.delete(viewerId);
+    if (!rooms.size) assessmentLiveRooms.delete(key);
+  }
+  res.json({ ok: true });
+});
+app.get("/api/assessment-observer/assessment", observerOnly, (req, res) => {
+  const { observerAssessment: assessment, observerInvite: invite } = req;
+  const submissions = portalData.collection("assessmentSubmissions");
+  const now = Date.now();
+  const students = portalData.collection("assessmentSessions").filter((session) => session.assessmentId === assessment.id && session.shareLiveCameraAllowed === true && !session.terminatedAt && !submissions.some((entry) => entry.assessmentId === assessment.id && entry.studentId === session.studentId) && now - Date.parse(session.startedAt) < assessment.durationMinutes * 60 * 1000).map((session) => ({ studentId: session.studentId, studentName: portalData.collection("students").find((entry) => entry.id === session.studentId)?.profile?.fullName || "Student", startedAt: session.startedAt }));
+  res.json({ assessment: { id: assessment.id, title: assessment.title, durationMinutes: assessment.durationMinutes }, companyName: portalData.collection("companies").find((entry) => entry.id === invite.companyId)?.name || "Company", observerEmail: invite.email, students });
+});
+app.post("/api/assessment-observer/live/:studentId/join", observerOnly, (req, res) => {
+  const assessment = req.observerAssessment;
+  const active = portalData.collection("assessmentSessions").find((entry) => entry.assessmentId === assessment.id && entry.studentId === req.params.studentId && !entry.terminatedAt && entry.shareLiveCameraAllowed === true);
+  const submitted = portalData.collection("assessmentSubmissions").some((entry) => entry.assessmentId === assessment.id && entry.studentId === req.params.studentId);
+  if (!active || submitted) return res.status(404).json({ error: "This student is not currently sharing a live camera view." });
+  const key = assessmentLiveKey(assessment.id, req.params.studentId);
+  if (!assessmentLiveRooms.has(key)) assessmentLiveRooms.set(key, new Map());
+  const viewerId = crypto.randomUUID();
+  assessmentLiveRooms.get(key).set(viewerId, { companyId: req.observerInvite.companyId, observerInviteId: req.observerInvite.id, studentId: req.params.studentId, toCompany: [], toStudent: [], companySeq: 0, studentSeq: 0, createdAt: Date.now() });
+  res.status(201).json({ viewerId, studentId: req.params.studentId });
+});
+app.get("/api/assessment-observer/live/:studentId/:viewerId/signals", observerOnly, (req, res) => {
+  const room = assessmentLiveRooms.get(assessmentLiveKey(req.observerAssessment.id, req.params.studentId))?.get(req.params.viewerId);
+  if (!room || room.observerInviteId !== req.observerInvite.id) return res.status(404).json({ error: "This live view has ended." });
+  const after = Number(req.query.after) || 0; const signals = room.toCompany.filter((entry) => entry.seq > after);
+  res.json({ signals, cursor: signals.at(-1)?.seq || after });
+});
+app.post("/api/assessment-observer/live/:studentId/:viewerId/signals", observerOnly, (req, res) => {
+  const room = assessmentLiveRooms.get(assessmentLiveKey(req.observerAssessment.id, req.params.studentId))?.get(req.params.viewerId);
+  const { type, data } = req.body || {};
+  if (!room || room.observerInviteId !== req.observerInvite.id) return res.status(404).json({ error: "This live view has ended." });
+  if (!room.toStudent) room.toStudent = [];
+  if (!['answer', 'ice', 'end'].includes(String(type))) return res.status(400).json({ error: "Invalid live camera signal." });
+  if (type === "end") { assessmentLiveRooms.get(assessmentLiveKey(req.observerAssessment.id, req.params.studentId))?.delete(req.params.viewerId); return res.json({ ok: true }); }
+  if (Buffer.byteLength(JSON.stringify(data ?? null), "utf8") > 64 * 1024) return res.status(413).json({ error: "Live camera signal is too large." });
+  room.toStudent.push({ seq: ++room.studentSeq, type, data, at: Date.now() }); if (room.toStudent.length > 100) room.toStudent.shift();
+  res.status(201).json({ ok: true });
+});
+app.get("/api/student/assessments/:id/live-viewers", studentOnly, (req, res) => {
+  const assessment = portalData.collection("assessments").find((item) => item.id === req.params.id && item.status === "approved");
+  const active = portalData.collection("assessmentSessions").find((item) => item.assessmentId === req.params.id && item.studentId === req.session.id && !item.terminatedAt);
+  const submitted = portalData.collection("assessmentSubmissions").some((item) => item.assessmentId === req.params.id && item.studentId === req.session.id);
+  if (!assessment || !active || submitted || active.shareLiveCameraAllowed !== true) return res.json({ viewers: [] });
+  const rooms = assessmentLiveRooms.get(assessmentLiveKey(req.params.id, req.session.id));
+  res.json({ viewers: rooms ? [...rooms.keys()] : [] });
+});
+app.post("/api/student/assessments/:id/live-viewers/:viewerId/signals", studentOnly, (req, res) => {
+  const assessment = portalData.collection("assessments").find((item) => item.id === req.params.id && item.status === "approved");
+  const active = portalData.collection("assessmentSessions").find((item) => item.assessmentId === req.params.id && item.studentId === req.session.id && !item.terminatedAt);
+  const room = assessmentLiveRooms.get(assessmentLiveKey(req.params.id, req.session.id))?.get(req.params.viewerId);
+  const { type, data } = req.body || {};
+  if (!assessment || !active || !room || room.companyId !== assessment.companyId) return res.status(404).json({ error: "This recruiter live view is no longer active." });
+  if (type === "end") { assessmentLiveRooms.get(assessmentLiveKey(req.params.id, req.session.id))?.delete(req.params.viewerId); return res.json({ ok: true }); }
+  if (!["offer", "answer", "ice"].includes(String(type))) return res.status(400).json({ error: "Invalid live camera signal." });
+  const size = Buffer.byteLength(JSON.stringify(data ?? null), "utf8");
+  if (size > 64 * 1024) return res.status(413).json({ error: "Live camera signal is too large." });
+  room.toCompany.push({ seq: ++room.companySeq, type, data, at: Date.now() });
+  if (room.toCompany.length > 100) room.toCompany.shift();
+  res.status(201).json({ ok: true });
+});
+app.get("/api/student/assessments/:id/live-viewers/:viewerId/signals", studentOnly, (req, res) => {
+  const room = assessmentLiveRooms.get(assessmentLiveKey(req.params.id, req.session.id))?.get(req.params.viewerId);
+  if (!room) return res.status(404).json({ error: "This recruiter live view has ended." });
+  const after = Number(req.query.after) || 0;
+  const signals = room.toStudent.filter((entry) => entry.seq > after);
+  res.json({ signals, cursor: signals.at(-1)?.seq || after });
+});
 app.get("/api/company/assessments", companyOnly, (req, res) => {
   const submissions = portalData.collection("assessmentSubmissions");
-  const items = portalData.collection("assessments").filter((item) => item.companyId === req.session.id).map((item) => ({
-    ...item,
+  const now = Date.now();
+  const items = portalData.collection("assessments").filter((item) => item.companyId === req.session.id).map((item) => {
+    const { assignedExaminerIds, assignedExaminers, examinerAssignmentsUpdatedAt, ...safeAssessment } = item;
+    const liveSessions = item.status === "approved" ? portalData.collection("assessmentSessions").filter((session) => session.assessmentId === item.id && !session.terminatedAt && !submissions.some((submission) => submission.assessmentId === item.id && submission.studentId === session.studentId) && now - Date.parse(session.startedAt) < item.durationMinutes * 60 * 1000).map((session) => {
+      const student = portalData.collection("students").find((candidate) => candidate.id === session.studentId);
+      return { studentId: session.studentId, studentName: student?.profile?.fullName || student?.name || "Student", startedAt: session.startedAt, shareLiveCameraAllowed: session.shareLiveCameraAllowed === true };
+    }) : [];
+    return {
+    ...safeAssessment,
     questions: item.questions.map(({ correctIndex, explanation, ...question }) => question),
+    liveSessions,
+    observerInvitations: portalData.collection("assessmentObserverInvites").filter((entry) => entry.assessmentId === item.id && entry.companyId === req.session.id).map(({ id, email, createdAt, expiresAt, redeemedAt, revokedAt }) => ({ id, email, createdAt, expiresAt, redeemedAt, revokedAt })),
     attempts: submissions.filter((entry) => entry.assessmentId === item.id).map((entry) => {
       const student = portalData.collection("students").find((candidate) => candidate.id === entry.studentId);
       return { ...entry, studentName: student?.profile?.fullName || student?.name || "Student", studentEmail: student?.email || "" };
     })
-  }));
+    };
+  });
   res.json({ items });
+});
+app.post("/api/company/assessments/:id/live/:studentId/join", companyOnly, (req, res) => {
+  const assessment = portalData.collection("assessments").find((item) => item.id === req.params.id && item.companyId === req.session.id && item.status === "approved");
+  const active = portalData.collection("assessmentSessions").find((item) => item.assessmentId === req.params.id && item.studentId === req.params.studentId && !item.terminatedAt);
+  const submitted = portalData.collection("assessmentSubmissions").some((item) => item.assessmentId === req.params.id && item.studentId === req.params.studentId);
+  if (!assessment || !active || submitted || active.shareLiveCameraAllowed !== true) return res.status(404).json({ error: "This student is not sharing a live camera view for the assessment." });
+  const key = assessmentLiveKey(assessment.id, req.params.studentId);
+  if (!assessmentLiveRooms.has(key)) assessmentLiveRooms.set(key, new Map());
+  const viewerId = crypto.randomUUID();
+  assessmentLiveRooms.get(key).set(viewerId, { companyId: req.session.id, studentId: req.params.studentId, toCompany: [], toStudent: [], companySeq: 0, studentSeq: 0, createdAt: Date.now() });
+  res.status(201).json({ viewerId, studentId: req.params.studentId, note: "Live camera access is limited to this approved recruiter account and lasts only for the active exam." });
+});
+app.get("/api/company/assessments/:id/live/:studentId/:viewerId/signals", companyOnly, (req, res) => {
+  const assessment = portalData.collection("assessments").find((item) => item.id === req.params.id && item.companyId === req.session.id);
+  const room = assessmentLiveRooms.get(assessmentLiveKey(req.params.id, req.params.studentId))?.get(req.params.viewerId);
+  if (!assessment || !room || room.companyId !== req.session.id) return res.status(404).json({ error: "Live camera session ended or was not found." });
+  const after = Number(req.query.after) || 0;
+  const signals = room.toCompany.filter((entry) => entry.seq > after);
+  res.json({ signals, cursor: signals.at(-1)?.seq || after });
+});
+app.post("/api/company/assessments/:id/live/:studentId/:viewerId/signals", companyOnly, (req, res) => {
+  const assessment = portalData.collection("assessments").find((item) => item.id === req.params.id && item.companyId === req.session.id);
+  const room = assessmentLiveRooms.get(assessmentLiveKey(req.params.id, req.params.studentId))?.get(req.params.viewerId);
+  const { type, data } = req.body || {};
+  if (!assessment || !room || room.companyId !== req.session.id) return res.status(404).json({ error: "Live camera session ended or was not found." });
+  if (!room.toStudent) room.toStudent = [];
+  if (!["answer", "ice", "end"].includes(String(type))) return res.status(400).json({ error: "Invalid live camera signal." });
+  if (type === "end") { assessmentLiveRooms.get(assessmentLiveKey(req.params.id, req.params.studentId)).delete(req.params.viewerId); return res.json({ ok: true }); }
+  const size = Buffer.byteLength(JSON.stringify(data ?? null), "utf8");
+  if (size > 64 * 1024) return res.status(413).json({ error: "Live camera signal is too large." });
+  room.toStudent.push({ seq: ++room.studentSeq, type, data, at: Date.now() });
+  if (room.toStudent.length > 100) room.toStudent.shift();
+  res.status(201).json({ ok: true });
+});
+app.delete("/api/company/assessments/:id/live/:studentId/:viewerId", companyOnly, (req, res) => {
+  const assessment = portalData.collection("assessments").find((item) => item.id === req.params.id && item.companyId === req.session.id);
+  const rooms = assessmentLiveRooms.get(assessmentLiveKey(req.params.id, req.params.studentId));
+  if (assessment) rooms?.delete(req.params.viewerId);
+  res.json({ ok: true });
 });
 const assessmentGenerationHistory = new Map();
 app.post("/api/company/assessments/generate-questions", companyOnly, async (req, res) => {
@@ -1132,6 +1356,8 @@ app.post("/api/company/assessments/generate-questions", companyOnly, async (req,
       message = `The ${PROVIDER} API key was rejected. Replace the server key, then restart or redeploy the API.`;
     } else if (/quota|resource_exhausted|rate.?limit|billing/i.test(detail)) {
       message = `The ${PROVIDER} API quota is unavailable. Check the provider's quota or billing, then try again.`;
+    } else if (/\b503\b|high demand|overloaded|temporarily unavailable|try again later/i.test(detail)) {
+      message = `${PROVIDER} is temporarily overloaded across the configured question-generation models. The server tried its fallbacks; wait briefly and retry, or configure another Gemini Flash model.`;
     } else if (/model.*(not found|unsupported|unavailable)|not.*found.*model|unknown model|models\/[^\s]+.*not found/i.test(detail)) {
       message = `The configured ${PROVIDER} model is unavailable. Set GEMINI_MODEL to an active model and restart or redeploy the API.`;
     } else if (/fetch failed|enotfound|econn|timed? out|network/i.test(detail)) {
@@ -1167,7 +1393,9 @@ app.post("/api/company/assessments", companyOnly, (req, res) => {
   const totalMarks = questions.reduce((sum, question) => sum + question.marks, 0);
   const passingMarks = Math.max(0, Math.min(totalMarks, Number(req.body?.passingMarks) || 0));
   if (!title || !role || !questions.length || questions.some((question) => !question.prompt || (question.type === "MCQ" && (question.options.length !== 4 || question.options.some((option) => !option) || !Number.isInteger(question.correctIndex) || question.correctIndex < 0 || question.correctIndex > 3))) || passingMarks > totalMarks || (req.body?.startAt && !startAt) || (req.body?.endAt && !endAt) || (startAt && endAt && new Date(startAt) >= new Date(endAt))) return res.status(400).json({ error: "Add a title, one of your roles, valid questions, a passing score, and a valid availability window." });
-  const assessment = { id: makeId("assessment"), companyId: req.session.id, internshipId, title, category, difficulty, durationMinutes, passingMarks, totalMarks, startAt, endAt, eligible: "Applicants", status: "pending_approval", adminReviewNote: "", questions, createdAt: new Date().toISOString() };
+  const monitoringInput = req.body?.monitoring || {};
+  const monitoring = { focus: monitoringInput.focus !== false, fullscreen: monitoringInput.fullscreen !== false, clipboard: monitoringInput.clipboard === true, camera: true, sound: monitoringInput.sound === true, soundThresholdDbfs: [-24, -18, -12].includes(Number(monitoringInput.soundThresholdDbfs)) ? Number(monitoringInput.soundThresholdDbfs) : -18, durationThresholdSeconds: [3, 5, 10].includes(Number(monitoringInput.durationThresholdSeconds)) ? Number(monitoringInput.durationThresholdSeconds) : 5, cooldownSeconds: [15, 30, 60].includes(Number(monitoringInput.cooldownSeconds)) ? Number(monitoringInput.cooldownSeconds) : 30, warningLimit: 4 };
+  const assessment = { id: makeId("assessment"), companyId: req.session.id, internshipId, title, category, difficulty, durationMinutes, passingMarks, totalMarks, startAt, endAt, eligible: "Applicants", status: "pending_approval", adminReviewNote: "", monitoring, questions, createdAt: new Date().toISOString() };
   portalData.update("assessments", (items) => [assessment, ...items]);
   logCompanyAction(req, "Submitted assessment for admin approval", assessment.id);
   res.status(201).json({ assessment: { ...assessment, questions: questions.map(({ correctIndex, explanation, ...question }) => question) } });
@@ -1194,7 +1422,7 @@ app.get("/api/student/assessments", studentOnly, (req, res) => {
   const now = Date.now();
   const items = portalData.collection("assessments").filter((item) => item.status === "approved" && applicationRoleIds.has(item.internshipId) && (!item.startAt || new Date(item.startAt).getTime() <= now) && (!item.endAt || new Date(item.endAt).getTime() >= now)).map((item) => {
     const existing = portalData.collection("assessmentSubmissions").find((submission) => submission.assessmentId === item.id && submission.studentId === req.session.id);
-    return { id: item.id, title: item.title, category: item.category, difficulty: item.difficulty, durationMinutes: item.durationMinutes, totalMarks: item.totalMarks, passingMarks: item.passingMarks, endAt: item.endAt, companyName: portalData.collection("companies").find((company) => company.id === item.companyId)?.name || "Company", submitted: !!existing, result: existing ? { score: existing.score, totalMarks: existing.totalMarks, passed: existing.passed, submittedAt: existing.submittedAt } : null };
+    return { id: item.id, title: item.title, category: item.category, difficulty: item.difficulty, durationMinutes: item.durationMinutes, totalMarks: item.totalMarks, passingMarks: item.passingMarks, endAt: item.endAt, monitoring: { focus: true, fullscreen: true, clipboard: item.monitoring?.clipboard === true, camera: true, sound: item.monitoring?.sound === true, soundThresholdDbfs: [-24, -18, -12].includes(Number(item.monitoring?.soundThresholdDbfs)) ? Number(item.monitoring.soundThresholdDbfs) : -18, durationThresholdSeconds: [3, 5, 10].includes(Number(item.monitoring?.durationThresholdSeconds)) ? Number(item.monitoring.durationThresholdSeconds) : 5, cooldownSeconds: [15, 30, 60].includes(Number(item.monitoring?.cooldownSeconds)) ? Number(item.monitoring.cooldownSeconds) : 30, warningLimit: 4 }, companyName: portalData.collection("companies").find((company) => company.id === item.companyId)?.name || "Company", submitted: !!existing, result: existing ? { score: existing.score, totalMarks: existing.totalMarks, passed: existing.passed, submittedAt: existing.submittedAt } : null };
   });
   res.json({ items });
 });
@@ -1250,14 +1478,47 @@ app.post("/api/student/assessments/:id/start", studentOnly, (req, res) => {
   if ((assessment.startAt && Date.now() < new Date(assessment.startAt).getTime()) || (assessment.endAt && Date.now() > new Date(assessment.endAt).getTime())) return res.status(403).json({ error: "This assessment is outside its availability window." });
   if (portalData.collection("assessmentSubmissions").some((submission) => submission.assessmentId === assessment.id && submission.studentId === req.session.id)) return res.status(409).json({ error: "You have already submitted this assessment." });
   let attempt = portalData.collection("assessmentSessions").find((entry) => entry.assessmentId === assessment.id && entry.studentId === req.session.id);
+  if (attempt?.terminatedAt) return res.status(403).json({ error: "This assessment was terminated and is awaiting recruiter review." });
   if (!attempt) {
-    attempt = { assessmentId: assessment.id, studentId: req.session.id, startedAt: new Date().toISOString() };
+    attempt = { assessmentId: assessment.id, studentId: req.session.id, startedAt: new Date().toISOString(), shareLiveCameraAllowed: req.body?.shareLiveCamera === true };
     portalData.update("assessmentSessions", (items) => [...items, attempt]);
+  } else if (req.body?.shareLiveCamera === true && !attempt.shareLiveCameraAllowed) {
+    attempt = { ...attempt, shareLiveCameraAllowed: true };
+    portalData.update("assessmentSessions", (items) => items.map((entry) => entry.assessmentId === assessment.id && entry.studentId === req.session.id ? attempt : entry));
   }
   if (Date.now() - new Date(attempt.startedAt).getTime() > assessment.durationMinutes * 60 * 1000) return res.status(403).json({ error: "Your assessment time has expired." });
   const questions = assessment.questions.map(({ correctIndex, explanation, ...question }) => question);
   const elapsedSeconds = Math.max(0, Math.floor((Date.now() - new Date(attempt.startedAt).getTime()) / 1000));
-  res.json({ assessment: { id: assessment.id, title: assessment.title, category: assessment.category, durationMinutes: assessment.durationMinutes, remainingSeconds: Math.max(0, assessment.durationMinutes * 60 - elapsedSeconds), totalMarks: assessment.totalMarks, questions } });
+  res.json({ assessment: { id: assessment.id, title: assessment.title, category: assessment.category, durationMinutes: assessment.durationMinutes, remainingSeconds: Math.max(0, assessment.durationMinutes * 60 - elapsedSeconds), totalMarks: assessment.totalMarks, monitoring: { focus: true, fullscreen: true, clipboard: assessment.monitoring?.clipboard === true, camera: true, sound: assessment.monitoring?.sound === true, soundThresholdDbfs: [-24, -18, -12].includes(Number(assessment.monitoring?.soundThresholdDbfs)) ? Number(assessment.monitoring.soundThresholdDbfs) : -18, durationThresholdSeconds: [3, 5, 10].includes(Number(assessment.monitoring?.durationThresholdSeconds)) ? Number(assessment.monitoring.durationThresholdSeconds) : 5, cooldownSeconds: [15, 30, 60].includes(Number(assessment.monitoring?.cooldownSeconds)) ? Number(assessment.monitoring.cooldownSeconds) : 30, warningLimit: 4 }, questions } });
+});
+app.post("/api/student/assessments/:id/signals", studentOnly, (req, res) => {
+  const assessment = portalData.collection("assessments").find((item) => item.id === req.params.id && item.status === "approved");
+  const eligible = assessment && portalData.collection("applications").some((application) => application.studentId === req.session.id && application.internshipId === assessment.internshipId && application.status !== "Rejected");
+  if (!eligible) return res.status(404).json({ error: "Assessment is unavailable for this account." });
+  const session = portalData.collection("assessmentSessions").find((entry) => entry.assessmentId === assessment.id && entry.studentId === req.session.id);
+  if (!session) return res.status(403).json({ error: "Start the assessment before sending activity signals." });
+  if (session.terminatedAt) return res.json({ warningCount: Number(session.warningCount) || 0, terminated: true, terminationReason: session.terminationReason || "warning_limit", status: "Terminated for review" });
+  const signal = String(req.body?.signal || "");
+  const allowedSignals = new Set(["focus_lost", "context_change", "fullscreen_exit", "clipboard_attempt", "camera_movement", "face_absent", "multiple_faces", "sound_signal"]);
+  if (!allowedSignals.has(signal)) return res.status(400).json({ error: "Unknown assessment activity signal." });
+  const monitor = assessment.monitoring || {};
+  const permitted = { focus_lost: true, context_change: true, fullscreen_exit: true, clipboard_attempt: monitor.clipboard === true, camera_movement: true, face_absent: true, multiple_faces: true, sound_signal: monitor.sound === true };
+  if (!permitted[signal]) return res.status(403).json({ error: "This activity signal is not enabled for the assessment." });
+  const now = Date.now();
+  const cooldown = Math.max(15, Math.min(60, Number(assessment.monitoring?.cooldownSeconds) || 30)) * 1000;
+  const events = Array.isArray(session.integrityEvents) ? session.integrityEvents : [];
+  const previous = events.length ? Date.parse(events[events.length - 1].at) : 0;
+  const multipleFacesDetected = signal === "multiple_faces";
+  const contextChanged = signal === "context_change" || signal === "fullscreen_exit";
+  if (!multipleFacesDetected && !contextChanged && previous && now - previous < cooldown) return res.json({ warningCount: Number(session.warningCount) || 0, ignored: true, terminated: !!session.terminatedAt });
+  const warningCount = multipleFacesDetected ? Number(session.warningCount) || 0 : Math.min(4, (Number(session.warningCount) || 0) + 1);
+  const event = { signal, reason: ({ focus_lost: "Exam page lost focus or became hidden", context_change: "Exam tab or window lost focus; assessment closed and submitted automatically", fullscreen_exit: "Fullscreen was exited; assessment closed and submitted automatically", clipboard_attempt: "Copy or paste attempt", camera_movement: "Notable camera-scene movement", face_absent: "No face detected for the configured duration", multiple_faces: "Multiple faces stayed in view for at least five seconds; assessment closed automatically", sound_signal: "Sustained high relative microphone level" })[signal], at: new Date(now).toISOString(), elapsedSeconds: Math.max(0, Math.floor((now - Date.parse(session.startedAt)) / 1000)), warning: warningCount };
+  const terminateForFaces = multipleFacesDetected;
+  const terminateForWarnings = warningCount >= 4;
+  const terminationReason = terminateForFaces ? "multiple_faces" : contextChanged ? "context_change" : terminateForWarnings ? "warning_limit" : "";
+  const updated = { ...session, warningCount, integrityEvents: [...events, event].slice(-20), ...(terminationReason ? { terminatedAt: new Date(now).toISOString(), terminationReason, status: "Terminated for review" } : {}) };
+  portalData.update("assessmentSessions", (items) => items.map((entry) => entry.assessmentId === assessment.id && entry.studentId === req.session.id ? updated : entry));
+  res.json({ warningCount, warningLimit: 4, terminated: !!terminationReason, terminationReason, status: updated.status || "In progress", event });
 });
 app.post("/api/student/assessments/:id/submit", studentOnly, (req, res) => {
   const assessment = portalData.collection("assessments").find((item) => item.id === req.params.id && item.status === "approved");
@@ -1266,7 +1527,7 @@ app.post("/api/student/assessments/:id/submit", studentOnly, (req, res) => {
   if ((assessment.startAt && Date.now() < new Date(assessment.startAt).getTime()) || (assessment.endAt && Date.now() > new Date(assessment.endAt).getTime())) return res.status(403).json({ error: "This assessment is outside its availability window." });
   const attempt = portalData.collection("assessmentSessions").find((entry) => entry.assessmentId === assessment.id && entry.studentId === req.session.id);
   if (!attempt) return res.status(403).json({ error: "Start the assessment before submitting answers." });
-  if (Date.now() - new Date(attempt.startedAt).getTime() > assessment.durationMinutes * 60 * 1000 + 5000) return res.status(403).json({ error: "Your assessment time has expired." });
+  if (!attempt.terminatedAt && Date.now() - new Date(attempt.startedAt).getTime() > assessment.durationMinutes * 60 * 1000 + 5000) return res.status(403).json({ error: "Your assessment time has expired." });
   if (portalData.collection("assessmentSubmissions").some((submission) => submission.assessmentId === assessment.id && submission.studentId === req.session.id)) return res.status(409).json({ error: "This assessment has already been submitted." });
   const answers = Array.isArray(req.body?.answers) ? req.body.answers : [];
   let score = 0;
@@ -1280,26 +1541,34 @@ app.post("/api/student/assessments/:id/submit", studentOnly, (req, res) => {
     }
     return { questionId: question.id, answer: String(answer?.text || "").slice(0, 10000), correct: null, marksAwarded: 0 };
   });
-  const answerByQuestion = new Map(reviewedAnswers.map((answer) => [answer.questionId, answer.answer]));
-  const reviewTexts = assessment.questions
-    .filter((question) => question.type === "Descriptive")
-    .map((question) => String(answerByQuestion.get(question.id) || "").trim())
-    .filter((answer) => answer.length >= 40);
-  const writingSignals = [];
-  const genericPhrases = ["it is important to note", "in conclusion", "plays a crucial role", "in today's fast-paced", "furthermore", "moreover"];
-  const foundPhrases = genericPhrases.filter((phrase) => reviewTexts.some((answer) => answer.toLowerCase().includes(phrase)));
-  if (foundPhrases.length) writingSignals.push(`Common or generic phrasing appears (${foundPhrases.slice(0, 3).join(", ")}).`);
-  const normalizedSentences = reviewTexts.flatMap((answer) => answer.split(/[.!?]+/).map((sentence) => sentence.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim()).filter((sentence) => sentence.split(" ").length >= 8));
-  if (normalizedSentences.some((sentence, index) => normalizedSentences.indexOf(sentence) !== index)) writingSignals.push("A long sentence is repeated across written responses.");
-  const writingReview = assessment.questions.some((question) => question.type === "Descriptive") ? {
-    label: !reviewTexts.length ? "Not enough descriptive text to review" : writingSignals.length ? "Possible writing patterns for recruiter review" : "No listed patterns found",
+  const rawWritingSignals = Array.isArray(req.body?.writingReview?.signals) ? req.body.writingReview.signals : [];
+  const writingSignals = rawWritingSignals.slice(0, 5).map((signal) => String(signal).slice(0, 180));
+  const hasReviewableText = reviewedAnswers.some((answer) => typeof answer.answer === "string" && answer.answer.trim().length >= 40);
+  const writingReview = assessment.questions.some((question) => question.type !== "MCQ") ? {
+    label: !hasReviewableText ? "Not enough written text to review" : writingSignals.length ? "Patterns for human review" : "No listed patterns found",
     signals: writingSignals,
-    method: "Limited server-side text heuristics; coding and MCQ answers are excluded.",
-    disclaimer: "These patterns cannot reliably detect AI use or prove authorship. They may flag human writing. Use them only as a prompt for a fair follow-up conversation, never as proof or an automatic hiring decision."
+    disclaimer: "Simple writing-style clues are unreliable, can flag human writing, and do not establish AI use or misconduct. Do not use them alone for hiring decisions."
   } : null;
-  const submission = { id: makeId("submission"), assessmentId: assessment.id, studentId: req.session.id, answers: reviewedAnswers, writingReview, score, totalMarks: assessment.totalMarks, passed: score >= assessment.passingMarks, submittedAt: new Date().toISOString(), status: assessment.questions.some((question) => question.type !== "MCQ") ? "Needs recruiter review" : "Scored" };
+  const suppliedSignals = req.body?.integritySignals;
+  const sanitizeMoments = (value) => Array.isArray(value) ? value.slice(0, 10).map((moment) => String(moment).slice(0, 8)).filter((moment) => /^\d{1,3}:\d{2}$/.test(moment)) : [];
+  const integritySignals = suppliedSignals?.enabled === true ? {
+    enabled: true,
+    soundAvailable: suppliedSignals.soundAvailable === true,
+    visualAvailable: suppliedSignals.visualAvailable === true,
+    faceAvailable: suppliedSignals.faceAvailable === true,
+    faceCount: Math.max(0, Math.min(10, Math.floor(Number(suppliedSignals.faceCount) || 0))),
+    faceCountFlags: Math.max(0, Math.min(100, Math.floor(Number(suppliedSignals.faceCountFlags) || 0))),
+    soundCount: Math.max(0, Math.min(100, Math.floor(Number(suppliedSignals.soundCount) || 0))),
+    visualCount: Math.max(0, Math.min(100, Math.floor(Number(suppliedSignals.visualCount) || 0))),
+    soundMoments: sanitizeMoments(suppliedSignals.soundMoments),
+    visualMoments: sanitizeMoments(suppliedSignals.visualMoments),
+    disclaimer: "Local face-count, sound-level, and visual-change signals are uncertain. They may be inaccurate and are not proof of cheating or AI use."
+  } : { enabled: false };
+  const submissionStatus = attempt.terminatedAt ? "Terminated for review" : assessment.questions.some((question) => question.type !== "MCQ") ? "Needs recruiter review" : "Scored";
+  const submission = { id: makeId("submission"), assessmentId: assessment.id, studentId: req.session.id, answers: reviewedAnswers, writingReview, integritySignals, integrityEvents: attempt.integrityEvents || [], warningCount: Number(attempt.warningCount) || 0, terminatedAt: attempt.terminatedAt || "", score, totalMarks: assessment.totalMarks, passed: attempt.terminatedAt ? null : score >= assessment.passingMarks, submittedAt: new Date().toISOString(), status: submissionStatus };
   portalData.update("assessmentSubmissions", (items) => [...items, submission]);
   portalData.update("applications", (items) => items.map((application) => application.studentId === req.session.id && application.internshipId === assessment.internshipId && !["Rejected", "Offered", "Shortlisted"].includes(application.status) ? { ...application, status: "Assessment", history: [...(application.history || []), { status: "Assessment", at: submission.submittedAt }] } : application));
+  assessmentLiveRooms.delete(assessmentLiveKey(assessment.id, req.session.id));
   res.status(201).json({ result: { score, totalMarks: assessment.totalMarks, passed: submission.passed, status: submission.status, submittedAt: submission.submittedAt } });
 });
 
@@ -1607,7 +1876,7 @@ app.use((error, req, res, next) => {
 let server;
 async function startServer() {
   await portalData.ready;
-  server = app.listen(PORT, () => {
+  server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`InternMatch AI proxy listening on http://localhost:${PORT} (${PROVIDER}/${selected.model})`);
     console.log(`Catalogue grounding: ${INTERNSHIP_DATA.length} internships loaded`);
     console.log(`Persistence mode: ${portalData.storageMode()}`);

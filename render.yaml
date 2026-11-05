@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: internmatch-api
+    runtime: node
+    rootDir: server
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: AI_PROVIDER
+        value: gemini
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB
+        value: internmatch
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ALLOWED_ORIGIN
+        sync: false

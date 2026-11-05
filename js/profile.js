@@ -352,7 +352,7 @@ document.addEventListener("DOMContentLoaded", () => {
           const apiUrl = new URL(window.IM_API_BASE);
           const isLocalApi = ["localhost", "127.0.0.1"].includes(apiUrl.hostname);
           const guidance = isLocalApi
-            ? "Stop the old API process using port 3002, then run npm start from this project's server folder. Confirm /api/health reports studentAssessmentTracker: true."
+            ? "Stop the old API process using port 3003, then run npm start from this project's server folder. Confirm /api/health reports studentAssessmentTracker: true."
             : "This deployed API is older than the profile page. Redeploy the backend with the current server/server.js; restarting a local API will not update this host. Confirm /api/health reports studentAssessmentTracker: true.";
           throw new Error(`The API at ${apiUrl.origin} does not have the assessment tracker route. ${guidance}`);
         }

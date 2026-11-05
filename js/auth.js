@@ -5,6 +5,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const demoBtn = document.getElementById("demo-login-btn");
   const registerForm = document.getElementById("register-form");
   const loginRole = document.getElementById("login-role");
+  const loginError = (error) => error instanceof TypeError || error?.message === "Failed to fetch"
+    ? `Cannot reach the InternMatch API at ${window.IM_API_BASE}. Start the server from the server folder and keep its terminal open.`
+    : error?.message || "Start the InternMatch server and try again.";
 
   function updateLoginMode() {
     if (!loginRole) return;
@@ -38,6 +41,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("login-welcome-note").textContent = isAdmin ? "Admin access uses the password configured by the site owner." : "Sign in to continue to your InternMatch account.";
     document.getElementById("forgot-password-open").hidden = isAdmin;
     document.getElementById("admin-password-help").hidden = !isAdmin;
+    document.getElementById("admin-password-help").textContent = "Admin password is managed in server/.env.";
     document.getElementById("password-reset-role").value = isCompany ? "company" : "student";
     if (demoBtn) demoBtn.hidden = isAdmin;
     const canCreateStudentAccount = !isAdmin && !isCompany;
@@ -117,7 +121,7 @@ document.addEventListener("DOMContentLoaded", () => {
           sessionStorage.setItem("im_company_api_token", data.token);
           Store.cacheAuthenticatedUser({ name: data.user.name, email: data.user.email, role: "company", companyName: data.user.name });
           App.toast(`Welcome, ${data.user.name}.`); window.location.href = "company-dashboard.html";
-        } catch (error) { App.toast(error.message || "Start the InternMatch server and try again.", "error"); }
+        } catch (error) { App.toast(loginError(error), "error"); }
         return;
       }
 

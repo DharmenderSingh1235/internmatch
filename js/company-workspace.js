@@ -7,7 +7,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
   const api = async (route, options = {}) => {
-    const response = await fetch(`${window.IM_API_BASE}/api${route}`, { ...options, headers: { authorization: `Bearer ${token}`, "content-type": "application/json", ...(options.headers || {}) } });
+    const response = await fetch(`${window.IM_API_BASE}/api${route}`, { ...options, cache: "no-store", headers: { authorization: `Bearer ${token}`, "content-type": "application/json", ...(options.headers || {}) } });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || `Company API request failed (${response.status}) at ${route}. If this is a new feature route, restart the server folder's API with npm start.`);
     return data;
@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const statusOptions = ["Applied", "Shortlisted", "Assessment", "Interview", "Offered", "Rejected"];
   let company, internships = [], applicants = [], schedules = [], assessments = [], assessmentLoadError = "";
   const alertError = (error) => App.toast(error.message || "Could not complete that action.", "error");
-  function setApiConnection(connected, detail = "Local API · port 3002") {
+  function setApiConnection(connected, detail = "Local API · port 3003") {
     const badge = document.getElementById("settings-api-indicator");
     const dot = document.getElementById("settings-api-dot");
     const state = document.getElementById("settings-api-state");
@@ -54,13 +54,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       const scores = (student?.interviewScores || []).filter((entry) => Number(entry.total) > 0 && Number.isFinite(Number(entry.score)));
       const best = scores.reduce((value, entry) => Math.max(value, Math.round(Number(entry.score) / Number(entry.total) * 100)), 0);
       const cvStatus = student?.cvAvailableToCompany
-        ? "CV ready to open"
+        ? "CV shared · ready to open"
         : student?.cvUploaded && !student?.adminCvApproved
-        ? "Awaiting admin CV approval"
+        ? student.adminCvStatus === "Needs changes" ? "Admin requested CV changes" : "Awaiting admin CV approval · CV uploaded"
+        : student?.cvUploaded && student?.adminCvApproved && !student?.cvShared
+        ? "Admin approved · student CV sharing is off"
         : student?.cvShared
-        ? "Permission on · CV file missing"
-        : "CV not shared";
-      return `<tr><td><div class="company-applicant-identity"><span class="company-applicant-avatar">${esc(candidateName.split(/\s+/).slice(0, 2).map((part) => part[0] || "").join("").toUpperCase())}</span><span><strong>${esc(candidateName)}</strong>${student ? `<small class="company-table-sub">${esc(student.email || "")}</small><small class="company-table-sub">${esc((student.skills || []).slice(0, 5).join(" · ") || "Skills not added")}</small>` : `<small class="company-table-sub">Student account unavailable</small>`}</span></div>${student ? `<span class="company-applicant-actions"><button type="button" class="btn btn--ghost btn--sm" data-view-applicant="${esc(student.id)}">View profile</button>${student.cvAvailableToCompany ? `<button type="button" class="btn btn--ghost btn--sm" data-view-applicant-cv="${esc(student.id)}">Open shared CV</button>` : `<small>${cvStatus}</small>`}</span>` : ""}</td><td><strong>${esc(item.internshipTitle)}</strong></td><td>${esc(dateLabel(item.appliedAt?.slice(0, 10)))}</td><td>${student ? `<span class="company-profile-access-pill">Profile shared</span><small class="company-table-sub">${cvStatus}</small>${scores.length ? `<small class="company-table-sub">Practice best: ${best}% · ${scores.length} quiz${scores.length === 1 ? "" : "zes"}</small>` : `<small class="company-table-sub">No practice scores</small>`}` : "—"}</td><td><select class="company-status-select" data-applicant-status="${esc(item.id)}" aria-label="Recruitment stage for ${esc(candidateName)}">${statusOptions.map((status) => `<option${item.status === status ? " selected" : ""}>${status}</option>`).join("")}</select></td><td><button type="button" class="btn btn--ghost btn--sm company-danger" data-reject-application="${esc(item.id)}" ${item.status === "Rejected" ? "disabled" : ""}>${item.status === "Rejected" ? "Rejected" : "Reject"}</button></td></tr>`;
+        ? "CV sharing enabled · file missing"
+        : "Student has not shared a CV";
+      const cvTone = student?.cvAvailableToCompany ? "ready" : student?.cvUploaded && !student?.adminCvApproved ? "pending" : "unavailable";
+      return `<tr><td><div class="company-applicant-identity"><span class="company-applicant-avatar">${esc(candidateName.split(/\s+/).slice(0, 2).map((part) => part[0] || "").join("").toUpperCase())}</span><span><strong>${esc(candidateName)}</strong>${student ? `<small class="company-table-sub">${esc(student.email || "")}</small><small class="company-table-sub">${esc((student.skills || []).slice(0, 5).join(" · ") || "Skills not added")}</small>` : `<small class="company-table-sub">Student account unavailable</small>`}</span></div>${student ? `<span class="company-applicant-actions"><button type="button" class="btn btn--ghost btn--sm" data-view-applicant="${esc(student.id)}">View profile</button>${student.cvAvailableToCompany ? `<button type="button" class="btn btn--ghost btn--sm" data-view-applicant-cv="${esc(student.id)}">Open shared CV</button>` : ""}</span>` : ""}</td><td><strong>${esc(item.internshipTitle)}</strong></td><td>${esc(dateLabel(item.appliedAt?.slice(0, 10)))}</td><td>${student ? `<span class="company-profile-access-pill">Profile shared</span><small class="company-table-sub company-cv-status company-cv-status--${cvTone}">${esc(cvStatus)}</small>${scores.length ? `<small class="company-table-sub">Practice best: ${best}% · ${scores.length} quiz${scores.length === 1 ? "" : "zes"}</small>` : `<small class="company-table-sub">No practice scores</small>`}` : "—"}</td><td><select class="company-status-select" data-applicant-status="${esc(item.id)}" aria-label="Recruitment stage for ${esc(candidateName)}">${statusOptions.map((status) => `<option${item.status === status ? " selected" : ""}>${status}</option>`).join("")}</select></td><td><button type="button" class="btn btn--ghost btn--sm company-danger" data-reject-application="${esc(item.id)}" ${item.status === "Rejected" ? "disabled" : ""}>${item.status === "Rejected" ? "Rejected" : "Reject"}</button></td></tr>`;
     }).join("") : `<tr><td colspan="6"><div class="company-empty">No applications for this company yet.</div></td></tr>`;
   }
   function renderSchedule(item) {
@@ -87,12 +90,129 @@ document.addEventListener("DOMContentLoaded", async () => {
       card.querySelector("[data-question-explanation]").value = question.explanation || "";
     }
   }
+  function renderAssessmentMarkList(attempts = []) {
+    const items = Array.isArray(attempts) ? attempts : [];
+    const rows = items.map((attempt) => {
+      const result = attempt.status === "Terminated for review" ? "Terminated · review activity" : attempt.status === "Needs recruiter review" ? "Written answers awaiting review" : attempt.passed ? "Passed" : "Not passed";
+      return `<article><div><strong>${esc(attempt.studentName || "Student")}</strong><small>${esc(attempt.studentEmail || "No email")} · ${esc(dateLabel(attempt.submittedAt?.slice(0, 10)))}</small>${attempt.studentId ? `<button type="button" class="btn btn--ghost btn--sm" data-view-applicant="${esc(attempt.studentId)}">View student profile</button>` : ""}</div><div class="company-assessment-mark-score"><strong>${Number(attempt.score) || 0}/${Number(attempt.totalMarks) || 0}</strong><span>${esc(result)}</span></div></article>`;
+    }).join("");
+    return `<section class="company-assessment-mark-list"><h4>Student assessment marks</h4>${rows || `<p class="company-muted">No student has submitted this assessment yet.</p>`}</section>`;
+  }
+  async function watchLiveAssessment(assessmentId, studentId, studentName) {
+    let viewerId = "", pollTimer = null, closed = false, cursor = 0, remoteReady = false;
+    const pendingIce = [];
+    let connection;
+    const dialog = document.createElement("dialog");
+    dialog.className = "assessment-live-dialog";
+    dialog.innerHTML = `<div class="assessment-live-dialog__head"><div><span class="company-eyebrow">LIVE ASSESSMENT</span><h2>${esc(studentName)} · camera view</h2><p>Video is visible to this recruiter account only and ends with the assessment.</p></div><button type="button" class="btn btn--ghost btn--sm" data-close-live-view>Close live view</button></div><video autoplay playsinline></video><p class="assessment-live-dialog__status" role="status">Connecting to the student’s camera…</p>`;
+    document.body.append(dialog);
+    const video = dialog.querySelector("video"); const status = dialog.querySelector(".assessment-live-dialog__status");
+    const close = async () => {
+      if (closed) return; closed = true; clearInterval(pollTimer); connection?.close();
+      if (viewerId) await api(`/company/assessments/${encodeURIComponent(assessmentId)}/live/${encodeURIComponent(studentId)}/${encodeURIComponent(viewerId)}`, { method: "DELETE" }).catch(() => {});
+      dialog.close(); dialog.remove();
+    };
+    dialog.querySelector("[data-close-live-view]").addEventListener("click", close);
+    dialog.addEventListener("cancel", (event) => { event.preventDefault(); close(); });
+    dialog.showModal();
+    try {
+      const joined = await api(`/company/assessments/${encodeURIComponent(assessmentId)}/live/${encodeURIComponent(studentId)}/join`, { method: "POST", body: "{}" });
+      viewerId = joined.viewerId;
+      connection = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+      connection.ontrack = (event) => { video.srcObject = event.streams[0]; status.textContent = "Live camera view · video is not recorded."; };
+      connection.onconnectionstatechange = () => { if (connection.connectionState === "failed") status.textContent = "Could not connect on this network. The student’s test continues; try again or check network restrictions."; };
+      const sendSignal = (type, data) => api(`/company/assessments/${encodeURIComponent(assessmentId)}/live/${encodeURIComponent(studentId)}/${encodeURIComponent(viewerId)}/signals`, { method: "POST", body: JSON.stringify({ type, data }) });
+      connection.onicecandidate = (event) => { if (event.candidate) sendSignal("ice", event.candidate.toJSON()).catch(() => {}); };
+      const poll = async () => {
+        if (closed) return;
+        try {
+          const data = await api(`/company/assessments/${encodeURIComponent(assessmentId)}/live/${encodeURIComponent(studentId)}/${encodeURIComponent(viewerId)}/signals?after=${cursor}`);
+          cursor = data.cursor || cursor;
+          for (const signal of data.signals || []) {
+            if (signal.type === "offer" && !remoteReady) {
+              await connection.setRemoteDescription(signal.data); remoteReady = true;
+              for (const candidate of pendingIce.splice(0)) await connection.addIceCandidate(candidate).catch(() => {});
+              const answer = await connection.createAnswer(); await connection.setLocalDescription(answer); await sendSignal("answer", connection.localDescription.toJSON());
+            } else if (signal.type === "ice") {
+              if (remoteReady) await connection.addIceCandidate(signal.data).catch(() => {}); else pendingIce.push(signal.data);
+            }
+          }
+        } catch (error) { status.textContent = error.message || "The live assessment view has ended."; if (/ended|not found/i.test(status.textContent)) close(); }
+      };
+      await poll(); pollTimer = setInterval(poll, 900);
+    } catch (error) { status.textContent = error.message || "Could not connect to the student’s camera."; setTimeout(close, 2400); }
+  }
   function renderAssessments() {
     const list = document.getElementById("company-assessment-list");
     if (!list) return;
     document.getElementById("company-assessment-count").textContent = `${assessments.length} assessment${assessments.length === 1 ? "" : "s"}`;
     if (assessmentLoadError) { list.innerHTML = `<div class="company-empty">${esc(assessmentLoadError)} Restart the API from the server folder with <code>npm start</code>, then refresh this page.</div>`; return; }
-    list.innerHTML = assessments.length ? assessments.map((item) => `<article class="company-role-card"><div class="company-role-main"><div><span class="company-status-badge ${item.status === "approved" ? "is-active" : ""}">${esc(({ pending_approval: "Pending admin approval", approved: "Approved · available to applicants", rejected: "Changes requested" })[item.status] || item.status)}</span><h3>${esc(item.title)}</h3><p>${esc(item.roleTitle || internships.find((role) => role.id === item.internshipId)?.title || "Role")} · ${esc(item.category)} · ${esc(item.difficulty)} · ${item.durationMinutes} min · ${item.totalMarks} marks</p>${item.adminReviewNote ? `<p class="company-role-description">Admin note: ${esc(item.adminReviewNote)}</p>` : ""}</div><div class="company-role-side"><strong>${item.attempts?.length || 0}</strong><small>submissions</small></div></div>${item.attempts?.length ? `<details><summary>Review candidate submissions</summary><div class="company-assessment-results">${item.attempts.map((attempt) => `<article data-assessment-attempt="${esc(attempt.id)}" data-assessment-id="${esc(item.id)}"><strong>${esc(attempt.studentName || "Student")}</strong><span>${esc(attempt.studentEmail || "")} · ${attempt.score}/${attempt.totalMarks} marks · ${esc(attempt.status)}</span><small>${esc(dateLabel(attempt.submittedAt?.slice(0,10)))}</small>${attempt.writingReview ? `<aside class="assessment-writing-review"><strong>Possible AI-writing signals · heuristic, review only</strong><p>${esc(attempt.writingReview.label || "Limited writing-style review")}</p>${attempt.writingReview.signals?.length ? `<ul>${attempt.writingReview.signals.map((signal) => `<li>${esc(signal)}</li>`).join("")}</ul>` : ""}<small>${esc(attempt.writingReview.method || "Limited text heuristics.")} ${esc(attempt.writingReview.disclaimer || "These clues cannot prove AI use and must not determine hiring by themselves.")}</small></aside>` : ""}<div>${(attempt.answers || []).map((answer) => { const question = item.questions.find((entry) => entry.id === answer.questionId); const response = question?.type === "MCQ" ? (answer.answer == null ? "No answer" : `Option ${String.fromCharCode(65 + answer.answer)} · ${answer.correct ? "Correct" : "Incorrect"}`) : answer.answer || "No response"; return `<p><b>${esc(question?.prompt || "Question")}</b><br>${esc(response)}${question?.type !== "MCQ" && attempt.status !== "Reviewed" ? `<br><label>Marks (max ${question?.marks}) <input type="number" data-review-mark="${esc(question?.id)}" min="0" max="${question?.marks}" value="${answer.marksAwarded || 0}"></label>` : ""}</p>`; }).join("")}</div>${attempt.status === "Needs recruiter review" ? `<button type="button" class="btn btn--primary btn--sm" data-save-assessment-review>Save written-answer scores</button>` : ""}</article>`).join("")}</div></details>` : `<p class="company-muted">No student submissions yet.</p>`}</article>`).join("") : `<div class="company-empty">No company assessments yet. Create one above to send it for admin approval.</div>`;
+    list.innerHTML = assessments.length ? assessments.map((item) => `<article class="company-role-card"><div class="company-role-main"><div><span class="company-status-badge ${item.status === "approved" ? "is-active" : ""}">${esc(({ pending_approval: "Pending admin approval", approved: "Approved · available to applicants", rejected: "Changes requested" })[item.status] || item.status)}</span><h3>${esc(item.title)}</h3><p>${esc(item.roleTitle || internships.find((role) => role.id === item.internshipId)?.title || "Role")} · ${esc(item.category)} · ${esc(item.difficulty)} · ${item.durationMinutes} min · ${item.totalMarks} marks</p>${item.adminReviewNote ? `<p class="company-role-description">Admin note: ${esc(item.adminReviewNote)}</p>` : ""}</div><div class="company-role-side"><strong>${item.attempts?.length || 0}</strong><small>submissions</small></div></div>${renderAssessmentMarkList(item.attempts)}${item.attempts?.length ? `<details><summary>Review answers and activity</summary><div class="company-assessment-results">${item.attempts.map((attempt) => `<article data-assessment-attempt="${esc(attempt.id)}" data-assessment-id="${esc(item.id)}"><strong>${esc(attempt.studentName || "Student")}</strong><span>${esc(attempt.studentEmail || "")} · ${attempt.score}/${attempt.totalMarks} marks · ${esc(attempt.status)}</span><small>${esc(dateLabel(attempt.submittedAt?.slice(0,10)))}</small>${(attempt.integrityEvents || []).length ? `<aside class="assessment-writing-review"><strong>Activity signals for review · ${Number(attempt.warningCount) || 0}/4 warnings</strong><ul>${attempt.integrityEvents.map((signal) => `<li>${esc(signal.reason)} · ${esc(new Date(signal.at).toLocaleTimeString())}</li>`).join("")}</ul><small>Signals may be inaccurate and are not proof of misconduct.</small></aside>` : ""}${attempt.writingReview ? `<aside class="assessment-writing-review"><strong>Writing-style signals · human review only</strong><p>${esc(attempt.writingReview.label || "Limited style review")}</p>${attempt.writingReview.signals?.length ? `<ul>${attempt.writingReview.signals.map((signal) => `<li>${esc(signal)}</li>`).join("")}</ul>` : ""}<small>${esc(attempt.writingReview.disclaimer || "These clues cannot prove AI use or misconduct and must not determine hiring by themselves.")}</small></aside>` : ""}<div>${(attempt.answers || []).map((answer) => { const question = item.questions.find((entry) => entry.id === answer.questionId); const response = question?.type === "MCQ" ? (answer.answer == null ? "No answer" : `Option ${String.fromCharCode(65 + answer.answer)} · ${answer.correct ? "Correct" : "Incorrect"}`) : answer.answer || "No response"; return `<p><b>${esc(question?.prompt || "Question")}</b><br>${esc(response)}${question?.type !== "MCQ" && attempt.status !== "Reviewed" ? `<br><label>Marks (max ${question?.marks}) <input type="number" data-review-mark="${esc(question?.id)}" min="0" max="${question?.marks}" value="${answer.marksAwarded || 0}"></label>` : ""}</p>`; }).join("")}</div>${attempt.status === "Needs recruiter review" ? `<button type="button" class="btn btn--primary btn--sm" data-save-assessment-review>Save written-answer scores</button>` : ""}</article>`).join("")}</div></details>` : ""}</article>`).join("") : `<div class="company-empty">No company assessments yet. Create one above to send it for admin approval.</div>`;
+    list.querySelectorAll(".company-role-card").forEach((card, index) => {
+      const assessment = assessments[index];
+      const liveSessions = assessments[index]?.liveSessions || [];
+      if (liveSessions.length) {
+        const section = document.createElement("section"); section.className = "assessment-live-sessions";
+        const heading = document.createElement("strong"); heading.textContent = "Students taking this test now"; section.append(heading);
+        for (const live of liveSessions) {
+          const row = document.createElement("div"); row.className = "assessment-live-sessions__row";
+          const name = document.createElement("span"); name.textContent = live.studentName;
+          row.append(name);
+          if (live.shareLiveCameraAllowed) {
+            const button = document.createElement("button"); button.type = "button"; button.className = "btn btn--primary btn--sm"; button.textContent = "View live camera";
+            button.addEventListener("click", () => watchLiveAssessment(assessment.id, live.studentId, live.studentName).catch(alertError));
+            row.append(button);
+          } else {
+            const declined = document.createElement("span"); declined.className = "company-muted"; declined.textContent = "Student did not opt in to live video"; row.append(declined);
+          }
+          section.append(row);
+        }
+        card.insertBefore(section, card.children[1] || null);
+      }
+      if (assessment?.status !== "approved") return;
+      const observerPanel = document.createElement("section"); observerPanel.className = "assessment-live-sessions assessment-observer-invites";
+      const title = document.createElement("strong"); title.textContent = "Verified observers"; observerPanel.append(title);
+      const note = document.createElement("p"); note.className = "company-muted"; note.textContent = "Invite a teacher by email. The one-time link verifies their email, expires after 60 minutes, and only grants access to this assessment. Students must opt in to live video."; observerPanel.append(note);
+      const inviteForm = document.createElement("form"); inviteForm.className = "assessment-observer-invite-form";
+      const email = document.createElement("input"); email.type = "email"; email.required = true; email.maxLength = 254; email.autocomplete = "email"; email.placeholder = "teacher@school.edu"; email.setAttribute("aria-label", "Teacher email address");
+      const send = document.createElement("button"); send.type = "submit"; send.className = "btn btn--ghost btn--sm"; send.textContent = "Email invitation";
+      const status = document.createElement("span"); status.className = "company-muted"; status.setAttribute("role", "status");
+      inviteForm.append(email, send, status); observerPanel.append(inviteForm);
+      inviteForm.addEventListener("submit", async (event) => {
+        event.preventDefault(); send.disabled = true; status.textContent = "Sending…";
+        try { const result = await api(`/company/assessments/${encodeURIComponent(assessment.id)}/observers/invite`, { method: "POST", body: JSON.stringify({ email: email.value.trim() }) }); status.textContent = result.message || "Invitation sent."; email.value = ""; await refreshAssessmentResults(false); }
+        catch (error) { status.textContent = error.message || "Could not send invitation."; send.disabled = false; }
+      });
+      const invites = assessment.observerInvitations || [];
+      if (invites.length) {
+        const inviteList = document.createElement("div"); inviteList.className = "assessment-observer-invite-list";
+        for (const invite of invites.slice().sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))) {
+          const row = document.createElement("div"); row.className = "assessment-live-sessions__row";
+          const inviteExpired = invite.redeemedAt ? Date.parse(invite.redeemedAt) + 8 * 60 * 60 * 1000 <= Date.now() : Date.parse(invite.expiresAt) <= Date.now();
+          const label = document.createElement("span"); label.textContent = `${invite.email} · ${invite.revokedAt ? "Revoked" : inviteExpired ? "Expired" : invite.redeemedAt ? "Verified · access active" : "Invitation sent"}`; row.append(label);
+          if (!invite.revokedAt) {
+            const revoke = document.createElement("button"); revoke.type = "button"; revoke.className = "btn btn--ghost btn--sm"; revoke.textContent = "Revoke";
+            revoke.addEventListener("click", async () => { revoke.disabled = true; try { await api(`/company/assessments/${encodeURIComponent(assessment.id)}/observers/${encodeURIComponent(invite.id)}`, { method: "DELETE" }); await refreshAssessmentResults(false); } catch (error) { alertError(error); revoke.disabled = false; } });
+            row.append(revoke);
+          }
+          inviteList.append(row);
+        }
+        observerPanel.append(inviteList);
+      }
+      card.insertBefore(observerPanel, card.children[1] || null);
+    });
+    list.querySelectorAll("[data-assessment-attempt]").forEach((card) => {
+      const assessment = assessments.find((item) => item.id === card.dataset.assessmentId);
+      const attempt = assessment?.attempts.find((entry) => entry.id === card.dataset.assessmentAttempt);
+      const signals = attempt?.integritySignals;
+      if (!signals?.enabled) return;
+      const panel = document.createElement("aside");
+      panel.className = "assessment-local-signals";
+      const soundMoments = Array.isArray(signals.soundMoments) ? signals.soundMoments.join(", ") : "";
+      const visualMoments = Array.isArray(signals.visualMoments) ? signals.visualMoments.join(", ") : "";
+      panel.innerHTML = `<strong>Browser-reported activity signals · unverified, review only</strong><p>Face check: ${signals.faceAvailable ? `${Number(signals.faceCount) || 0} face(s) in the last frame · ${Number(signals.faceCountFlags) || 0} sustained flags` : "unavailable"}</p><p>Sound-level flags: ${Number(signals.soundCount) || 0}${signals.soundAvailable ? "" : " · microphone unavailable"}${soundMoments ? ` · ${esc(soundMoments)}` : ""}</p><p>Visual-change flags: ${Number(signals.visualCount) || 0}${signals.visualAvailable ? "" : " · camera analysis unavailable"}${visualMoments ? ` · ${esc(visualMoments)}` : ""}</p><small>${esc(signals.disclaimer || "Normal sound or movement can trigger these signals. They are not proof of cheating or AI use.")}</small>`;
+      card.insertBefore(panel, card.querySelector("div"));
+    });
     list.querySelectorAll("[data-save-assessment-review]").forEach((button) => button.addEventListener("click", async () => {
       const card = button.closest("[data-assessment-attempt]"); const assessment = assessments.find((item) => item.id === card.dataset.assessmentId); const attempt = assessment?.attempts.find((entry) => entry.id === card.dataset.assessmentAttempt); if (!assessment || !attempt) return;
       const marks = Object.fromEntries([...card.querySelectorAll("[data-review-mark]")].map((input) => [input.dataset.reviewMark, Number(input.value) || 0])); button.disabled = true;
@@ -230,6 +350,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.querySelectorAll("[data-company-nav]").forEach((link) => { if (link.dataset.companyNav === current) link.setAttribute("aria-current", "page"); else link.removeAttribute("aria-current"); });
     document.getElementById("company-page-heading").textContent = ({ overview: "Overview", internships: "Internships", applicants: "Applicants", assessments: "Assessments", interviews: "Interviews", "company-profile": "Company profile", settings: "Settings" })[current];
     if (current === "internships" && new URLSearchParams(window.location.search).get("new") === "1") document.getElementById("internship-title").focus();
+    if (current === "applicants") refreshApplicants(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
   function fillCompanyIdentity() {
@@ -431,6 +552,46 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     }
   });
+  let lastAssessmentRefresh = 0;
+  let assessmentRefreshRunning = false;
+  let applicantRefreshRunning = false;
+  async function refreshApplicants(showToast = false) {
+    if (applicantRefreshRunning) return;
+    applicantRefreshRunning = true;
+    const button = document.getElementById("applicant-refresh");
+    if (button) { button.disabled = true; button.textContent = "Refreshing…"; }
+    try {
+      const result = await api("/company/applications");
+      applicants = result.items || [];
+      render();
+      if (showToast) App.toast("Applicant profiles and CV sharing statuses refreshed.");
+    } catch (error) {
+      if (showToast) alertError(error);
+    } finally {
+      applicantRefreshRunning = false;
+      if (button) { button.disabled = false; button.textContent = "Refresh applicants"; }
+    }
+  }
+  async function refreshAssessmentResults(showToast = false) {
+    if (assessmentRefreshRunning) return;
+    assessmentRefreshRunning = true;
+    try {
+      const [assessmentData, applicationData] = await Promise.all([api("/company/assessments"), api("/company/applications")]);
+      const nextAssessments = assessmentData.items || [];
+      const nextApplicants = applicationData.items || [];
+      const changed = JSON.stringify(assessments) !== JSON.stringify(nextAssessments) || JSON.stringify(applicants) !== JSON.stringify(nextApplicants);
+      assessments = nextAssessments;
+      applicants = nextApplicants;
+      assessmentLoadError = "";
+      lastAssessmentRefresh = Date.now();
+      if (changed || showToast) { render(); renderAssessments(); }
+      if (showToast) App.toast("Student assessment scores refreshed.");
+    } catch (error) {
+      if (showToast) alertError(error);
+    } finally {
+      assessmentRefreshRunning = false;
+    }
+  }
   document.addEventListener("change", async (event) => {
     const select = event.target.closest("[data-applicant-status]"); if (!select) return;
     try { const result = await api(`/company/applications/${encodeURIComponent(select.dataset.applicantStatus)}/status`, { method: "PATCH", body: JSON.stringify({ status: select.value }) }); applicants = applicants.map((item) => item.id === result.application.id ? { ...item, status: result.application.status } : item); render(); }
@@ -439,12 +600,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   ["applicant-filter", "applicant-status-filter"].forEach((id) => document.getElementById(id).addEventListener("change", render));
   document.getElementById("applicant-query").addEventListener("input", render);
   document.getElementById("applicant-export").addEventListener("click", exportApplicantsCsv);
+  document.getElementById("applicant-refresh").addEventListener("click", () => refreshApplicants(true));
   document.getElementById("applicant-clear-filters").addEventListener("click", () => { document.getElementById("applicant-query").value = ""; document.getElementById("applicant-filter").value = "all"; document.getElementById("applicant-status-filter").value = "all"; render(); });
   document.getElementById("schedule-form").addEventListener("submit", async (event) => {
     event.preventDefault();
+    const form = event.currentTarget;
     const body = { applicationId: document.getElementById("schedule-candidate").value, type: document.getElementById("schedule-type").value, date: document.getElementById("schedule-date").value, time: document.getElementById("schedule-time").value, mode: document.getElementById("schedule-mode").value, details: [document.getElementById("schedule-link").value.trim(), document.getElementById("schedule-notes").value.trim()].filter(Boolean).join(" · ") };
     const saveButton = document.getElementById("schedule-save"); saveButton.disabled = true;
-    try { const result = await api("/company/interviews", { method: "POST", body: JSON.stringify(body) }); schedules.push(result.interview); const applicant = applicants.find((item) => item.id === body.applicationId); if (applicant) applicant.status = "Interview"; render(); event.currentTarget.reset(); updateMeetingPreview(); App.toast("Meeting saved. The selected application moved to Interview."); }
+    try { const result = await api("/company/interviews", { method: "POST", body: JSON.stringify(body) }); schedules.push(result.interview); const applicant = applicants.find((item) => item.id === body.applicationId); if (applicant) applicant.status = "Interview"; render(); form.reset(); updateMeetingPreview(); App.toast("Meeting saved. The selected application moved to Interview."); }
     catch (error) { alertError(error); }
     finally { saveButton.disabled = !applicants.some((item) => item.student); }
   });
@@ -509,14 +672,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
   document.getElementById("assessment-form").addEventListener("submit", async (event) => {
     event.preventDefault();
+    const form = event.currentTarget;
     const questions = [...document.querySelectorAll(".company-assessment-question")].map((card) => {
       const type = card.querySelector("[data-question-type]").value;
       return { type, prompt: card.querySelector("[data-question-prompt]").value.trim(), marks: Number(card.querySelector("[data-question-marks]").value) || 1, options: type === "MCQ" ? [...card.querySelectorAll("[data-question-option]")].map((input) => input.value.trim()) : [], correctIndex: type === "MCQ" ? Number(card.querySelector("[data-question-correct]").value) : -1, explanation: card.querySelector("[data-question-explanation]").value.trim() };
     });
     const startLocal = document.getElementById("assessment-start").value, endLocal = document.getElementById("assessment-end").value;
-    const body = { title: document.getElementById("assessment-title").value.trim(), internshipId: document.getElementById("assessment-role").value, category: document.getElementById("assessment-category").value, difficulty: document.getElementById("assessment-difficulty").value, durationMinutes: Number(document.getElementById("assessment-duration").value), passingMarks: Number(document.getElementById("assessment-pass").value), startAt: startLocal ? new Date(startLocal).toISOString() : "", endAt: endLocal ? new Date(endLocal).toISOString() : "", questions };
+    const body = { title: document.getElementById("assessment-title").value.trim(), internshipId: document.getElementById("assessment-role").value, category: document.getElementById("assessment-category").value, difficulty: document.getElementById("assessment-difficulty").value, durationMinutes: Number(document.getElementById("assessment-duration").value), passingMarks: Number(document.getElementById("assessment-pass").value), startAt: startLocal ? new Date(startLocal).toISOString() : "", endAt: endLocal ? new Date(endLocal).toISOString() : "", monitoring: { focus: document.getElementById("assessment-monitor-focus").checked, fullscreen: document.getElementById("assessment-monitor-fullscreen").checked, clipboard: document.getElementById("assessment-monitor-clipboard").checked, camera: document.getElementById("assessment-monitor-camera").checked, sound: document.getElementById("assessment-monitor-sound").checked, soundThresholdDbfs: Number(document.getElementById("assessment-monitor-sound-threshold").value), durationThresholdSeconds: Number(document.getElementById("assessment-monitor-threshold").value), cooldownSeconds: Number(document.getElementById("assessment-monitor-cooldown").value), warningLimit: 4 }, questions };
     const button = document.getElementById("assessment-submit"); button.disabled = true;
-    try { const result = await api("/company/assessments", { method: "POST", body: JSON.stringify(body) }); assessments.unshift(result.assessment); renderAssessments(); event.currentTarget.reset(); document.getElementById("assessment-questions").innerHTML = ""; addAssessmentQuestion(); App.toast("Assessment submitted for admin approval."); }
+    try { const result = await api("/company/assessments", { method: "POST", body: JSON.stringify(body) }); assessments.unshift(result.assessment); renderAssessments(); form.reset(); document.getElementById("assessment-questions").innerHTML = ""; addAssessmentQuestion(); App.toast("Assessment submitted for admin approval."); }
     catch (error) { alertError(error); }
     finally { button.disabled = false; }
   });
@@ -535,6 +699,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("company-profile-form").addEventListener("input", updateCompanyProfilePreview);
   document.getElementById("company-profile-form").addEventListener("change", updateCompanyProfilePreview);
   document.getElementById("settings-api-check").addEventListener("click", checkApiConnection);
+  document.getElementById("company-assessment-refresh").addEventListener("click", () => refreshAssessmentResults(true));
+  const refreshAssessmentResultsIfStale = () => {
+    if (document.visibilityState === "visible" && Date.now() - lastAssessmentRefresh > 5000) refreshAssessmentResults(false);
+  };
+  window.addEventListener("focus", refreshAssessmentResultsIfStale);
+  document.addEventListener("visibilitychange", refreshAssessmentResultsIfStale);
+  window.setInterval(() => {
+    if (document.visibilityState === "visible") refreshAssessmentResults(false);
+  }, 15000);
   ["company-signout", "company-signout-settings"].forEach((id) => document.getElementById(id).addEventListener("click", () => { sessionStorage.removeItem("im_company_api_token"); Store.logout(); window.location.href = "login.html"; }));
   document.querySelectorAll("[data-company-nav][href^='#']").forEach((link) => link.addEventListener("click", () => { window.location.hash = link.getAttribute("href").slice(1); }));
   document.querySelector("[data-company-action='new-internship']")?.addEventListener("click", () => setTimeout(() => document.getElementById("internship-title").focus(), 0));

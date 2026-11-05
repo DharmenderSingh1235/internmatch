@@ -43,7 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (viewName === "internships") renderCompanyReviewQueue();
     if (viewName === "companies") renderCompanyAccounts();
     if (viewName === "users") renderAdminServerStudents();
-    if (viewName === "assessments") renderAssessmentReviewQueue();
+    if (viewName === "assessments") { renderAssessmentReviewQueue(); }
   }
   async function renderAssessmentReviewQueue() {
     const list = document.getElementById("admin-assessment-review-list");
@@ -54,11 +54,27 @@ document.addEventListener("DOMContentLoaded", () => {
       const items = data.items || [];
       const overviewRequests = document.getElementById("admin-assessment-overview-requests");
       if (overviewRequests) overviewRequests.innerHTML = items.length ? `<ul class="admin-record-list">${items.slice(0, 4).map((item) => `<li><strong>${App.escapeHtml(item.title)}</strong><span>${App.escapeHtml(item.companyName)} · ${App.escapeHtml(item.status === "rejected" ? "Resubmitted" : "Pending review")}</span></li>`).join("")}</ul><p class="hint">${items.length} assessment${items.length === 1 ? "" : "s"} need review.</p>` : '<p class="hint">No company assessments are waiting for approval.</p>';
-      list.innerHTML = items.length ? items.map((item) => `<article class="company-review-card" data-assessment-review="${App.escapeHtml(item.id)}"><div class="company-review-card__head"><div><span class="company-status-badge ${item.status === "rejected" ? "" : "is-active"}">${item.status === "rejected" ? "Resubmitted" : "Pending approval"}</span><h3>${App.escapeHtml(item.title)}</h3><p>${App.escapeHtml(item.companyName)} · ${App.escapeHtml(item.roleTitle)} · ${App.escapeHtml(item.category)} · ${App.escapeHtml(item.difficulty)}</p></div><strong>${item.durationMinutes} min · ${item.totalMarks} marks</strong></div><p>${item.questions.length} questions · ${item.questions.map((question) => App.escapeHtml(question.type)).join(", ")}</p><details><summary>Review question content</summary>${item.questions.map((question, index) => `<section><strong>Q${index + 1} · ${App.escapeHtml(question.type)} · ${question.marks} marks</strong><p>${App.escapeHtml(question.prompt)}</p>${question.options?.length ? `<ol type="A">${question.options.map((option) => `<li>${App.escapeHtml(option)}</li>`).join("")}</ol>` : ""}</section>`).join("")}</details><div class="company-review-card__actions"><input type="text" maxlength="500" data-assessment-note placeholder="Optional feedback for company" aria-label="Admin review note"><button type="button" class="btn btn--primary btn--sm" data-assessment-decision="approve">Approve &amp; assign to applicants</button><button type="button" class="btn btn--ghost btn--sm" data-assessment-decision="reject">Reject with feedback</button></div></article>`).join("") : '<div class="admin-panel-note">No company assessments are waiting for approval.</div>';
+      list.innerHTML = items.length ? items.map((item) => `<article class="company-review-card" data-assessment-review="${App.escapeHtml(item.id)}"><div class="company-review-card__head"><div><span class="company-status-badge is-active">Pending approval</span><h3>${App.escapeHtml(item.title)}</h3><p>${App.escapeHtml(item.companyName)} · ${App.escapeHtml(item.roleTitle)} · ${App.escapeHtml(item.category)} · ${App.escapeHtml(item.difficulty)}</p></div><strong>${item.durationMinutes} min · ${item.totalMarks} marks</strong></div><p>${item.questions.length} questions · ${item.questions.map((question) => App.escapeHtml(question.type)).join(", ")}</p><details><summary>Review question content</summary>${item.questions.map((question, index) => `<section><strong>Q${index + 1} · ${App.escapeHtml(question.type)} · ${question.marks} marks</strong><p>${App.escapeHtml(question.prompt)}</p>${question.options?.length ? `<ol type="A">${question.options.map((option) => `<li>${App.escapeHtml(option)}</li>`).join("")}</ol>` : ""}</section>`).join("")}</details><div class="company-review-card__actions"><input type="text" maxlength="500" data-assessment-note placeholder="Required when rejecting" aria-label="Feedback for company"><button type="button" class="btn btn--primary btn--sm" data-assessment-decision="approve">Approve &amp; assign to applicants</button><button type="button" class="btn btn--ghost btn--sm" data-assessment-decision="reject">Reject with feedback</button></div></article>`).join("") : '<div class="admin-panel-note">No company assessments are waiting for approval.</div>';
       list.querySelectorAll("[data-assessment-decision]").forEach((button) => button.addEventListener("click", async () => {
-        const card = button.closest("[data-assessment-review]"); button.disabled = true;
-        try { await adminApi(`/admin/assessments/${encodeURIComponent(card.dataset.assessmentReview)}/review`, { method: "PATCH", body: JSON.stringify({ decision: button.dataset.assessmentDecision, note: card.querySelector("[data-assessment-note]").value }) }); App.toast(button.dataset.assessmentDecision === "approve" ? "Assessment approved for eligible applicants." : "Assessment rejected with feedback."); renderAssessmentReviewQueue(); }
-        catch (error) { App.toast(error.message, "error"); button.disabled = false; }
+        const card = button.closest("[data-assessment-review]");
+        if (!card) return;
+        const decision = button.dataset.assessmentDecision;
+        const noteField = card.querySelector("[data-assessment-note]");
+        const note = noteField?.value.trim() || "";
+        if (decision === "reject" && !note) { App.toast("Add feedback so the company knows what to change.", "error"); noteField?.focus(); return; }
+        const actionButtons = [...card.querySelectorAll("[data-assessment-decision]")];
+        const originalLabel = button.textContent;
+        actionButtons.forEach((action) => { action.disabled = true; });
+        button.textContent = decision === "reject" ? "Rejecting…" : "Approving…";
+        try {
+          await adminApi(`/admin/assessments/${encodeURIComponent(card.dataset.assessmentReview)}/review`, { method: "PATCH", body: JSON.stringify({ decision, note }) });
+          App.toast(decision === "approve" ? "Assessment approved for eligible applicants." : "Assessment rejected. Feedback is visible in the company workspace.");
+          await renderAssessmentReviewQueue();
+        } catch (error) {
+          App.toast(error.message, "error");
+          actionButtons.forEach((action) => { action.disabled = false; });
+          button.textContent = originalLabel;
+        }
       }));
     } catch (error) {
       const message = error.message.includes("404") || error.message.includes("Admin API request failed")

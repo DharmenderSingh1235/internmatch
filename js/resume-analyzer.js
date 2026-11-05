@@ -70,6 +70,28 @@ document.addEventListener("DOMContentLoaded", () => {
     return data;
   }
 
+  const showSharingState = () => {
+    if (!companyProfileShare || !companyCvShare || !companyShareStatus) return;
+    companyProfileShare.disabled = false;
+    const isApproved = serverCvReview?.status === "Approved";
+    if (!isApproved) {
+      companyCvShare.checked = false;
+      companyCvShare.disabled = true;
+      if (!serverCvUploaded) {
+        companyShareStatus.innerHTML = '<span class="pill pill--warning" style="display:inline-block;margin-bottom:4px;">Admin Approval Required</span><br>Upload your CV for Admin review first. Once an Admin approves your CV, you will be able to share it with companies.';
+      } else if (serverCvReview?.status === "Needs changes") {
+        companyShareStatus.innerHTML = `<span class="pill pill--danger" style="display:inline-block;margin-bottom:4px;">Admin Requested Changes</span><br>Admin feedback: ${App.escapeHtml(serverCvReview.note || "Please revise your CV and re-upload.")}<br>Upload an updated CV for Admin approval before sharing with companies.`;
+      } else {
+        companyShareStatus.innerHTML = '<span class="pill pill--warning" style="display:inline-block;margin-bottom:4px;">Pending Admin Approval</span><br>Your CV has been submitted and is waiting for Admin approval. It cannot be uploaded to or viewed by companies until approved.';
+      }
+    } else {
+      companyCvShare.disabled = !companyProfileShare.checked;
+      if (companyCvShare.checked) companyShareStatus.innerHTML = '<span class="pill pill--primary" style="display:inline-block;margin-bottom:4px;">Admin Approved ✓</span><br>Your CV is approved by Admin and shared with active companies you apply to.';
+      else if (companyProfileShare.checked) companyShareStatus.innerHTML = '<span class="pill pill--primary" style="display:inline-block;margin-bottom:4px;">Admin Approved ✓</span><br>Your CV is approved by Admin! Check the box above to share it with companies.';
+      else companyShareStatus.innerHTML = '<span class="pill pill--primary" style="display:inline-block;margin-bottom:4px;">Admin Approved ✓</span><br>Enable profile sharing first to share your approved CV with companies.';
+    }
+  };
+
   async function saveSharedCV(file) {
     if (!user || !file || !window.ResumeVault) return;
     await ResumeVault.put(user.email, file);
@@ -100,26 +122,6 @@ document.addEventListener("DOMContentLoaded", () => {
       adminServerCvShare.disabled = true;
       companyShareStatus.innerHTML = `${App.escapeHtml(message)} <a href="${loginHref}">Sign in again</a>.`;
       adminServerCvStatus.textContent = "Sign in with a student account to manage admin CV permission.";
-    };
-    const showSharingState = () => {
-      companyProfileShare.disabled = false;
-      const isApproved = serverCvReview?.status === "Approved";
-      if (!isApproved) {
-        companyCvShare.checked = false;
-        companyCvShare.disabled = true;
-        if (!serverCvUploaded) {
-          companyShareStatus.innerHTML = '<span class="pill pill--warning" style="display:inline-block;margin-bottom:4px;">Admin Approval Required</span><br>Upload your CV for Admin review first. Once an Admin approves your CV, you will be able to share it with companies.';
-        } else if (serverCvReview?.status === "Needs changes") {
-          companyShareStatus.innerHTML = `<span class="pill pill--danger" style="display:inline-block;margin-bottom:4px;">Admin Requested Changes</span><br>Admin feedback: ${App.escapeHtml(serverCvReview.note || "Please revise your CV and re-upload.")}<br>Upload an updated CV for Admin approval before sharing with companies.`;
-        } else {
-          companyShareStatus.innerHTML = '<span class="pill pill--warning" style="display:inline-block;margin-bottom:4px;">Pending Admin Approval</span><br>Your CV has been submitted and is waiting for Admin approval. It cannot be uploaded to or viewed by companies until approved.';
-        }
-      } else {
-        companyCvShare.disabled = !companyProfileShare.checked;
-        if (companyCvShare.checked) companyShareStatus.innerHTML = '<span class="pill pill--primary" style="display:inline-block;margin-bottom:4px;">Admin Approved ✓</span><br>Your CV is approved by Admin and shared with active companies you apply to.';
-        else if (companyProfileShare.checked) companyShareStatus.innerHTML = '<span class="pill pill--primary" style="display:inline-block;margin-bottom:4px;">Admin Approved ✓</span><br>Your CV is approved by Admin! Check the box above to share it with companies.';
-        else companyShareStatus.innerHTML = '<span class="pill pill--primary" style="display:inline-block;margin-bottom:4px;">Admin Approved ✓</span><br>Enable profile sharing first to share your approved CV with companies.';
-      }
     };
     if (!user || user.role !== "student") {
       showLoginLink("Sign in with a student account and the InternMatch API to manage company sharing.");

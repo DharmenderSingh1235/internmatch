@@ -1,7 +1,7 @@
 /* API origin: local server in development, deployed API in production. */
 const isLocalInternMatchHost = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
 window.IM_API_BASE = (window.IM_API_BASE || (isLocalInternMatchHost
-  ? "http://127.0.0.1:3002"
+  ? "http://127.0.0.1:3003"
   : "https://internmatch-server-bj4z-7b0rtm9hx-team-7-baf1.vercel.app")).replace(/\/+$/, "");
 /* js/app.js
    Cross-cutting behaviour shared by every page: nav-link highlighting,
@@ -119,12 +119,32 @@ const App = (function () {
   }
 
   function wireLogout() {
-    document.querySelectorAll('[data-action="logout"]').forEach((btn) => {
-      btn.addEventListener("click", () => {
-        Store.logout();
-        window.location.href = "login.html";
-      });
-    });
+    const logout = () => {
+      const user = Store.getCurrentUser();
+      const tokenKey = user?.role === "company" ? "im_company_api_token" : user?.role === "admin" ? "im_admin_api_token" : "im_student_api_token";
+      const token = sessionStorage.getItem(tokenKey);
+      if (token && window.IM_API_BASE) {
+        fetch(`${window.IM_API_BASE}/api/auth/logout`, { method: "POST", headers: { authorization: `Bearer ${token}` }, keepalive: true }).catch(() => {});
+      }
+      ["im_student_api_token", "im_company_api_token", "im_admin_api_token", "im_admin_authenticated"].forEach((key) => sessionStorage.removeItem(key));
+      Store.logout();
+      window.location.href = "login.html";
+    };
+
+    const shell = document.querySelector(".app-shell");
+    const user = Store.getCurrentUser();
+    const topbar = shell?.querySelector(".app-topbar");
+    // Keep sign-out reachable even when the student hides the sidebar.
+    if (topbar && user?.role === "student" && !topbar.querySelector('[data-action="logout"]')) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "btn btn--ghost btn--sm student-topbar-logout";
+      button.dataset.action = "logout";
+      button.textContent = "Log out";
+      topbar.append(button);
+    }
+
+    document.querySelectorAll('[data-action="logout"]').forEach((btn) => btn.addEventListener("click", logout));
   }
 
   function wireSidebarToggle() {

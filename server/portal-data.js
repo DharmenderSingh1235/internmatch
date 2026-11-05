@@ -6,7 +6,7 @@ const database = require("./database");
 
 const directory = path.join(__dirname, "data");
 const filename = path.join(directory, "portal-data.json");
-const collectionNames = ["companies", "companyRequests", "students", "internships", "applications", "shortlists", "interviews", "assessments", "assessmentSessions", "assessmentSubmissions", "supportMessages", "passwordResetRequests", "practiceAreas", "audit"];
+const collectionNames = ["companies", "companyRequests", "students", "internships", "applications", "shortlists", "interviews", "assessments", "assessmentSessions", "assessmentSubmissions", "assessmentObserverInvites", "supportMessages", "passwordResetRequests", "practiceAreas", "audit"];
 let state = Object.fromEntries(collectionNames.map((name) => [name, []]));
 const mongoWriteQueue = [];
 let mongoDrain = null;
@@ -27,19 +27,29 @@ function saveJson() {
 
 const ready = (async () => {
   if (process.env.MONGODB_URI) {
-    await database.connectMongo();
-    const initialized = await database.isMongoInitialized();
-    if (initialized) {
-      for (const name of collectionNames) state[name] = (await database.loadMongoCollection(name)) || [];
-    } else {
-      for (const name of collectionNames) {
-        const previous = [];
-        await database.syncMongoCollection(name, previous, state[name] || []);
+    try {
+      await database.connectMongo();
+      const initialized = await database.isMongoInitialized();
+      if (initialized) {
+        for (const name of collectionNames) state[name] = (await database.loadMongoCollection(name)) || [];
+      } else {
+        for (const name of collectionNames) {
+          const previous = [];
+          await database.syncMongoCollection(name, previous, state[name] || []);
+        }
+        await database.markMongoInitialized();
+        console.log("✓ Existing local portal records migrated to MongoDB (first configured run)");
       }
-      await database.markMongoInitialized();
-      console.log("✓ Existing local portal records migrated to MongoDB (first configured run)");
+      persistenceMode = "mongodb";
+      return;
+    } catch (error) {
+      if (process.env.NODE_ENV === "production") throw error;
+      persistenceMode = database.isSqliteAvailable() ? "sqlite-json" : "json";
+      if (database.isSqliteAvailable()) {
+        for (const name of ["students", "companies", "companyRequests", "internships", "applications"]) database.syncCollectionToSqlite(name, state[name] || []);
+      }
+      console.warn(`⚠ MongoDB unavailable (${error.message}). Local development is using ${persistenceMode} storage; these writes will not sync to Atlas.`);
     }
-    persistenceMode = "mongodb";
     return;
   }
   if (database.isSqliteAvailable()) {
@@ -93,16 +103,23 @@ async function flush() {
   if (lastMongoError) throw lastMongoError;
 }
 
-const mongoSessions = process.env.MONGODB_URI ? {
+const mongoSessions = {
   put: (...args) => database.mongoSessionStore()?.put(...args),
   get: (...args) => database.mongoSessionStore()?.get(...args),
   delete: (...args) => database.mongoSessionStore()?.delete(...args),
   deleteForAccount: (...args) => database.mongoSessionStore()?.deleteForAccount(...args),
   prune: (...args) => database.mongoSessionStore()?.prune(...args)
-} : null;
-const sqliteSessions = !process.env.MONGODB_URI && database.isSqliteAvailable() ? {
+};
+const sqliteSessions = database.isSqliteAvailable() ? {
   put: database.putSession, get: database.getSession, delete: database.deleteSession,
   deleteForAccount: database.deleteSessionsForAccount, prune: database.deleteExpiredSessions
+} : null;
+const sessionStore = process.env.MONGODB_URI || sqliteSessions ? {
+  put: (...args) => (persistenceMode === "mongodb" ? mongoSessions : sqliteSessions)?.put(...args),
+  get: (...args) => (persistenceMode === "mongodb" ? mongoSessions : sqliteSessions)?.get(...args),
+  delete: (...args) => (persistenceMode === "mongodb" ? mongoSessions : sqliteSessions)?.delete(...args),
+  deleteForAccount: (...args) => (persistenceMode === "mongodb" ? mongoSessions : sqliteSessions)?.deleteForAccount(...args),
+  prune: (...args) => (persistenceMode === "mongodb" ? mongoSessions : sqliteSessions)?.prune(...args)
 } : null;
 
 module.exports = {
@@ -113,6 +130,6 @@ module.exports = {
   addAudit,
   isSqlite: () => persistenceMode === "sqlite-json",
   storageMode: () => persistenceMode,
-  sessionStore: mongoSessions || sqliteSessions,
+  sessionStore,
   close: database.closeDatabase
 };

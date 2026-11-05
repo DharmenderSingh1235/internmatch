@@ -5,6 +5,7 @@
   "description": "InternMatch frontend with its local API server",
   "scripts": {
     "start": "npm --prefix server start",
-    "start:api": "npm --prefix server start"
+    "start:api": "npm --prefix server start",
+    "build": "node scripts/build-netlify.js"
   }
 }
