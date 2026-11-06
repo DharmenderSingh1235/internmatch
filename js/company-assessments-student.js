@@ -277,13 +277,18 @@ document.addEventListener("DOMContentLoaded", () => {
         if (warningBusy || isSubmitting || run.dataset.assessmentActive !== "true") return;
         warningBusy = true;
         try {
-          const data = await api(`/student/assessments/${encodeURIComponent(id)}/signals`, { method: "POST", body: JSON.stringify({ signal }) });
+          const data = await api(`/student/assessments/${encodeURIComponent(id)}/signals`, { method: "POST", body: JSON.stringify({ signal }), keepalive: signal === "context_change" || signal === "fullscreen_exit" });
           warningCount = data.warningCount || warningCount;
           multipleFaceWarningCount = Number(data.multipleFaceWarningCount) || multipleFaceWarningCount;
           if (!data.ignored && data.event) warningBox.innerHTML = `Warnings: <strong>${warningCount} / 4</strong> · Camera warnings: <strong>${multipleFaceWarningCount} / 2</strong> · ${esc(data.event.reason)}${warningCount >= 3 ? " · Final warning" : ""}`;
           warningBox.classList.toggle("is-final", warningCount >= 3 || multipleFaceWarningCount >= 2);
           if (data.terminated) { warningBox.innerHTML = data.terminationReason === "multiple_faces" ? "Multiple faces stayed in view. The test has been closed and submitted for review." : data.terminationReason === "context_change" ? "The assessment window or fullscreen was left. Your answers are being submitted for review." : "Warnings: <strong>4 / 4</strong> · Assessment ended and submitted for review."; form.requestSubmit(); }
-        } catch (error) { App.toast(error.message, "error"); }
+        } catch (error) {
+          if (signal === "context_change" || signal === "fullscreen_exit") {
+            warningBox.textContent = "Exam focus/fullscreen was lost. The page is locked and your answers are being submitted.";
+            form.requestSubmit();
+          } else App.toast(error.message, "error");
+        }
         finally { warningBusy = false; }
       };
       signalMonitor = createLocalSignalMonitor(video, audioStream, !!(cameraStream || audioStream), recordWarning, monitoring.durationThresholdSeconds || policy.durationThresholdSeconds, monitoring.soundThresholdDbfs ?? -18, faceDetector);
@@ -295,6 +300,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const terminateForContext = (signal) => {
         if (contextExitPending) return;
         contextExitPending = true;
+        form.querySelectorAll("input, textarea, button").forEach((control) => { control.disabled = true; });
+        warningBox.textContent = signal === "fullscreen_exit" ? "Fullscreen was exited. The page is locked and your answers are being submitted." : "Exam focus was lost. The page is locked and your answers are being submitted.";
+        warningBox.classList.add("is-final");
         const submitOnExit = () => { if (warningBusy && !isSubmitting) { setTimeout(submitOnExit, 150); return; } recordWarning(signal); };
         submitOnExit();
       };
