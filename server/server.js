@@ -36,7 +36,10 @@ app.use((req, res, next) => {
 });
 app.use(express.json({ limit: "12mb", strict: true }));
 app.use((req, res, next) => {
-  if (!process.env.MONGODB_URI || !req.path.startsWith("/api/")) return next();
+  // Login persists its own session in issueToken(). Do not let an unrelated,
+  // previously queued collection write prevent a valid sign-in response.
+  const isAuthLogin = /^\/api\/auth\/(student|company|admin)\/login$/.test(req.path);
+  if (!process.env.MONGODB_URI || !req.path.startsWith("/api/") || isAuthLogin) return next();
   const send = res.send;
   res.send = function (body) {
     res.send = send;
