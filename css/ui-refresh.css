@@ -1,0 +1,127 @@
+/* Shared polish layer for the complete InternMatch experience. */
+:root {
+  --color-bg: #f4f7fc;
+  --color-bg-alt: #edf2fa;
+  --color-surface: #ffffff;
+  --color-ink: #17243d;
+  --color-text: #263248;
+  --color-muted: #69778d;
+  --color-border: #e1e8f2;
+  --color-primary: #315fd2;
+  --color-primary-dark: #244aa8;
+  --color-primary-tint: #eaf0ff;
+  --color-success: #17845e;
+  --color-success-tint: #e8f6ef;
+  --color-accent: #7357d7;
+  --color-accent-tint: #f0ecff;
+  --radius-sm: 10px;
+  --radius-md: 15px;
+  --radius-lg: 21px;
+  --shadow-card: 0 8px 25px rgba(31, 52, 87, .055);
+  --shadow-float: 0 16px 42px rgba(31, 52, 87, .11);
+  --font-display: "Source Sans 3", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+:root[data-theme="dark"] {
+  --color-bg: #0d1526;
+  --color-bg-alt: #141f35;
+  --color-surface: #17233b;
+  --color-ink: #f3f6fc;
+  --color-text: #e1e8f4;
+  --color-muted: #9aa8bf;
+  --color-border: #2a3853;
+  --color-primary: #7094f4;
+  --color-primary-dark: #91aafa;
+  --color-primary-tint: #1c2b4d;
+  --color-success: #50bd8a;
+  --color-success-tint: #15372d;
+  --color-accent: #aa98ff;
+  --color-accent-tint: #292442;
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, .18);
+  --shadow-float: 0 16px 42px rgba(0, 0, 0, .3);
+}
+
+html { scroll-padding-top: 86px; }
+body { min-height: 100vh; line-height: 1.58; }
+h1, h2, h3 { font-family: var(--font-display); letter-spacing: -.025em; }
+h1 { line-height: 1.12; }
+p { line-height: 1.58; }
+a { transition: color .16s ease; }
+
+.topbar, .app-topbar {
+  border-color: var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  box-shadow: 0 5px 22px rgba(20, 40, 74, .045);
+  backdrop-filter: blur(14px);
+}
+.topbar { position: sticky; top: 0; z-index: 35; }
+.app-topbar { position: sticky; top: 0; z-index: 30; }
+.app-main { min-width: 0; }
+.app-content { min-width: 0; }
+
+.btn {
+  min-height: 40px;
+  border-radius: 11px;
+  font-weight: 700;
+  letter-spacing: .005em;
+}
+.btn--primary { box-shadow: 0 4px 10px color-mix(in srgb, var(--color-primary) 18%, transparent); }
+.btn--primary:hover { box-shadow: 0 8px 18px color-mix(in srgb, var(--color-primary) 24%, transparent); }
+.btn--secondary { border-color: color-mix(in srgb, var(--color-primary) 14%, var(--color-border)); }
+.btn--ghost { background: var(--color-surface); }
+
+.panel, .stat-card, .int-card, .company-panel, .company-card, .admin-panel,
+.profile-section, .resume-intel-card, .resume-sharing-card, .calendar-card,
+.application-card, .saved-card, .compare-card, .recommendation-card {
+  border-color: var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+}
+.panel { background: var(--color-surface); }
+.panel__head { align-items: center; gap: 14px; }
+.stat-card, .int-card { background: var(--color-surface); }
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+select, textarea {
+  border-color: var(--color-border);
+  border-radius: 11px;
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
+select:focus, textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 14%, transparent);
+  outline: none;
+}
+input[type="checkbox"], input[type="radio"] { accent-color: var(--color-primary); }
+::placeholder { color: color-mix(in srgb, var(--color-muted) 76%, transparent); }
+
+table { border-collapse: separate; border-spacing: 0; }
+th { color: var(--color-muted); font-size: .78rem; font-weight: 750; letter-spacing: .045em; text-transform: uppercase; }
+td, th { border-color: var(--color-border); }
+.status-badge, .pill { border-radius: 999px; font-weight: 700; }
+.modal, dialog { border-color: var(--color-border); border-radius: 18px; box-shadow: var(--shadow-float); }
+dialog::backdrop { background: rgba(13, 24, 44, .48); backdrop-filter: blur(3px); }
+
+.sidebar { border-right: 1px solid rgba(255, 255, 255, .055); }
+.sidebar-nav a { min-height: 42px; border-radius: 11px; }
+.sidebar-nav a.is-active { box-shadow: inset 3px 0 0 rgba(255,255,255,.72); }
+.sidebar-foot { border-color: rgba(255,255,255,.14); }
+
+.auth-shell__form > .auth-card { border-radius: 20px; box-shadow: var(--shadow-float); }
+.auth-shell__art { border-radius: 22px; }
+.hero h1 { letter-spacing: -.04em; }
+.catalogue-toolbar, .browse-toolbar { border-color: var(--color-border); border-radius: 15px; }
+
+@media (max-width: 860px) {
+  .topbar { position: relative; }
+  .app-topbar { position: sticky; }
+}
+@media (max-width: 560px) {
+  .btn { min-height: 42px; }
+  .panel { border-radius: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
