@@ -94,7 +94,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const items = Array.isArray(attempts) ? attempts : [];
     const rows = items.map((attempt) => {
       const result = attempt.status === "Terminated for review" ? "Terminated · review activity" : attempt.status === "Needs recruiter review" ? "Written answers awaiting review" : attempt.passed ? "Passed" : "Not passed";
-      return `<article><div><strong>${esc(attempt.studentName || "Student")}</strong><small>${esc(attempt.studentEmail || "No email")} · ${esc(dateLabel(attempt.submittedAt?.slice(0, 10)))}</small>${attempt.studentId ? `<button type="button" class="btn btn--ghost btn--sm" data-view-applicant="${esc(attempt.studentId)}">View student profile</button>` : ""}</div><div class="company-assessment-mark-score"><strong>${Number(attempt.score) || 0}/${Number(attempt.totalMarks) || 0}</strong><span>${esc(result)}</span></div></article>`;
+      return `<article><div><strong>${esc(attempt.studentName || "Student")}</strong><small>${esc(attempt.studentEmail || "No email")} · ${esc(dateLabel(attempt.submittedAt?.slice(0, 10)))}</small></div><div class="company-assessment-mark-score"><strong>${Number(attempt.score) || 0}/${Number(attempt.totalMarks) || 0}</strong><span>${esc(result)}</span></div></article>`;
     }).join("");
     return `<section class="company-assessment-mark-list"><h4>Student assessment marks</h4>${rows || `<p class="company-muted">No student has submitted this assessment yet.</p>`}</section>`;
   }
