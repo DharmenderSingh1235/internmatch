@@ -17,6 +17,7 @@
       <a href="#internships" data-company-nav="internships"><span class="company-nav-icon">▣</span>Internships</a>
       <a href="#applicants" data-company-nav="applicants"><span class="company-nav-icon">♙</span>Applicants</a>
       <a href="#assessments" data-company-nav="assessments"><span class="company-nav-icon">▤</span>Assessments</a>
+      <a href="#assessment-tracker" data-company-nav="assessment-tracker"><span class="company-nav-icon">✓</span>Assessment tracker</a>
       <a href="#interviews" data-company-nav="interviews"><span class="company-nav-icon">▦</span>Interviews</a>
       <a href="#company-profile" data-company-nav="company-profile"><span class="company-nav-icon">▤</span>Company profile</a>
       <a href="#settings" data-company-nav="settings"><span class="company-nav-icon">⚙</span>Settings</a>
@@ -90,7 +91,12 @@
           <div id="assessment-questions" class="company-assessment-question-list"></div><div class="company-form-actions"><button type="button" class="btn btn--ghost" id="assessment-add-question">＋ Add question</button><button type="submit" class="btn btn--primary" id="assessment-submit">Submit for admin approval</button></div>
         </form>
       </section>
-      <section class="company-panel company-section"><div class="company-section-heading"><div><p class="company-eyebrow">ASSESSMENT TRACKER</p><h2>Your assessments &amp; results</h2></div><div class="company-applicant-toolbar__actions"><span class="company-count" id="company-assessment-count">0 assessments</span><button type="button" class="btn btn--secondary btn--sm" id="company-assessment-refresh">Refresh scores</button></div></div><div id="company-assessment-list" class="company-list" aria-live="polite"></div></section>
+
+    </div>
+    
+    <div class="company-content company-page-section" id="assessment-tracker" data-company-section="assessment-tracker" hidden>
+      <div class="company-page-intro"><p class="company-eyebrow">RESULTS &amp; REVIEW</p><h2>Assessment tracker</h2><p>Review candidate submissions, marks, and activity signals for your assessments.</p></div>
+            <section class="company-panel company-section"><div class="company-section-heading"><div><p class="company-eyebrow">ASSESSMENT TRACKER</p><h2>Your assessments &amp; results</h2></div><div class="company-applicant-toolbar__actions"><span class="company-count" id="company-assessment-count">0 assessments</span><button type="button" class="btn btn--secondary btn--sm" id="company-assessment-refresh">Refresh scores</button></div></div><div id="company-assessment-list" class="company-list" aria-live="polite"></div></section>
     </div>
     <div class="company-content company-page-section" id="interviews" data-company-section="interviews" hidden>
       <div class="company-page-intro"><p class="company-eyebrow">CANDIDATE MEETINGS</p><h2>Interviews</h2><p>Schedule candidate meetings and keep your interview calendar organized.</p></div>

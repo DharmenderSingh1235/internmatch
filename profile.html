@@ -98,8 +98,7 @@
   #profile-projects-card { order:8; }
   #profile-achievements-card { order:9; }
   #interview-score-card { order:10; }
-  #assessment-tracker-card { grid-column:1/-1; order:11; }
-  #profile-form > .profile-save-row { order:12; }
+  #profile-form > .profile-save-row { order:11; }
   #profile-achievements-card, #interview-score-card, #profile-intro-card, #profile-projects-card, .profile-save-row { grid-column:1/-1; }
   #profile-academic-card, #profile-contact-card, #profile-skills-card, #profile-preferences-card { grid-column:span 1; }
   #profile-form > .card h2 { margin-bottom:14px; font-size:1.3rem; }
@@ -146,29 +145,6 @@
   .score-history-item__result { flex:0 0 auto; min-width:92px; text-align:right; }
   .score-history-item__percent { display:block; color:var(--color-primary); font-size:1.05rem; font-weight:700; }
   .score-history-item__fraction { display:block; color:var(--color-muted); font-size:.8rem; }
-  .assessment-tracker-summary { display:flex; flex-wrap:wrap; gap:9px; margin:0 0 14px; }
-  .assessment-tracker-actions { display:flex; align-items:center; flex-wrap:wrap; justify-content:flex-end; gap:8px; margin-top:14px; padding-top:12px; border-top:1px solid var(--color-border); }
-  .assessment-tracker-actions__label { margin-right:auto; color:var(--color-muted); font-size:.78rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
-  .assessment-tracker-summary span { padding:7px 11px; border:1px solid var(--color-border); border-radius:999px; background:var(--color-surface); color:var(--color-muted); font-size:.82rem; }
-  .assessment-tracker-summary strong { color:var(--color-primary); margin-right:3px; }
-  .assessment-tracker-list { display:grid; gap:11px; }
-  .assessment-tracker-item { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:16px; border:1px solid var(--color-border); border-radius:15px; background:linear-gradient(135deg,var(--color-primary-tint),var(--color-surface)); }
-  .assessment-tracker-item__main { flex:1; min-width:0; }
-  .assessment-tracker-item__title { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; }
-  .assessment-tracker-item__title h3 { margin:0; font-size:1rem; }
-  .assessment-tracker-item__title p { margin:4px 0 0; color:var(--color-muted); font-size:.85rem; }
-  .assessment-tracker-status { flex:0 0 auto; padding:5px 9px; border-radius:999px; background:var(--color-surface); color:var(--color-muted); font-size:.74rem; font-weight:700; }
-  .assessment-tracker-status.is-complete { background:rgba(16,185,129,.13); color:#047857; }
-  .assessment-tracker-status.is-pending { background:rgba(245,158,11,.14); color:#a16207; }
-  .assessment-tracker-meta { display:flex; flex-wrap:wrap; gap:7px 14px; margin-top:10px; color:var(--color-muted); font-size:.78rem; }
-  .assessment-tracker-marks { display:grid; gap:5px; margin-top:12px; }
-  .assessment-tracker-marks strong { font-size:.9rem; }
-  .assessment-tracker-marks > span { color:var(--color-muted); font-size:.78rem; }
-  .assessment-tracker-bar { height:6px; overflow:hidden; border-radius:99px; background:var(--color-border); }
-  .assessment-tracker-bar span { display:block; height:100%; border-radius:inherit; background:var(--color-primary); }
-  .assessment-tracker-empty { display:flex; align-items:center; flex-wrap:wrap; gap:8px 16px; padding:16px; border:1px dashed var(--color-border); border-radius:14px; }
-  .assessment-tracker-empty strong { flex-basis:100%; }
-  .assessment-tracker-empty p { flex:1 1 260px; margin:0; color:var(--color-muted); font-size:.86rem; }
   .score-empty { display:flex; justify-content:space-between; align-items:center; gap:14px; padding:16px; border-radius:14px; background:var(--color-bg-alt); }
   .profile-insight-stats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin:14px 0; }
   .profile-insight-stat { padding:12px; border-radius:12px; background:var(--color-bg-alt); }
@@ -225,7 +201,6 @@
       <li><a href="resume-analyzer.html" data-nav-link="resume-analyzer.html"><span class="icon"><svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2.5h7l4 4v15H7z"></path><polyline points="14 2.5 14 6.5 18 6.5"></polyline><line x1="9.5" y1="12" x2="14.5" y2="12"></line><line x1="9.5" y1="16" x2="14.5" y2="16"></line></svg></span> Resume analyzer</a></li>
       <li><a href="skills.html" data-nav-link="skills.html"><span class="icon"><svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="21" x2="5" y2="14"></line><line x1="12" y1="21" x2="12" y2="9"></line><line x1="19" y1="21" x2="19" y2="4"></line></svg></span> Skill development</a></li>
       <li><a href="profile.html" data-nav-link="profile.html"><span class="icon"><svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"></circle><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"></path></svg></span> My profile</a></li>
-      <li><a href="profile.html#assessment-tracker-card" data-nav-link="assessment-tracker"><span class="icon"><svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"></rect><path d="M9 8h6M9 12h6M9 16h3"></path></svg></span> Assessment tracker</a></li>
       <li><a href="support.html" data-nav-link="support.html"><span class="icon" aria-hidden="true">✉</span> Help &amp; support</a></li>
     </ul>
     <div class="sidebar-foot">
@@ -374,12 +349,6 @@
           <div class="profile-section-heading"><div><span class="profile-section-kicker">Practice &amp; progress</span><h2 class="mt-0">Interview practice scores</h2><p>Track your technical, coding logic, and analytical reasoning quiz results.</p></div><span class="profile-section-icon" aria-hidden="true">▥</span></div>
           <div id="interview-score-summary" aria-live="polite"></div>
         </div>
-
-        <section class="card" id="assessment-tracker-card" aria-labelledby="assessment-tracker-title">
-          <div class="profile-section-heading"><div><h2 class="mt-0" id="assessment-tracker-title">Assessment tracker</h2><p>Your assigned assessments, marks, and recruiter review status.</p></div><span class="profile-section-icon" aria-hidden="true">✓</span></div>
-          <div id="profile-assessment-tracker" class="profile-assessment-tracker" aria-live="polite"><p class="hint">Loading your assessment results…</p></div>
-          <div class="assessment-tracker-actions"><span class="assessment-tracker-actions__label">Company assessments</span><button type="button" class="btn btn--ghost btn--sm" id="profile-assessments-refresh">Refresh</button><a class="btn btn--secondary btn--sm" href="interview-prep.html#company-assessments-panel">Interview prep</a></div>
-        </section>
 
         <div class="profile-save-row"><button type="submit" class="btn btn--primary btn--lg">Save profile</button><span id="profile-save-status" class="hint" aria-live="polite"></span></div>
       </form>

@@ -86,12 +86,9 @@ const App = (function () {
 
   function wireNavHighlight() {
     const page = currentPage();
-    const onAssessmentTracker = page === "profile.html" && window.location.hash === "#assessment-tracker-card";
     document.querySelectorAll("[data-nav-link]").forEach((link) => {
       const target = link.getAttribute("data-nav-link");
-      if ((target === page && !(onAssessmentTracker && target === "profile.html"))
-        || (target === "interviews" && page === "interviews.html")
-        || (target === "assessment-tracker" && onAssessmentTracker)) {
+      if (target === page || (target === "interviews" && page === "interviews.html")) {
         link.classList.add("is-active");
       }
     });

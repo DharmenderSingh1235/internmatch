@@ -335,50 +335,6 @@ document.addEventListener("DOMContentLoaded", () => {
     `;
   }
 
-  async function renderAssessmentTracker() {
-    const target = document.getElementById("profile-assessment-tracker");
-    if (!target) return;
-    const token = sessionStorage.getItem("im_student_api_token");
-    if (!token) {
-      target.innerHTML = `<div class="assessment-tracker-empty"><strong>Sign in to view company assessment results</strong><p>Your marks and recruiter review status are linked to your student account.</p><a class="btn btn--secondary btn--sm" href="login.html?role=student">Sign in</a></div>`;
-      return;
-    }
-    target.innerHTML = '<p class="hint">Loading your assessments…</p>';
-    try {
-      const response = await fetch(`${window.IM_API_BASE}/api/student/assessment-tracker`, { headers: { authorization: `Bearer ${token}` }, cache: "no-store" });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        if (response.status === 404) {
-          const apiUrl = new URL(window.IM_API_BASE);
-          const isLocalApi = ["localhost", "127.0.0.1"].includes(apiUrl.hostname);
-          const guidance = isLocalApi
-            ? "Stop the old API process using port 3003, then run npm start from this project's server folder. Confirm /api/health reports studentAssessmentTracker: true."
-            : "This deployed API is older than the profile page. Redeploy the backend with the current server/server.js; restarting a local API will not update this host. Confirm /api/health reports studentAssessmentTracker: true.";
-          throw new Error(`The API at ${apiUrl.origin} does not have the assessment tracker route. ${guidance}`);
-        }
-        throw new Error(data.error || `Could not load assessments (${response.status}).`);
-      }
-      const items = Array.isArray(data.items) ? data.items : [];
-      if (!items.length) {
-        target.innerHTML = `<div class="assessment-tracker-empty"><strong>No company assessments yet</strong><p>When a company assigns an approved test to one of your applications, it will appear here with its marks and review status.</p><a class="btn btn--secondary btn--sm" href="interview-prep.html">Open interview prep</a></div>`;
-        return;
-      }
-      target.innerHTML = `<div class="assessment-tracker-summary"><span><strong>${items.filter((item) => item.result).length}</strong> submitted</span><span><strong>${items.filter((item) => item.result?.status === "Reviewed").length}</strong> recruiter reviewed</span><span><strong>${items.filter((item) => item.available).length}</strong> available</span></div><div class="assessment-tracker-list">${items.map((item) => {
-        const result = item.result;
-        const final = !!result && ["Scored", "Reviewed"].includes(result.status);
-        const score = result ? Number(result.score) || 0 : 0;
-        const total = result ? Number(result.totalMarks) || Number(item.totalMarks) || 0 : Number(item.totalMarks) || 0;
-        const percent = total ? Math.max(0, Math.min(100, Math.round(score / total * 100))) : 0;
-        const state = result ? (final ? (result.status === "Reviewed" ? "Recruiter reviewed" : "Auto-scored") : "Awaiting recruiter review") : (item.available ? "Available" : "Not open");
-        const date = result?.submittedAt ? App.formatDate(result.submittedAt) : item.endAt ? `Due ${App.formatDate(item.endAt)}` : "No deadline set";
-        const marks = result ? `${score} / ${total} marks${final ? ` · ${percent}%` : " · provisional"}` : `${total} marks available`;
-        return `<article class="assessment-tracker-item"><div class="assessment-tracker-item__main"><div class="assessment-tracker-item__title"><div><h3>${App.escapeHtml(item.title || "Company assessment")}</h3><p>${App.escapeHtml(item.companyName || "Company")} · ${App.escapeHtml(item.roleTitle || "Internship")}</p></div><span class="assessment-tracker-status ${final ? "is-complete" : result ? "is-pending" : ""}">${App.escapeHtml(state)}</span></div><div class="assessment-tracker-meta"><span>${App.escapeHtml(item.category || "Assessment")}</span><span>${App.escapeHtml(item.difficulty || "")}</span><span>${Number(item.durationMinutes) || 0} min</span><span>${App.escapeHtml(date)}</span></div>${result ? `<div class="assessment-tracker-marks"><strong>${App.escapeHtml(marks)}</strong>${final ? `<span>${result.passed ? "Pass" : "Below passing mark"} · Passing mark ${Number(item.passingMarks) || 0}</span>` : `<span>Written or coding answers are awaiting recruiter review. Final marks may change.</span>`}<div class="assessment-tracker-bar" role="progressbar" aria-label="${final ? "Final assessment score" : "Current auto-scored marks"}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><span style="width:${percent}%"></span></div></div>` : ""}</div>${!result ? `<a class="btn btn--secondary btn--sm" href="interview-prep.html">${item.available ? "Take assessment" : "View details"}</a>` : ""}</article>`;
-      }).join("")}</div>`;
-    } catch (error) {
-      target.innerHTML = `<div class="assessment-tracker-empty"><strong>Assessment results unavailable</strong><p>${App.escapeHtml(error.message)}</p></div>`;
-    }
-  }
-
   function syncInterviewScores() {
     const token = sessionStorage.getItem("im_student_api_token");
     if (!token) return;
@@ -420,7 +376,6 @@ document.addEventListener("DOMContentLoaded", () => {
       fillForm();
       renderAchievements();
       renderInterviewScores();
-      renderAssessmentTracker();
       renderProfileAtsSummary();
       syncInterviewScores();
 
@@ -661,7 +616,5 @@ document.addEventListener("DOMContentLoaded", () => {
   fillForm();
   renderAchievements();
   renderInterviewScores();
-  renderAssessmentTracker();
-  document.getElementById("profile-assessments-refresh")?.addEventListener("click", renderAssessmentTracker);
   hydrateServerProfile();
 });
