@@ -415,11 +415,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("internship-type").addEventListener("change", (event) => { const isJob = event.target.value === "Job"; document.getElementById("internship-duration-field").hidden = isJob; document.getElementById("internship-stipend-field").hidden = isJob; document.getElementById("internship-salary-field").hidden = !isJob; document.getElementById("internship-duration").required = !isJob; updateOpportunityPreview(); });
   const candidateDialog = document.getElementById("company-candidate-dialog");
   const cvDialog = document.getElementById("company-cv-dialog");
+  let activeCompanyCvUrl = "";
   document.getElementById("company-candidate-close").addEventListener("click", () => candidateDialog.close());
-  document.getElementById("company-cv-close").addEventListener("click", () => {
-    document.getElementById("company-cv-frame").removeAttribute("src");
-    cvDialog.close();
-  });
+  const clearCompanyCvPreview = () => {
+    const frame = document.getElementById("company-cv-frame");
+    frame.removeAttribute("src"); frame.hidden = false; frame.style.display = "";
+    const download = document.getElementById("company-cv-download-link");
+    download.hidden = true; download.removeAttribute("href"); download.removeAttribute("download");
+    if (activeCompanyCvUrl) URL.revokeObjectURL(activeCompanyCvUrl);
+    activeCompanyCvUrl = "";
+  };
+  document.getElementById("company-cv-close").addEventListener("click", () => cvDialog.close());
+  cvDialog.addEventListener("close", clearCompanyCvPreview);
   document.addEventListener("click", async (event) => {
     const profileButton = event.target.closest("[data-view-applicant]");
     const cvButton = event.target.closest("[data-view-applicant-cv]");
@@ -452,7 +459,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         const result = await api(`/company/students/${encodeURIComponent(studentId)}/cv`);
         cvDialog.dataset.studentId = studentId;
         document.getElementById("company-cv-title").textContent = result.fileName || "Student CV";
-        document.getElementById("company-cv-frame").src = `data:application/pdf;base64,${result.data}`;
+        if (activeCompanyCvUrl) URL.revokeObjectURL(activeCompanyCvUrl);
+        const bytes = Uint8Array.from(atob(result.data), (char) => char.charCodeAt(0));
+        const cvBlob = new Blob([bytes], { type: result.mimeType || "application/pdf" });
+        activeCompanyCvUrl = URL.createObjectURL(cvBlob);
+        const frame = document.getElementById("company-cv-frame");
+        const download = document.getElementById("company-cv-download-link");
+        const isPdf = cvBlob.type === "application/pdf";
+        frame.hidden = !isPdf; frame.style.display = isPdf ? "" : "none"; frame.removeAttribute("src");
+        download.hidden = isPdf;
+        if (isPdf) frame.src = activeCompanyCvUrl;
+        else { download.href = activeCompanyCvUrl; download.download = result.fileName || "student-resume.docx"; download.textContent = `Download ${result.fileName || "Word CV"}`; }
         document.getElementById("company-cv-review-note").value = result.cvReview?.note || "";
         document.getElementById("company-cv-review-status").textContent = result.cvReview ? `${result.cvReview.status} · ${dateLabel(result.cvReview.reviewedAt?.slice(0, 10))}` : "Not reviewed yet";
         cvDialog.showModal();

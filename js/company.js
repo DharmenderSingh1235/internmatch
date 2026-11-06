@@ -68,7 +68,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const dialog = ensureProfileDialog(); const content = document.getElementById("company-student-dialog-content");
       const student = await api(`/students/${encodeURIComponent(id)}`);
       document.getElementById("company-student-dialog-title").textContent = `${student.student.name} · shared CV`;
-      content.innerHTML = `<p>The student explicitly shared this PDF with active company accounts.</p><a class="btn btn--primary" href="${url}" target="_blank" rel="noopener" download="${esc(data.fileName)}">Open / download ${esc(data.fileName)}</a>`;
+      content.innerHTML = `<p>The student explicitly shared this resume with active company accounts.</p><a class="btn btn--primary" href="${url}" target="_blank" rel="noopener" download="${esc(data.fileName)}">Open / download ${esc(data.fileName)}</a>`;
       dialog.showModal(); dialog.addEventListener("close", () => URL.revokeObjectURL(url), { once: true });
     } catch (error) { App.toast(error.message, "error"); }
   }

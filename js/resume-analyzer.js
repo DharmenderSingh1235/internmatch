@@ -1,5 +1,5 @@
 /*
- * Resume Intelligence — PDF analysis runs in this browser. The PDF is sent to
+ * Resume Intelligence — PDF and DOCX analysis runs in this browser. The resume is sent to
  * the InternMatch server only after the student explicitly allows admin review.
  * Skills and opportunity scores are transparent heuristics; writing patterns are not an authorship detector.
  */
@@ -38,6 +38,14 @@ document.addEventListener("DOMContentLoaded", () => {
   let serverCvReview = null;
   let foundSkills = [];
   let extractedResume = null;
+  const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  const MAX_RESUME_BYTES = 7.5 * 1024 * 1024;
+  const resumeFormat = (file) => {
+    const name = String(file?.name || "").toLowerCase();
+    if (name.endsWith(".pdf") || file?.type === "application/pdf") return "pdf";
+    if (name.endsWith(".docx") || file?.type === DOCX_MIME) return "docx";
+    return "";
+  };
 
   const studentToken = () => sessionStorage.getItem("im_student_api_token");
   const consentKey = user ? `im_company_consent_${user.email.toLowerCase()}` : "";
@@ -56,15 +64,17 @@ document.addEventListener("DOMContentLoaded", () => {
     return data;
   }
   async function uploadCompanyCv(file) {
-    if (!file || file.type !== "application/pdf" || file.size > 7.5 * 1024 * 1024) throw new Error("Choose a PDF smaller than 7.5 MB.");
+    const format = resumeFormat(file);
+    if (!format || file.size > MAX_RESUME_BYTES) throw new Error("Choose a PDF or Word .docx file smaller than 7.5 MB.");
+    const mimeType = format === "pdf" ? "application/pdf" : DOCX_MIME;
     const token = studentToken();
     const base64 = await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
-      reader.onerror = () => reject(new Error("Could not read the selected PDF."));
+      reader.onerror = () => reject(new Error("Could not read the selected resume."));
       reader.readAsDataURL(file);
     });
-    const response = await fetch(`${window.IM_API_BASE}/api/student/cv`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ fileName: file.name, mimeType: file.type, data: base64 }) });
+    const response = await fetch(`${window.IM_API_BASE}/api/student/cv`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ fileName: file.name, mimeType, data: base64 }) });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || "Could not upload the CV.");
     return data;
@@ -152,7 +162,7 @@ document.addEventListener("DOMContentLoaded", () => {
           } else if (serverCvUploaded) {
             adminServerCvStatus.textContent = "Your uploaded CV is currently waiting for Admin review.";
           } else {
-            adminServerCvStatus.textContent = "Select a PDF to upload and submit for Admin review.";
+            adminServerCvStatus.textContent = "Select a PDF or Word .docx file to upload and submit for Admin review.";
           }
           localStorage.setItem(consentKey, JSON.stringify({ profileVisible: companyProfileShare.checked, cvShared: companyCvShare.checked }));
           showSharingState();
@@ -214,7 +224,7 @@ document.addEventListener("DOMContentLoaded", () => {
     matchesPanel.style.display = "none";
     analyzeBtn.disabled = !selectedFile;
     if (selectedFile && adminShareCheckbox.checked && user) {
-      saveSharedCV(selectedFile).catch(() => { adminShareStatus.textContent = "Could not save the CV locally. Try a smaller PDF or another browser."; });
+      saveSharedCV(selectedFile).catch(() => { adminShareStatus.textContent = "Could not save the CV locally. Try a smaller resume file or another browser."; });
     }
     if (selectedFile && studentToken() && user?.role === "student" && adminServerCvShare?.checked) {
       uploadCompanyCv(selectedFile).then((data) => {
@@ -232,7 +242,7 @@ document.addEventListener("DOMContentLoaded", () => {
         companyShareStatus.textContent = error.message;
       });
     } else if (selectedFile && user?.role === "student" && studentToken()) {
-      adminServerCvStatus.textContent = "Your PDF stays in this browser. Enable ‘Allow admin to review my CV’ to upload it for review.";
+      adminServerCvStatus.textContent = "Your resume stays in this browser. Enable ‘Allow admin to review my CV’ to upload it for review.";
     }
   });
 
@@ -305,7 +315,7 @@ document.addEventListener("DOMContentLoaded", () => {
         showSharingState();
         adminServerCvStatus.textContent = "Your CV was uploaded for admin review. Company access stays off until approval.";
       } else if (enabled && !serverCvUploaded) {
-        throw new Error("Select a PDF so it can be uploaded for admin review.");
+        throw new Error("Select a PDF or Word .docx file so it can be uploaded for admin review.");
       } else {
         adminServerCvStatus.textContent = enabled
           ? "Admin review is allowed for your uploaded CV."
@@ -328,11 +338,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!user || !window.ResumeVault) return;
     if (adminShareCheckbox.checked) {
       if (!selectedFile) {
-        adminShareStatus.textContent = "Choose a PDF to save a local copy for admin access.";
+        adminShareStatus.textContent = "Choose a PDF or Word .docx file to save a local copy for admin access.";
         return;
       }
       try { await saveSharedCV(selectedFile); }
-      catch (_) { adminShareCheckbox.checked = false; adminShareStatus.textContent = "Could not save the CV locally. Try a smaller PDF or another browser."; }
+      catch (_) { adminShareCheckbox.checked = false; adminShareStatus.textContent = "Could not save the CV locally. Try a smaller resume file or another browser."; }
     } else {
       try {
         await ResumeVault.remove(user.email);
@@ -342,6 +352,12 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   async function extractText(file) {
+    const format = resumeFormat(file);
+    if (format === "docx") {
+      if (!window.mammoth?.extractRawText) throw new Error("DOCX_READER_UNAVAILABLE");
+      const result = await window.mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+      return { text: result.value, pageCount: null, format: "Word document" };
+    }
     if (!window.pdfjsLib) throw new Error("PDF_READER_UNAVAILABLE");
     const buffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
@@ -351,7 +367,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const content = await page.getTextContent();
       pages.push(content.items.map((item) => item.str + (item.hasEOL ? "\n" : " ")).join(""));
     }
-    return { text: pages.join("\n"), pageCount: pdf.numPages };
+    return { text: pages.join("\n"), pageCount: pdf.numPages, format: "PDF" };
   }
 
   function detectSkills(text) {
@@ -489,7 +505,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const already = foundSkills.filter((skill) => profileSet.has(skill.toLowerCase()));
     const missing = foundSkills.filter((skill) => !profileSet.has(skill.toLowerCase()));
     if (profile) {
-      compareWrap.innerHTML = `<p><strong>Already on your profile:</strong> ${already.length ? App.escapeHtml(already.join(", ")) : "none yet"}</p><p><strong>Detected in PDF but not listed on your profile:</strong> ${missing.length ? App.escapeHtml(missing.join(", ")) : "none"}</p>`;
+      compareWrap.innerHTML = `<p><strong>Already on your profile:</strong> ${already.length ? App.escapeHtml(already.join(", ")) : "none yet"}</p><p><strong>Detected in resume but not listed on your profile:</strong> ${missing.length ? App.escapeHtml(missing.join(", ")) : "none"}</p>`;
       addSkillsBtn.hidden = !missing.length;
       addSkillsBtn.onclick = () => {
         const updated = profileSkills.concat(missing);
@@ -504,16 +520,16 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderResults() {
-    const { text, pageCount, sections, education, projects, experience, styleSignals, completeness } = extractedResume;
+    const { text, pageCount, format, sections, education, projects, experience, styleSignals, completeness } = extractedResume;
     resultsPanel.style.display = "";
-    document.getElementById("resume-review-meta").textContent = `${pageCount} PDF page${pageCount === 1 ? "" : "s"} analyzed locally. ${adminShareCheckbox.checked ? "A browser-only CV copy is available to admin." : "The PDF is not saved after this review."}`;
+    document.getElementById("resume-review-meta").textContent = `${format === "PDF" ? `${pageCount} PDF page${pageCount === 1 ? "" : "s"}` : "Word document text"} analyzed locally. ${adminShareCheckbox.checked ? "A browser-only resume copy is available to admin." : "The file is not saved after this review."}`;
     const targetInternship = getTargetInternship();
     const atsResult = ATSScore.score(text, pageCount, targetInternship);
     atsResult.customRole = !!targetInternship.isCustomRole;
     renderAtsResults(atsResult);
     foundSkillsWrap.innerHTML = foundSkills.length
       ? foundSkills.map((skill) => `<span class="resume-chip">${App.escapeHtml(skill)}</span>`).join("")
-      : `<p class="resume-section-empty">No known skills were detected in the extracted text. Add a skills section or check whether this is a scanned PDF.</p>`;
+      : `<p class="resume-section-empty">No known skills were detected in the extracted text. Add a skills section or check whether this file contains readable text.</p>`;
 
     document.getElementById("completeness-value").textContent = `${completeness.score}%`;
     const progress = document.querySelector(".resume-progress");
@@ -553,7 +569,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ${roleScopeNote}
       <div class="ats-breakdown">${breakdown}</div>
       <div class="ats-results-grid">
-        <section><h4>Role skills found (${result.skills.matched.length})</h4>${skillChips(result.skills.matched, "No listed role skills were detected in readable PDF text.")}</section>
+        <section><h4>Role skills found (${result.skills.matched.length})</h4>${skillChips(result.skills.matched, "No listed role skills were detected in readable resume text.")}</section>
         <section><h4>Skills to consider (${result.skills.missing.length})</h4>${skillChips(result.skills.missing, "All listed role skills were detected.")}</section>
       </div>
       <section style="margin-top:14px;"><h4>Suggested improvements</h4><ul class="ats-tips">${result.advice.map((tip) => `<li>${App.escapeHtml(tip)}</li>`).join("")}</ul></section>
@@ -612,8 +628,8 @@ document.addEventListener("DOMContentLoaded", () => {
     matchesPanel.style.display = "none";
     analyzeBtn.disabled = true;
     try {
-      if (!/\.pdf$/i.test(selectedFile.name) && selectedFile.type !== "application/pdf") throw new Error("NOT_PDF");
-      if (selectedFile.size > 15 * 1024 * 1024) throw new Error("FILE_TOO_LARGE");
+      if (!resumeFormat(selectedFile)) throw new Error("UNSUPPORTED_FILE");
+      if (selectedFile.size > MAX_RESUME_BYTES) throw new Error("FILE_TOO_LARGE");
       const extracted = await extractText(selectedFile);
       const text = extracted.text.trim();
       if (text.length < 40) throw new Error("NO_TEXT");
@@ -624,6 +640,7 @@ document.addEventListener("DOMContentLoaded", () => {
       extractedResume = {
         text,
         pageCount: extracted.pageCount,
+        format: extracted.format,
         sections,
         education,
         projects: getSectionEntries(sections.projects),
@@ -635,11 +652,12 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (error) {
       const messages = {
         PDF_READER_UNAVAILABLE: "PDF reader could not load. Check your connection and reload this page.",
-        NOT_PDF: "Choose a PDF file to analyze.",
-        FILE_TOO_LARGE: "This PDF is over 15 MB. Choose a smaller resume file and try again.",
-        NO_TEXT: "No readable text was found. This may be a scanned PDF; export a text-based PDF and try again."
+        DOCX_READER_UNAVAILABLE: "Word reader could not load. Check your connection and reload this page.",
+        UNSUPPORTED_FILE: "Choose a PDF or Word .docx file to analyze.",
+        FILE_TOO_LARGE: "This resume is over 7.5 MB. Choose a smaller file and try again.",
+        NO_TEXT: "No readable text was found. The PDF may be scanned or the Word document may be empty; try a text-based file."
       };
-      errorEl.textContent = messages[error.message] || "Couldn't read that PDF. Make sure it is a valid, text-based PDF and try again.";
+      errorEl.textContent = messages[error.message] || "Couldn't read that resume. Make sure it is a valid, text-based PDF or DOCX file and try again.";
     } finally {
       loadingEl.style.display = "none";
       analyzeBtn.disabled = !selectedFile;

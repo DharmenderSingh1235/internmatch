@@ -28,14 +28,15 @@ window.ATSScore = {
     const hasPhone = /(?:\+?\d[\d\s().-]{7,}\d)/.test(text);
     const hasLink = /linkedin\.com|github\.com|portfolio|behance\.net/i.test(text);
     const contactScore = (hasEmail ? 4 : 0) + (hasPhone ? 3 : 0) + (hasLink ? 3 : 0);
-    const parseScore = (wordCount >= 250 ? 6 : wordCount >= 100 ? 3 : 0) + (pageCount <= 2 ? 4 : pageCount <= 3 ? 2 : 0);
+    const hasPageCount = Number.isFinite(pageCount);
+    const parseScore = (wordCount >= 250 ? 6 : wordCount >= 100 ? 3 : 0) + (hasPageCount ? (pageCount <= 2 ? 4 : pageCount <= 3 ? 2 : 0) : 0);
     const keywordScore = roleSkills.length ? Math.round(matched.length / roleSkills.length * 35) : 0;
     const breakdown = [
       { label: "Role keyword match", score: keywordScore, max: 35 },
       { label: "Standard sections", score: sectionScore, max: 25 },
       { label: "Action & measurable evidence", score: evidenceScore, max: 20 },
       { label: "Contact & profile links", score: contactScore, max: 10 },
-      { label: "Readable PDF text & length", score: parseScore, max: 10 }
+      { label: "Readable text & length", score: parseScore, max: 10 }
     ];
     const advice = [];
     if (missing.length) advice.push(`If accurate, include relevant examples of: ${missing.join(", ")}.`);

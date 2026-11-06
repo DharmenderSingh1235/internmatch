@@ -609,14 +609,20 @@ app.get("/api/admin/students/:id", adminOnly, (req, res) => {
     }
   });
 });
+const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+function sendStoredStudentCv(res, cv) {
+  const mimeType = cv.mimeType === DOCX_MIME || /\.docx$/i.test(cv.fileName || "") ? DOCX_MIME : "application/pdf";
+  const disposition = mimeType === "application/pdf" ? "inline" : "attachment";
+  res.set({ "Content-Type": mimeType, "Content-Disposition": `${disposition}; filename*=UTF-8''${encodeURIComponent(cv.fileName || "student-resume")}`, "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" });
+  res.send(Buffer.from(cv.data, "base64"));
+}
 app.get("/api/admin/students/:id/cv", adminOnly, (req, res) => {
   const student = portalData.collection("students").find((item) => item.id === req.params.id);
   if (!student) return res.status(404).json({ error: "Student account not found." });
   if (!student.adminCvShared) return res.status(403).json({ error: "The student has not enabled admin CV review permission." });
   if (!student.cvPdf?.data) return res.status(404).json({ error: "This student has not uploaded a CV to the server." });
   portalData.addAudit({ actorRole: "admin", actorEmail: req.session.email, action: "Opened student CV", targetId: student.id });
-  res.set({ "Content-Type": "application/pdf", "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(student.cvPdf.fileName || "student-cv.pdf")}`, "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" });
-  res.send(Buffer.from(student.cvPdf.data, "base64"));
+  sendStoredStudentCv(res, student.cvPdf);
 });
 const handleAdminCvReview = (req, res) => {
   let status = String(req.body?.status || "");
@@ -884,10 +890,15 @@ const handleUploadStudentCv = (req, res) => {
   if (!student) return res.status(404).json({ error: "Student account not found." });
   if (!student.adminCvShared) return res.status(403).json({ error: "Enable Allow admin to review my CV before uploading it for review." });
   const fileName = String(req.body?.fileName || "resume.pdf").slice(0, 180);
+  const mimeType = String(req.body?.mimeType || "").toLowerCase();
   const data = String(req.body?.data || "");
-  if (!/^application\/pdf$/i.test(String(req.body?.mimeType || "application/pdf")) || !/^[A-Za-z0-9+/]+={0,2}$/.test(data) || data.length > 10_500_000) return res.status(400).json({ error: "Upload a PDF smaller than 7.5 MB." });
+  const isPdf = mimeType === "application/pdf" && /\.pdf$/i.test(fileName);
+  const isDocx = mimeType === DOCX_MIME && /\.docx$/i.test(fileName);
+  if ((!isPdf && !isDocx) || !/^[A-Za-z0-9+/]+={0,2}$/.test(data) || data.length > 10_500_000) return res.status(400).json({ error: "Upload a PDF or Word .docx file smaller than 7.5 MB." });
   const bytes = Buffer.from(data, "base64");
-  if (bytes.length < 5 || bytes.subarray(0, 5).toString() !== "%PDF-") return res.status(400).json({ error: "The uploaded file is not a valid PDF." });
+  const validPdf = isPdf && bytes.length >= 5 && bytes.subarray(0, 5).toString() === "%PDF-";
+  const validDocx = isDocx && bytes.length >= 4 && bytes.subarray(0, 4).toString("hex") === "504b0304" && bytes.includes(Buffer.from("[Content_Types].xml")) && bytes.includes(Buffer.from("word/document.xml"));
+  if (!validPdf && !validDocx) return res.status(400).json({ error: "The uploaded file is not a valid PDF or Word .docx document." });
 
   // Submit uploaded CV for admin review first. Company sharing stays disabled until admin approves.
   const cvReview = { status: "Pending review", note: "", submittedAt: new Date().toISOString() };
@@ -895,7 +906,7 @@ const handleUploadStudentCv = (req, res) => {
     ...item,
     cvShared: false,
     cvReview,
-    cvPdf: { fileName, mimeType: "application/pdf", data, updatedAt: new Date().toISOString() }
+    cvPdf: { fileName, mimeType, data, updatedAt: new Date().toISOString() }
   } : item));
   portalData.addAudit({ actorRole: "student", actorEmail: req.session.email, action: "Uploaded CV for admin approval", targetId: student.id });
   res.json({ ok: true, fileName, cvReview, cvShared: false });
@@ -918,8 +929,7 @@ app.get("/api/student/cv", studentOnly, (req, res) => {
 app.get("/api/student/cv/file", studentOnly, (req, res) => {
   const student = portalData.collection("students").find((item) => item.id === req.session.id);
   if (!student || !student.cvPdf?.data) return res.status(404).json({ error: "No CV uploaded." });
-  res.set({ "Content-Type": "application/pdf", "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(student.cvPdf.fileName || "student-cv.pdf")}`, "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" });
-  res.send(Buffer.from(student.cvPdf.data, "base64"));
+  sendStoredStudentCv(res, student.cvPdf);
 });
 app.get(["/api/student/cv-review", "/api/student/cv/status", "/api/student/cv/review"], studentOnly, (req, res) => {
   const student = portalData.collection("students").find((item) => item.id === req.session.id);

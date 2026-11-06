@@ -131,33 +131,33 @@
 
     <div class="app-content resume-analyzer-page">
       <section class="resume-page-hero">
-        <div><span class="resume-page-hero__eyebrow">Career toolkit · Resume intelligence</span><h2>Make your resume work harder.</h2><p>Check ATS readiness, review key sections, and discover internships that fit your skills—all with your PDF analyzed locally in this browser.</p><a class="btn btn--primary" href="#resume-upload-panel">Start resume review <span aria-hidden="true">↓</span></a></div>
-        <div class="resume-page-hero__steps" aria-label="Resume review steps"><div class="resume-page-hero__step"><b>01</b><div><strong>Choose a target role</strong><span>Focus the ATS readiness check</span></div></div><div class="resume-page-hero__step"><b>02</b><div><strong>Review your PDF</strong><span>Extract sections and skills locally</span></div></div><div class="resume-page-hero__step"><b>03</b><div><strong>Explore matches</strong><span>See skill overlap and next steps</span></div></div></div>
+        <div><span class="resume-page-hero__eyebrow">Career toolkit · Resume intelligence</span><h2>Make your resume work harder.</h2><p>Check ATS readiness, review key sections, and discover internships that fit your skills—all with your resume analyzed locally in this browser.</p><a class="btn btn--primary" href="#resume-upload-panel">Start resume review <span aria-hidden="true">↓</span></a></div>
+        <div class="resume-page-hero__steps" aria-label="Resume review steps"><div class="resume-page-hero__step"><b>01</b><div><strong>Choose a target role</strong><span>Focus the ATS readiness check</span></div></div><div class="resume-page-hero__step"><b>02</b><div><strong>Review your resume</strong><span>Extract sections and skills locally</span></div></div><div class="resume-page-hero__step"><b>03</b><div><strong>Explore matches</strong><span>See skill overlap and next steps</span></div></div></div>
       </section>
       <div class="panel" id="resume-upload-panel">
-        <div class="resume-form-heading"><div><span class="resume-intel-kicker">Start your review</span><h2>Analyze your resume</h2><p>Select a target internship and upload a text-based PDF.</p></div><span class="resume-intel-icon" aria-hidden="true">▤</span></div>
+        <div class="resume-form-heading"><div><span class="resume-intel-kicker">Start your review</span><h2>Analyze your resume</h2><p>Select a target internship and upload a text-based PDF or Word document (.docx).</p></div><span class="resume-intel-icon" aria-hidden="true">▤</span></div>
         <details class="resume-note">
           <summary>Privacy and writing-style limitations</summary>
-          <p style="margin:10px 0 0;"><strong>Private by design:</strong> Your PDF is analyzed in this browser and is never sent to an AI service. It is uploaded to the InternMatch server only after you enable admin review and submit it. Company access is a separate choice available after approval. You can revoke admin and company access separately. Writing-style clues cannot determine whether a person or AI wrote a resume.</p>
+          <p style="margin:10px 0 0;"><strong>Private by design:</strong> Your PDF or DOCX is analyzed in this browser and is never sent to an AI service. It is uploaded to the InternMatch server only after you enable admin review and submit it. Company access is a separate choice available after approval. You can revoke admin and company access separately. Writing-style clues cannot determine whether a person or AI wrote a resume.</p>
         </details>
         <div class="resume-upload-grid">
           <div class="ats-role-row" id="ats-role-row"><div class="field"><label for="ats-role">Target internship role</label><select id="ats-role" aria-label="Target internship role"></select></div><div class="field" id="ats-other-role-wrap" hidden><label for="ats-other-role">Other role title</label><input type="text" id="ats-other-role" maxlength="80" placeholder="e.g. Product design intern" /></div><p class="ats-other-role" id="ats-other-role-note" hidden>Because this role is not in the demo catalogue, role-skill feedback will use requirements from available internship listings.</p></div>
           <div class="field">
-            <label for="resume-file-input">Resume (PDF only)</label>
-            <input type="file" id="resume-file-input" accept="application/pdf" />
+            <label for="resume-file-input">Resume (PDF or Word .docx)</label>
+            <input type="file" id="resume-file-input" accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx" />
             <p class="hint" id="resume-analyzer-filename">No file selected</p>
             <label class="resume-admin-sharing"><input type="checkbox" id="company-profile-sharing" /> <span><strong>Allow active companies to view my profile</strong><small>Your profile is discoverable by admin-approved company accounts. Contact details are shared only with companies you apply to.</small></span></label>
             <label class="resume-admin-sharing"><input type="checkbox" id="company-cv-sharing" disabled /> <span><strong>Share CV with companies I apply to</strong><small>Requires Admin approval first. Once an Admin reviews and approves your CV, you can share it with companies.</small></span></label>
             <p class="hint" id="company-sharing-status" role="status" aria-live="polite"></p>
             <label class="resume-admin-sharing"><input type="checkbox" id="admin-server-cv-sharing" disabled /> <span><strong>Admin CV review &amp; verification</strong><small>Your uploaded CV is automatically submitted to administrators for verification before company access.</small></span></label>
             <p class="hint" id="admin-server-cv-sharing-status" role="status" aria-live="polite"></p>
-            <details style="margin-top:10px;"><summary class="hint">Browser-only admin copy</summary><label class="resume-admin-sharing"><input type="checkbox" id="resume-admin-sharing" /> <span><strong>Allow admin to open this CV from this browser only</strong><small>Local demo storage; this does not upload the PDF or grant server access.</small></span></label><p class="hint" id="resume-admin-sharing-status" role="status" aria-live="polite"></p></details>
+            <details style="margin-top:10px;"><summary class="hint">Browser-only admin copy</summary><label class="resume-admin-sharing"><input type="checkbox" id="resume-admin-sharing" /> <span><strong>Allow admin to open this CV from this browser only</strong><small>Local demo storage; this does not upload the resume or grant server access.</small></span></label><p class="hint" id="resume-admin-sharing-status" role="status" aria-live="polite"></p></details>
           </div>
         </div>
         <button type="button" class="btn btn--primary" id="analyze-btn" disabled>Analyze resume &amp; check ATS</button>
         <p class="field__error" id="resume-analyzer-error"></p>
         <div id="resume-analyzer-loading" style="display:none; margin-top:14px;">
-          <p class="hint">Reading your PDF locally and preparing your review…</p>
+          <p class="hint">Reading your resume locally and preparing your review…</p>
         </div>
       </div>
 
@@ -166,7 +166,7 @@
         <p class="hint" id="resume-review-meta"></p>
         <section class="ats-results" id="ats-results" aria-live="polite"></section>
         <div class="resume-intel-grid">
-          <section class="resume-intel-card"><h3>Skills detected</h3><div id="found-skills-wrap" class="resume-chips"></div><p class="hint" style="margin-top:10px;">Keyword scan of PDF text; check for missed or incorrectly detected skills.</p></section>
+          <section class="resume-intel-card"><h3>Skills detected</h3><div id="found-skills-wrap" class="resume-chips"></div><p class="hint" style="margin-top:10px;">Keyword scan of resume text; check for missed or incorrectly detected skills.</p></section>
           <section class="resume-intel-card"><h3>Resume completeness</h3><div class="resume-metric" id="completeness-value">—</div><div class="resume-progress" role="progressbar" aria-label="Resume completeness" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="completeness-bar" style="width:0%"></span></div><p class="hint" id="completeness-detail"></p></section>
           <section class="resume-intel-card"><h3>Education</h3><div id="education-summary"></div></section>
           <section class="resume-intel-card"><h3>Projects</h3><div id="projects-summary"></div></section>
@@ -197,13 +197,14 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.9.0/mammoth.browser.min.js"></script>
 <script src="data/internships.js"></script>
 <script src="js/storage.js?v=20261104-cv-consent-preservation"></script>
 <script src="js/recommendation.js"></script>
 <script src="js/app.js?v=20261105-student-logout-visible"></script>
 <script src="js/skills-vocabulary.js"></script>
 <script src="js/resume-vault.js"></script>
-<script src="js/ats-score.js"></script>
-<script src="js/resume-analyzer.js?v=20261104-sharing-state-scope-fix"></script>
+<script src="js/ats-score.js?v=20261107-word-docx"></script>
+<script src="js/resume-analyzer.js?v=20261107-word-docx"></script>
 </body>
 </html>

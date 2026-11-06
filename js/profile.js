@@ -106,7 +106,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const cvReview = Store.readBlob(`im_cv_review_${user.email}`, null);
     if (reviewTarget) {
       if (!cvReview?.status) {
-        reviewTarget.innerHTML = `<span aria-hidden="true">▤</span><span><strong>Admin CV Verification</strong><br>No CV submitted for admin review yet. Upload a PDF in <a href="resume-analyzer.html">Resume Analyzer</a> to submit for Admin approval.</span>`;
+        reviewTarget.innerHTML = `<span aria-hidden="true">▤</span><span><strong>Admin CV Verification</strong><br>No CV submitted for admin review yet. Upload a PDF or Word .docx file in <a href="resume-analyzer.html">Resume Analyzer</a> to submit for Admin approval.</span>`;
       } else {
         const reviewedDate = cvReview.reviewedAt ? App.formatDate(cvReview.reviewedAt) : "";
         const isApproved = cvReview.status === "Approved";

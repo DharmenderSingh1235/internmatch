@@ -135,7 +135,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const response = await fetch(`${window.IM_API_BASE}/api/admin/students/${encodeURIComponent(student.id)}/cv`, { headers: { authorization: `Bearer ${sessionStorage.getItem("im_admin_api_token") || ""}` } });
     if (!response.ok) { const message = await response.json().catch(()=>({})); throw new Error(message.error || `CV request failed (${response.status}).`); }
     if (activeCvUrl) URL.revokeObjectURL(activeCvUrl);
-    activeCvUrl = URL.createObjectURL(await response.blob()); cvFrame.src = activeCvUrl;
+    const blob = await response.blob();
+    activeCvUrl = URL.createObjectURL(blob);
+    const downloadLink = document.getElementById("admin-cv-download-link");
+    const fileName = decodeURIComponent((response.headers.get("content-disposition") || "").match(/filename\*=UTF-8''([^;]+)/i)?.[1] || "student-resume.docx");
+    const isPdf = blob.type === "application/pdf";
+    cvFrame.hidden = !isPdf; cvFrame.style.display = isPdf ? "" : "none";
+    cvFrame.removeAttribute("src");
+    downloadLink.hidden = isPdf;
+    if (isPdf) cvFrame.src = activeCvUrl;
+    else { downloadLink.href = activeCvUrl; downloadLink.download = fileName; downloadLink.textContent = `Download ${fileName}`; }
     activeCvEmail = student.email || ""; activeCvStudentId = student.id;
     document.getElementById("admin-cv-dialog-title").textContent = `${student.name || "Student"} · CV`;
     showCvReviewState(student.cvReview || null); cvDialog.showModal();
@@ -146,7 +155,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!record?.file) throw new Error("No browser-stored CV is available. The student must enable admin CV access in this browser.");
     if (activeCvUrl) URL.revokeObjectURL(activeCvUrl);
     activeCvUrl = URL.createObjectURL(record.file);
-    cvFrame.src = activeCvUrl;
+    const downloadLink = document.getElementById("admin-cv-download-link");
+    const isPdf = record.file.type === "application/pdf" || /\.pdf$/i.test(record.name || "");
+    cvFrame.hidden = !isPdf; cvFrame.style.display = isPdf ? "" : "none";
+    cvFrame.removeAttribute("src");
+    downloadLink.hidden = isPdf;
+    if (isPdf) cvFrame.src = activeCvUrl;
+    else { downloadLink.href = activeCvUrl; downloadLink.download = record.name || "student-resume.docx"; downloadLink.textContent = `Download ${record.name || "Word CV"}`; }
     activeCvEmail = email;
     activeCvStudentId = "";
     document.getElementById("admin-cv-dialog-title").textContent = `${record.name || name || "Student"} · CV`;
@@ -389,6 +404,9 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("admin-cv-dialog-close").addEventListener("click", () => cvDialog.close());
   cvDialog.addEventListener("close", () => {
     cvFrame.removeAttribute("src");
+    cvFrame.hidden = false; cvFrame.style.display = "";
+    const downloadLink = document.getElementById("admin-cv-download-link");
+    downloadLink.hidden = true; downloadLink.removeAttribute("href"); downloadLink.removeAttribute("download");
     if (activeCvUrl) URL.revokeObjectURL(activeCvUrl);
     activeCvUrl = "";
     activeCvEmail = "";
