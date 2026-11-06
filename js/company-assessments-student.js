@@ -53,7 +53,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
   async function start(id, settings) {
-    const policy = { focus: settings.focus !== false, fullscreen: settings.fullscreen !== false, clipboard: settings.clipboard === true, camera: settings.camera === true, sound: settings.sound === true, durationThresholdSeconds: Number(settings.durationThresholdSeconds) || 5, cooldownSeconds: Number(settings.cooldownSeconds) || 30, warningLimit: 4 };
+    const policy = { focus: settings.focus !== false, fullscreen: settings.fullscreen !== false, clipboard: true, camera: settings.camera === true, sound: settings.sound === true, durationThresholdSeconds: Number(settings.durationThresholdSeconds) || 5, cooldownSeconds: Number(settings.cooldownSeconds) || 30, warningLimit: 4 };
     run.hidden = false;
     run.innerHTML = `<section class="assessment-integrity-intro"><span class="browse-eyebrow">Before you begin</span><h2>Camera-monitored assessment</h2><p>With your permission, the browser checks face count and movement locally. Camera video stays on this device unless you separately opt in to share a live view with this assessment’s recruiter and any teacher you invited by verified email. Face checks do not identify people.</p>${policy.camera ? `<label class="assessment-camera-consent"><input id="assessment-camera-consent" type="checkbox"> I agree to enable the camera face-count and movement check for this test.</label><label class="assessment-signal-consent"><input id="assessment-live-camera-consent" type="checkbox"> Optional: share my live camera video with the recruiter and their verified, invited observers while I am taking this assessment.</label><p class="hint">If more than one face stays in view, the system gives a camera warning. A second sustained detection ends and submits the test for review. Face checks can be mistaken and are not proof of misconduct.</p>` : ""}${policy.sound ? `<label class="assessment-signal-consent"><input id="assessment-sound-consent" type="checkbox"> Optionally allow the microphone to check sustained sound level locally. No audio is recorded or uploaded.</label>` : ""}<p class="hint">Stay in this browser tab and fullscreen. Leaving the exam window or exiting fullscreen automatically submits and ends the assessment. The browser cannot lock other desktop apps.</p><div class="assessment-integrity-actions"><button class="btn btn--primary" type="button" id="assessment-start-camera" ${policy.camera ? "disabled" : ""}>Start assessment</button><button class="btn btn--ghost" type="button" id="assessment-start-cancel">Cancel</button></div><p class="hint" id="assessment-camera-message" role="status"></p></section>`;
     const startButton = document.getElementById("assessment-start-camera");
@@ -296,7 +296,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const format = (seconds) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
       timer.textContent = `Time remaining ${format(remaining)}`;
       interval = setInterval(() => { remaining -= 1; timer.textContent = `Time remaining ${format(Math.max(0, remaining))}`; if (remaining <= 0) { clearInterval(interval); form.requestSubmit(); } }, 1000);
-      const stopListeners = () => { document.removeEventListener("visibilitychange", onContextChange); window.removeEventListener("blur", onContextChange); window.removeEventListener("pagehide", onContextChange); document.removeEventListener("fullscreenchange", onFullscreenChange); run.removeEventListener("copy", onClipboard); run.removeEventListener("cut", onClipboard); run.removeEventListener("paste", onClipboard); };
+      const stopListeners = () => { document.removeEventListener("visibilitychange", onContextChange); window.removeEventListener("blur", onContextChange); window.removeEventListener("pagehide", onContextChange); document.removeEventListener("fullscreenchange", onFullscreenChange); run.removeEventListener("copy", onClipboard); run.removeEventListener("cut", onClipboard); run.removeEventListener("paste", onClipboard); run.removeEventListener("keydown", onClipboardShortcut); run.removeEventListener("contextmenu", onContextMenu); };
       const terminateForContext = (signal) => {
         if (contextExitPending) return;
         contextExitPending = true;
@@ -308,9 +308,17 @@ document.addEventListener("DOMContentLoaded", () => {
       };
       const onContextChange = () => { if (document.visibilityState === "hidden" || !document.hasFocus()) terminateForContext("context_change"); };
       const onFullscreenChange = () => { const warning = document.getElementById("assessment-fullscreen-warning"); const outside = policy.fullscreen && !document.fullscreenElement; if (warning) warning.hidden = !outside; if (outside) terminateForContext("fullscreen_exit"); };
-      const onClipboard = (event) => { if (!policy.clipboard) return; event.preventDefault(); recordWarning("clipboard_attempt"); };
+      const onClipboard = (event) => { event.preventDefault(); recordWarning("clipboard_attempt"); };
+      const onClipboardShortcut = (event) => {
+        const key = String(event.key || "").toLowerCase();
+        const modifierShortcut = (event.ctrlKey || event.metaKey) && ["c", "x", "v"].includes(key);
+        const insertDeleteShortcut = event.ctrlKey && key === "insert" || event.shiftKey && ["insert", "delete"].includes(key);
+        if (!modifierShortcut && !insertDeleteShortcut) return;
+        event.preventDefault(); event.stopPropagation(); recordWarning("clipboard_attempt");
+      };
+      const onContextMenu = (event) => event.preventDefault();
       document.addEventListener("visibilitychange", onContextChange); window.addEventListener("blur", onContextChange); window.addEventListener("pagehide", onContextChange); document.addEventListener("fullscreenchange", onFullscreenChange);
-      if (policy.clipboard) { run.addEventListener("copy", onClipboard); run.addEventListener("cut", onClipboard); run.addEventListener("paste", onClipboard); }
+      run.addEventListener("copy", onClipboard); run.addEventListener("cut", onClipboard); run.addEventListener("paste", onClipboard); run.addEventListener("keydown", onClipboardShortcut); run.addEventListener("contextmenu", onContextMenu);
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
         if (isSubmitting) return;
