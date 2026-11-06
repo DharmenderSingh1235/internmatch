@@ -8,6 +8,8 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!fileInput) return;
 
   const filenameEl = document.getElementById("resume-analyzer-filename");
+  const localSaveStatus = document.getElementById("resume-local-save-status");
+  const clearLocalResumeBtn = document.getElementById("clear-local-resume");
   const adminShareCheckbox = document.getElementById("resume-admin-sharing");
   const adminShareStatus = document.getElementById("resume-admin-sharing-status");
   const companyProfileShare = document.getElementById("company-profile-sharing");
@@ -38,6 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let serverCvReview = null;
   let foundSkills = [];
   let extractedResume = null;
+  let localDraftSaved = false;
   const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
   const MAX_RESUME_BYTES = 7.5 * 1024 * 1024;
   const resumeFormat = (file) => {
@@ -109,6 +112,28 @@ document.addEventListener("DOMContentLoaded", () => {
     adminShareStatus.textContent = "CV saved in this browser. Admin views will be added to its local activity log.";
   }
 
+  async function saveLocalResumeDraft(file, analysis = null) {
+    if (!user || user.role !== "student" || !window.ResumeVault?.putDraft) return false;
+    try {
+      await ResumeVault.putDraft(user.email, file, analysis);
+      localDraftSaved = true;
+      Store.saveProfile(user.email, { resumeFileName: file.name });
+      localSaveStatus.textContent = `${analysis?.text ? "Resume and analysis saved" : "Resume file saved"} in this browser only · ${file.name}. This local draft does not grant admin or company access.`;
+      clearLocalResumeBtn.hidden = false;
+      return true;
+    } catch (error) {
+      localDraftSaved = false;
+      localSaveStatus.textContent = `${error.message} The selected file can still be analyzed for this visit.`;
+      clearLocalResumeBtn.hidden = true;
+      return false;
+    }
+  }
+  function persistLocalAnalysisSelection() {
+    if (!user || user.role !== "student" || !localDraftSaved || !extractedResume || !window.ResumeVault?.updateDraftAnalysis) return;
+    const analysis = { ...extractedResume, targetRoleId: atsRoleSelect.value, customRoleTitle: atsOtherRoleInput.value };
+    ResumeVault.updateDraftAnalysis(user.email, analysis).catch((error) => { localSaveStatus.textContent = error.message; });
+  }
+
   if (!user) {
     adminShareCheckbox.disabled = true;
     adminShareStatus.textContent = "Log in to enable admin CV access.";
@@ -120,6 +145,9 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }).catch(() => { adminShareStatus.textContent = "Local file storage is unavailable in this browser."; });
   }
+  localSaveStatus.textContent = user?.role === "student"
+    ? "After analysis, your resume and results are saved only in this browser. Admin and company access are separate permissions."
+    : "Sign in with a student account to save a resume draft in this browser.";
 
   if (companyProfileShare && companyCvShare) {
     const consent = getCompanyConsent();
@@ -218,11 +246,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   fileInput.addEventListener("change", () => {
     selectedFile = fileInput.files[0] || null;
+    extractedResume = null;
+    foundSkills = [];
+    localDraftSaved = false;
     filenameEl.textContent = selectedFile ? selectedFile.name : "No file selected";
     errorEl.textContent = "";
     resultsPanel.style.display = "none";
     matchesPanel.style.display = "none";
     analyzeBtn.disabled = !selectedFile;
+    if (selectedFile) saveLocalResumeDraft(selectedFile);
+    else clearLocalResumeBtn.hidden = true;
     if (selectedFile && adminShareCheckbox.checked && user) {
       saveSharedCV(selectedFile).catch(() => { adminShareStatus.textContent = "Could not save the CV locally. Try a smaller resume file or another browser."; });
     }
@@ -244,6 +277,20 @@ document.addEventListener("DOMContentLoaded", () => {
     } else if (selectedFile && user?.role === "student" && studentToken()) {
       adminServerCvStatus.textContent = "Your resume stays in this browser. Enable ‘Allow admin to review my CV’ to upload it for review.";
     }
+  });
+
+  clearLocalResumeBtn.addEventListener("click", async () => {
+    if (!user || !window.ResumeVault?.removeDraft) return;
+    clearLocalResumeBtn.disabled = true;
+    try {
+      await ResumeVault.removeDraft(user.email);
+      selectedFile = null; extractedResume = null; foundSkills = []; localDraftSaved = false; fileInput.value = "";
+      filenameEl.textContent = "No file selected"; analyzeBtn.disabled = true;
+      resultsPanel.style.display = "none"; matchesPanel.style.display = "none";
+      clearLocalResumeBtn.hidden = true;
+      localSaveStatus.textContent = "Local resume and analysis cleared from this browser. Admin and server CV copies are managed separately.";
+    } catch (error) { localSaveStatus.textContent = error.message; }
+    finally { clearLocalResumeBtn.disabled = false; }
   });
 
   companyProfileShare?.addEventListener("change", async () => {
@@ -522,7 +569,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderResults() {
     const { text, pageCount, format, sections, education, projects, experience, styleSignals, completeness } = extractedResume;
     resultsPanel.style.display = "";
-    document.getElementById("resume-review-meta").textContent = `${format === "PDF" ? `${pageCount} PDF page${pageCount === 1 ? "" : "s"}` : "Word document text"} analyzed locally. ${adminShareCheckbox.checked ? "A browser-only resume copy is available to admin." : "The file is not saved after this review."}`;
+    document.getElementById("resume-review-meta").textContent = `${format === "PDF" ? `${pageCount} PDF page${pageCount === 1 ? "" : "s"}` : "Word document text"} analyzed locally. ${localDraftSaved ? "Resume and analysis are saved in this browser only." : "This result was not saved and is available only for this visit."}${adminShareCheckbox.checked ? " Admin browser access is separately enabled." : ""}`;
     const targetInternship = getTargetInternship();
     const atsResult = ATSScore.score(text, pageCount, targetInternship);
     atsResult.customRole = !!targetInternship.isCustomRole;
@@ -584,6 +631,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const atsResult = ATSScore.score(extractedResume.text, extractedResume.pageCount, targetInternship);
     atsResult.customRole = !!targetInternship.isCustomRole;
     renderAtsResults(atsResult);
+    persistLocalAnalysisSelection();
   });
   atsOtherRoleInput.addEventListener("input", () => {
     if (!extractedResume || atsRoleSelect.value !== "other") return;
@@ -591,6 +639,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const atsResult = ATSScore.score(extractedResume.text, extractedResume.pageCount, targetInternship);
     atsResult.customRole = true;
     renderAtsResults(atsResult);
+    persistLocalAnalysisSelection();
   });
 
   function renderMatches(profile) {
@@ -648,6 +697,7 @@ document.addEventListener("DOMContentLoaded", () => {
         styleSignals: analyzeWritingStyle(text),
         completeness: calculateCompleteness(text, sections, education)
       };
+      await saveLocalResumeDraft(selectedFile, { ...extractedResume, targetRoleId: atsRoleSelect.value, customRoleTitle: atsOtherRoleInput.value });
       renderResults();
     } catch (error) {
       const messages = {
@@ -663,4 +713,28 @@ document.addEventListener("DOMContentLoaded", () => {
       analyzeBtn.disabled = !selectedFile;
     }
   });
+
+  (async () => {
+    if (!user || user.role !== "student" || !window.ResumeVault?.getDraft) return;
+    try {
+      const record = await ResumeVault.getDraft(user.email);
+      if (!record?.file) return;
+      selectedFile = record.file;
+      localDraftSaved = true;
+      filenameEl.textContent = selectedFile.name || record.name || "Saved resume";
+      analyzeBtn.disabled = false;
+      clearLocalResumeBtn.hidden = false;
+      localSaveStatus.textContent = `${record.analysis?.text ? "Resume and analysis saved" : "Resume file saved"} in this browser only · ${selectedFile.name || record.name}. This local draft does not grant admin or company access.`;
+      if (record.analysis?.text && record.analysis.sections) {
+        extractedResume = record.analysis;
+        foundSkills = detectSkills(extractedResume.text);
+        if ([...atsRoleSelect.options].some((option) => option.value === record.analysis.targetRoleId)) atsRoleSelect.value = record.analysis.targetRoleId;
+        atsOtherRoleInput.value = record.analysis.customRoleTitle || "";
+        updateRoleSelection();
+        renderResults();
+      }
+    } catch (error) {
+      localSaveStatus.textContent = `Could not restore the local resume: ${error.message}`;
+    }
+  })();
 });
