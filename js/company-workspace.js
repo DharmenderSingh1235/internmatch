@@ -169,37 +169,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
         card.insertBefore(section, card.children[1] || null);
       }
-      if (assessment?.status !== "approved") return;
-      const observerPanel = document.createElement("section"); observerPanel.className = "assessment-live-sessions assessment-observer-invites";
-      const title = document.createElement("strong"); title.textContent = "Verified observers"; observerPanel.append(title);
-      const note = document.createElement("p"); note.className = "company-muted"; note.textContent = "Invite a teacher by email. The one-time link verifies their email, expires after 60 minutes, and only grants access to this assessment. Students must opt in to live video."; observerPanel.append(note);
-      const inviteForm = document.createElement("form"); inviteForm.className = "assessment-observer-invite-form";
-      const email = document.createElement("input"); email.type = "email"; email.required = true; email.maxLength = 254; email.autocomplete = "email"; email.placeholder = "teacher@school.edu"; email.setAttribute("aria-label", "Teacher email address");
-      const send = document.createElement("button"); send.type = "submit"; send.className = "btn btn--ghost btn--sm"; send.textContent = "Email invitation";
-      const status = document.createElement("span"); status.className = "company-muted"; status.setAttribute("role", "status");
-      inviteForm.append(email, send, status); observerPanel.append(inviteForm);
-      inviteForm.addEventListener("submit", async (event) => {
-        event.preventDefault(); send.disabled = true; status.textContent = "Sending…";
-        try { const result = await api(`/company/assessments/${encodeURIComponent(assessment.id)}/observers/invite`, { method: "POST", body: JSON.stringify({ email: email.value.trim() }) }); status.textContent = result.message || "Invitation sent."; email.value = ""; await refreshAssessmentResults(false); }
-        catch (error) { status.textContent = error.message || "Could not send invitation."; send.disabled = false; }
-      });
-      const invites = assessment.observerInvitations || [];
-      if (invites.length) {
-        const inviteList = document.createElement("div"); inviteList.className = "assessment-observer-invite-list";
-        for (const invite of invites.slice().sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))) {
-          const row = document.createElement("div"); row.className = "assessment-live-sessions__row";
-          const inviteExpired = invite.redeemedAt ? Date.parse(invite.redeemedAt) + 8 * 60 * 60 * 1000 <= Date.now() : Date.parse(invite.expiresAt) <= Date.now();
-          const label = document.createElement("span"); label.textContent = `${invite.email} · ${invite.revokedAt ? "Revoked" : inviteExpired ? "Expired" : invite.redeemedAt ? "Verified · access active" : "Invitation sent"}`; row.append(label);
-          if (!invite.revokedAt) {
-            const revoke = document.createElement("button"); revoke.type = "button"; revoke.className = "btn btn--ghost btn--sm"; revoke.textContent = "Revoke";
-            revoke.addEventListener("click", async () => { revoke.disabled = true; try { await api(`/company/assessments/${encodeURIComponent(assessment.id)}/observers/${encodeURIComponent(invite.id)}`, { method: "DELETE" }); await refreshAssessmentResults(false); } catch (error) { alertError(error); revoke.disabled = false; } });
-            row.append(revoke);
-          }
-          inviteList.append(row);
-        }
-        observerPanel.append(inviteList);
-      }
-      card.insertBefore(observerPanel, card.children[1] || null);
     });
     list.querySelectorAll("[data-assessment-attempt]").forEach((card) => {
       const assessment = assessments.find((item) => item.id === card.dataset.assessmentId);
