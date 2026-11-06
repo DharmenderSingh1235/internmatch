@@ -7,6 +7,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const fileInput = document.getElementById("resume-file-input");
   if (!fileInput) return;
 
+  const uploadDropzone = document.getElementById("resume-upload-dropzone");
+  const dropzoneTitle = document.getElementById("resume-dropzone-title");
   const filenameEl = document.getElementById("resume-analyzer-filename");
   const localSaveStatus = document.getElementById("resume-local-save-status");
   const clearLocalResumeBtn = document.getElementById("clear-local-resume");
@@ -114,6 +116,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function saveLocalResumeDraft(file, analysis = null) {
     if (!user || user.role !== "student" || !window.ResumeVault?.putDraft) return false;
+    if (file.size > MAX_RESUME_BYTES) {
+      localSaveStatus.textContent = "This file is over 7.5 MB and was not saved. Choose a smaller resume.";
+      clearLocalResumeBtn.hidden = true;
+      return false;
+    }
     try {
       await ResumeVault.putDraft(user.email, file, analysis);
       localDraftSaved = true;
@@ -249,6 +256,8 @@ document.addEventListener("DOMContentLoaded", () => {
     extractedResume = null;
     foundSkills = [];
     localDraftSaved = false;
+    dropzoneTitle.textContent = selectedFile ? "Resume ready to analyze" : "Drop your resume here or browse files";
+    uploadDropzone.classList.toggle("has-file", !!selectedFile);
     filenameEl.textContent = selectedFile ? selectedFile.name : "No file selected";
     errorEl.textContent = "";
     resultsPanel.style.display = "none";
@@ -279,12 +288,22 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  ["dragenter", "dragover"].forEach((type) => uploadDropzone.addEventListener(type, (event) => { event.preventDefault(); uploadDropzone.classList.add("is-dragover"); }));
+  ["dragleave", "drop"].forEach((type) => uploadDropzone.addEventListener(type, (event) => { event.preventDefault(); uploadDropzone.classList.remove("is-dragover"); }));
+  uploadDropzone.addEventListener("drop", (event) => {
+    const file = event.dataTransfer?.files?.[0];
+    if (!file) return;
+    const transfer = new DataTransfer(); transfer.items.add(file); fileInput.files = transfer.files;
+    fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+
   clearLocalResumeBtn.addEventListener("click", async () => {
     if (!user || !window.ResumeVault?.removeDraft) return;
     clearLocalResumeBtn.disabled = true;
     try {
       await ResumeVault.removeDraft(user.email);
       selectedFile = null; extractedResume = null; foundSkills = []; localDraftSaved = false; fileInput.value = "";
+      dropzoneTitle.textContent = "Drop your resume here or browse files"; uploadDropzone.classList.remove("has-file");
       filenameEl.textContent = "No file selected"; analyzeBtn.disabled = true;
       resultsPanel.style.display = "none"; matchesPanel.style.display = "none";
       clearLocalResumeBtn.hidden = true;
@@ -721,6 +740,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!record?.file) return;
       selectedFile = record.file;
       localDraftSaved = true;
+      dropzoneTitle.textContent = "Saved resume ready to analyze"; uploadDropzone.classList.add("has-file");
       filenameEl.textContent = selectedFile.name || record.name || "Saved resume";
       analyzeBtn.disabled = false;
       clearLocalResumeBtn.hidden = false;

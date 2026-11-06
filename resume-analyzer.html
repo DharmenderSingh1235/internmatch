@@ -29,7 +29,39 @@
   .resume-upload-grid .field{margin:0}
   .resume-upload-grid input[type=file]{width:100%;min-height:46px;padding:7px;border:1px solid var(--color-border);border-radius:11px;background:var(--color-bg-alt);color:var(--color-text)}
   .resume-upload-grid input[type=file]::file-selector-button{margin-right:10px;padding:8px 11px;border:0;border-radius:8px;color:var(--color-primary);background:var(--color-primary-tint);font:inherit;font-weight:700;cursor:pointer}
-  .resume-analyzer-page #analyze-btn{margin-top:15px}
+  .resume-upload-grid{grid-template-columns:minmax(220px,.78fr) minmax(0,1.22fr);gap:20px;align-items:start;margin:17px 0 19px}
+  .resume-upload-grid .ats-role-row{margin:0}
+  .resume-control-label{display:block;margin:0 0 7px;font-size:.86rem;font-weight:700}
+  .resume-file-field{min-width:0}
+  .resume-dropzone{position:relative;display:flex;align-items:center;gap:14px;min-height:126px;padding:19px;border:1.5px dashed color-mix(in srgb,var(--color-primary) 47%,var(--color-border));border-radius:16px;background:linear-gradient(135deg,var(--color-primary-tint),var(--color-surface));cursor:pointer;transition:border-color .18s ease,transform .18s ease,box-shadow .18s ease}
+  .resume-dropzone:hover,.resume-dropzone.is-dragover{border-color:var(--color-primary);transform:translateY(-1px);box-shadow:0 9px 24px rgba(42,91,215,.12)}
+  .resume-dropzone.has-file{border-style:solid;border-color:color-mix(in srgb,var(--color-success,#138a61) 43%,var(--color-border));background:linear-gradient(135deg,var(--color-success-tint,#e8f6f0),var(--color-surface))}
+  .resume-dropzone:focus-within{outline:3px solid color-mix(in srgb,var(--color-primary) 30%,transparent);outline-offset:3px}
+  .resume-dropzone__icon{display:grid;place-items:center;flex:0 0 48px;width:48px;height:48px;border:1px solid color-mix(in srgb,var(--color-primary) 25%,var(--color-border));border-radius:14px;background:var(--color-surface);color:var(--color-primary);font-size:1.55rem;font-weight:700}
+  .resume-dropzone__copy strong,.resume-dropzone__copy small{display:block}
+  .resume-dropzone__copy strong{font-size:.98rem}
+  .resume-dropzone__copy small{margin-top:5px;color:var(--color-muted);font-size:.82rem}
+  .resume-dropzone input[type=file]{position:absolute;inset:0;width:100%;height:100%;min-height:0;padding:0;opacity:0;cursor:pointer}
+  .resume-file-meta{display:grid;gap:6px;margin-top:10px}
+  .resume-file-meta>p{margin:0;color:var(--color-text);font-size:.83rem;font-weight:700;overflow-wrap:anywhere}
+  .resume-local-save{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;border:1px solid color-mix(in srgb,var(--color-success,#138a61) 24%,var(--color-border));border-radius:11px;background:color-mix(in srgb,var(--color-success-tint,#e8f6f0) 55%,var(--color-surface))}
+  .resume-local-save p{margin:0;font-size:.78rem;line-height:1.4}
+  .resume-sharing-card{margin-top:18px;padding:17px;border:1px solid var(--color-border);border-radius:15px;background:var(--color-bg-alt)}
+  .resume-sharing-card__head{display:flex;align-items:center;gap:11px;margin-bottom:13px}
+  .resume-sharing-card__icon{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border-radius:12px;background:var(--color-primary-tint);color:var(--color-primary);font-size:1.25rem}
+  .resume-sharing-card__head h3{margin:0;font-size:.98rem}
+  .resume-sharing-card__head p{margin:3px 0 0;color:var(--color-muted);font-size:.8rem}
+  .resume-sharing-card__privacy{margin-left:auto;padding:5px 9px;border:1px solid var(--color-border);border-radius:999px;color:var(--color-muted);background:var(--color-surface);font-size:.72rem;font-weight:700;white-space:nowrap}
+  .resume-sharing-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px}
+  .resume-sharing-grid .resume-admin-sharing{margin:0;background:var(--color-surface)}
+  .resume-sharing-status{grid-column:1/-1;color:var(--color-muted);font-size:.78rem;line-height:1.45}
+  .resume-local-admin{margin-top:12px;padding-top:10px;border-top:1px solid var(--color-border);color:var(--color-muted);font-size:.82rem}
+  .resume-local-admin summary{cursor:pointer;font-weight:700}
+  .resume-local-admin .resume-admin-sharing{background:var(--color-surface)}
+  .resume-analyze-action{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:15px}
+  .resume-analyze-action #analyze-btn{display:inline-flex;align-items:center;gap:8px;min-height:46px;padding-inline:18px}
+  .resume-action-note{color:var(--color-muted);font-size:.8rem}
+  .resume-analyzer-page #analyze-btn{margin-top:0}
   .resume-note{padding:12px 14px;border:1px solid var(--color-border,#dce3ef);border-radius:12px;background:var(--color-bg-alt,#f6f8fc);font-size:.9rem;line-height:1.5}
   .resume-intel-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:18px}
   .resume-intel-card{min-width:0;padding:16px;border:1px solid var(--color-border,#e3e7ee);border-radius:14px;background:var(--color-surface,#fff)}
@@ -79,7 +111,7 @@
   .resume-admin-sharing small{margin-top:3px;color:var(--color-muted);font-size:.76rem;font-weight:400;line-height:1.4}
   .ats-tips{margin:0;padding-left:20px;line-height:1.5}
   @media(max-width:900px){.resume-page-hero{grid-template-columns:1fr}.resume-page-hero__steps{justify-self:start;width:100%;grid-template-columns:repeat(3,minmax(0,1fr))}.resume-page-hero__step{align-items:flex-start}}
-  @media(max-width:700px){.ats-breakdown{grid-template-columns:repeat(2,minmax(0,1fr))}.ats-results-grid,.resume-upload-grid{grid-template-columns:1fr}.ats-role-row--custom{grid-template-columns:1fr}}
+  @media(max-width:700px){.ats-breakdown{grid-template-columns:repeat(2,minmax(0,1fr))}.ats-results-grid,.resume-upload-grid,.resume-sharing-grid{grid-template-columns:1fr}.resume-sharing-status{grid-column:auto}.ats-role-row--custom{grid-template-columns:1fr}}
   @media(max-width:700px){.resume-intel-grid{grid-template-columns:1fr}}
   @media(max-width:560px){.resume-page-hero__steps{grid-template-columns:1fr}.resume-analyzer-page>.panel{padding:16px}.resume-intel-intro{padding-bottom:12px}}
 </style>
@@ -142,20 +174,10 @@
         </details>
         <div class="resume-upload-grid">
           <div class="ats-role-row" id="ats-role-row"><div class="field"><label for="ats-role">Target internship role</label><select id="ats-role" aria-label="Target internship role"></select></div><div class="field" id="ats-other-role-wrap" hidden><label for="ats-other-role">Other role title</label><input type="text" id="ats-other-role" maxlength="80" placeholder="e.g. Product design intern" /></div><p class="ats-other-role" id="ats-other-role-note" hidden>Because this role is not in the demo catalogue, role-skill feedback will use requirements from available internship listings.</p></div>
-          <div class="field">
-            <label for="resume-file-input">Resume (PDF or Word .docx)</label>
-            <input type="file" id="resume-file-input" accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx" />
-            <p class="hint" id="resume-analyzer-filename">No file selected</p>
-            <div class="resume-local-save" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:4px;"><p class="hint" id="resume-local-save-status" role="status" aria-live="polite">Your selected resume and analysis can be saved in this browser only.</p><button type="button" class="btn btn--ghost btn--sm" id="clear-local-resume" hidden>Clear local resume data</button></div>
-            <label class="resume-admin-sharing"><input type="checkbox" id="company-profile-sharing" /> <span><strong>Allow active companies to view my profile</strong><small>Your profile is discoverable by admin-approved company accounts. Contact details are shared only with companies you apply to.</small></span></label>
-            <label class="resume-admin-sharing"><input type="checkbox" id="company-cv-sharing" disabled /> <span><strong>Share CV with companies I apply to</strong><small>Requires Admin approval first. Once an Admin reviews and approves your CV, you can share it with companies.</small></span></label>
-            <p class="hint" id="company-sharing-status" role="status" aria-live="polite"></p>
-            <label class="resume-admin-sharing"><input type="checkbox" id="admin-server-cv-sharing" disabled /> <span><strong>Admin CV review &amp; verification</strong><small>Your uploaded CV is automatically submitted to administrators for verification before company access.</small></span></label>
-            <p class="hint" id="admin-server-cv-sharing-status" role="status" aria-live="polite"></p>
-            <details style="margin-top:10px;"><summary class="hint">Browser-only admin copy</summary><label class="resume-admin-sharing"><input type="checkbox" id="resume-admin-sharing" /> <span><strong>Allow admin to open this CV from this browser only</strong><small>Local demo storage; this does not upload the resume or grant server access.</small></span></label><p class="hint" id="resume-admin-sharing-status" role="status" aria-live="polite"></p></details>
-          </div>
+          <div class="resume-file-field"><span class="resume-control-label">Resume file</span><label class="resume-dropzone" id="resume-upload-dropzone" for="resume-file-input"><span class="resume-dropzone__icon" aria-hidden="true">↑</span><span class="resume-dropzone__copy"><strong id="resume-dropzone-title">Drop your resume here or browse files</strong><small>PDF or Word .docx · up to 7.5 MB</small></span><input type="file" id="resume-file-input" accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx" /></label><div class="resume-file-meta"><p class="hint" id="resume-analyzer-filename">No file selected</p><div class="resume-local-save"><p class="hint" id="resume-local-save-status" role="status" aria-live="polite">After analysis, your resume and results are saved only in this browser.</p><button type="button" class="btn btn--ghost btn--sm" id="clear-local-resume" hidden>Clear local resume data</button></div></div></div>
         </div>
-        <button type="button" class="btn btn--primary" id="analyze-btn" disabled>Analyze resume &amp; check ATS</button>
+        <section class="resume-sharing-card"><div class="resume-sharing-card__head"><span class="resume-sharing-card__icon" aria-hidden="true">◈</span><div><h3>Profile &amp; CV sharing</h3><p>Choose what verified companies and administrators can access.</p></div><span class="resume-sharing-card__privacy">Private by default</span></div><div class="resume-sharing-grid"><label class="resume-admin-sharing"><input type="checkbox" id="company-profile-sharing" /> <span><strong>Allow active companies to view my profile</strong><small>Your profile is discoverable by admin-approved company accounts. Contact details are shared only with companies you apply to.</small></span></label><label class="resume-admin-sharing"><input type="checkbox" id="company-cv-sharing" disabled /> <span><strong>Share CV with companies I apply to</strong><small>Requires Admin approval first. You can turn sharing off any time.</small></span></label><div class="resume-sharing-status" id="company-sharing-status" role="status" aria-live="polite"></div><label class="resume-admin-sharing"><input type="checkbox" id="admin-server-cv-sharing" disabled /> <span><strong>Submit CV for admin review</strong><small>Your resume is uploaded to the InternMatch server only after you enable this permission.</small></span></label><div class="resume-sharing-status" id="admin-server-cv-sharing-status" role="status" aria-live="polite"></div></div><details class="resume-local-admin"><summary>Browser-only admin copy</summary><label class="resume-admin-sharing"><input type="checkbox" id="resume-admin-sharing" /> <span><strong>Allow admin to open this resume in this browser</strong><small>This is a separate local copy. It does not upload the resume or grant server access.</small></span></label><p class="hint" id="resume-admin-sharing-status" role="status" aria-live="polite"></p></details></section>
+        <div class="resume-analyze-action"><button type="button" class="btn btn--primary" id="analyze-btn" disabled><span aria-hidden="true">✦</span> Analyze resume &amp; check ATS</button><span class="resume-action-note">Your analysis stays in this browser.</span></div>
         <p class="field__error" id="resume-analyzer-error"></p>
         <div id="resume-analyzer-loading" style="display:none; margin-top:14px;">
           <p class="hint">Reading your resume locally and preparing your review…</p>
@@ -206,6 +228,6 @@
 <script src="js/skills-vocabulary.js"></script>
 <script src="js/resume-vault.js?v=20261107-local-draft"></script>
 <script src="js/ats-score.js?v=20261107-word-docx"></script>
-<script src="js/resume-analyzer.js?v=20261107-local-draft"></script>
+<script src="js/resume-analyzer.js?v=20261107-resume-ui"></script>
 </body>
 </html>
