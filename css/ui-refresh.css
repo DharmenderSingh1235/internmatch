@@ -408,7 +408,7 @@ body[data-portal="admin"] #admin-panel .company-access-state { color:var(--color
 }
 
 /* Keep native controls and media legible after switching themes. */
-.hero__panel { background:#101b34; color:#edf3ff; }
+.hero__panel { background:linear-gradient(145deg,#233f77,#14264a)!important; color:#f4f7ff!important; border:1px solid #304a7d; }
 :root[data-theme="dark"] body { background-color:var(--color-bg); color:var(--color-text); }
 :root[data-theme="dark"] img { filter:none; }
 :root[data-theme="dark"] input,
@@ -421,16 +421,6 @@ body[data-portal="admin"] #admin-panel .company-access-state { color:var(--color
 :root[data-theme="dark"] .status-badge,
 :root[data-theme="dark"] .pill { border-color:var(--color-border); }
 :root[data-theme="dark"] .assessment-warning-banner.is-final { color:var(--color-danger); border-color:color-mix(in srgb,var(--color-danger) 40%,var(--color-border)); background:var(--color-danger-tint); }
-:root[data-theme="dark"] .hero__panel {
-  color:#17243d !important;
-  background:#f4f7fc !important;
-  border:1px solid #dce4ef;
-  box-shadow:0 18px 40px rgba(0,0,0,.24);
-}
-:root[data-theme="dark"] .hero__panel h3,
-:root[data-theme="dark"] .hero__panel .hero__stat-row { color:#17243d; }
-:root[data-theme="dark"] .hero__panel .hero__stat-row { border-color:#dce4ef; }
-:root[data-theme="dark"] .hero__panel .hero__stat-row strong { color:#315fd2; }
 :root[data-theme="dark"] #admin-panel .admin-practice-manager,
 :root[data-theme="dark"] #admin-panel .admin-practice-manager__upload,
 :root[data-theme="dark"] #admin-panel .admin-practice-question,
