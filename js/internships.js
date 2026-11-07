@@ -81,9 +81,8 @@ const Internships = (function () {
       const response = await fetch(`${window.IM_API_BASE}/api/internships`);
       if (response.ok) {
         const payload = await response.json();
-        const combined = new Map(all.map((item) => [item.id, item]));
-        (payload.items || []).forEach((item) => combined.set(item.id, item));
-        all = [...combined.values()];
+        const combined = [...all, ...(payload.items || [])];
+        all = combined.filter((item, index) => combined.findIndex((candidate) => candidate.id === item.id) === index);
       }
     } catch (_) { /* The local catalogue remains available without the server. */ }
     const user = Store.getCurrentUser();
@@ -168,12 +167,13 @@ const Internships = (function () {
     const root = document.getElementById("internship-detail");
     if (!root) return;
     const id = App.qs("id");
-    let internship = null;
-    try {
-      const response = await fetch(`${window.IM_API_BASE}/api/internships`);
-      if (response.ok) internship = ((await response.json()).items || []).find((item) => item.id === id) || null;
-    } catch (_) { /* Fall back to the local catalogue if the API is unavailable. */ }
-    if (!internship) internship = Store.getInternshipById(id);
+    let internship = Store.getInternshipById(id);
+    if (!internship) {
+      try {
+        const response = await fetch(`${window.IM_API_BASE}/api/internships`);
+        if (response.ok) internship = ((await response.json()).items || []).find((item) => item.id === id);
+      } catch (_) { /* Keep the local not-found state if the API is unavailable. */ }
+    }
     if (!internship) {
       root.innerHTML = `<p class="empty-state">That internship couldn't be found — it may have been removed from the demo catalogue.</p>`;
       return;
