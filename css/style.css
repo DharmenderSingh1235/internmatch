@@ -245,6 +245,12 @@ a:hover { text-decoration: underline; }
   padding: 28px 26px;
   box-shadow:0 18px 40px rgba(15,27,52,.14);
 }
+:root[data-theme="dark"] .hero__panel {
+  background: linear-gradient(145deg, #182641, #101a2e);
+  color: #edf3ff;
+  border: 1px solid #2b3d60;
+  box-shadow: 0 18px 40px rgba(0,0,0,.24);
+}
 .hero__panel h3 { color: #fff; font-size: 1.05rem; margin-bottom: 16px; }
 .hero__stat-row {
   display: flex;
