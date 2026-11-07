@@ -246,12 +246,14 @@ a:hover { text-decoration: underline; }
   box-shadow:0 18px 40px rgba(15,27,52,.14);
 }
 :root[data-theme="dark"] .hero__panel {
-  background: linear-gradient(145deg, #182641, #101a2e);
-  color: #edf3ff;
-  border: 1px solid #2b3d60;
+  background: #f4f7fc;
+  color: #17243d;
+  border: 1px solid #dce4ef;
   box-shadow: 0 18px 40px rgba(0,0,0,.24);
 }
 .hero__panel h3 { color: #fff; font-size: 1.05rem; margin-bottom: 16px; }
+:root[data-theme="dark"] .hero__panel h3,
+:root[data-theme="dark"] .hero__panel .hero__stat-row { color:#17243d; }
 .hero__stat-row {
   display: flex;
   justify-content: space-between;
@@ -261,6 +263,7 @@ a:hover { text-decoration: underline; }
 }
 .hero__stat-row:last-child { border-bottom: none; }
 .hero__stat-row strong { color: #8fb0ff; font-family: var(--font-display); }
+:root[data-theme="dark"] .hero__stat-row strong { color:#315fd2; }
 
 /* ---------- Sections ---------- */
 
