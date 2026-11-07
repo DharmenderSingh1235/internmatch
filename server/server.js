@@ -391,15 +391,69 @@ function candidateMatch(candidate, internship) {
 app.get("/", (req, res) => {
   res.type("html").send(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>InternMatch AI backend</title><body style="font:16px system-ui;max-width:680px;margin:12vh auto;padding:24px;color:#17233b"><h1>InternMatch AI backend is running</h1><p>This address serves the chatbot API, not the website interface.</p><p>Open <a href="http://127.0.0.1:5500/chatbot.html">chatbot.html through Live Server</a> to use the chatbot. If your Live Server uses another port, use that address instead.</p><p>Backend status: <a href="/api/health">/api/health</a></p></body></html>`);
 });
-app.get("/api/health", (req, res) => res.json({ ok: true, apiVersion: "2026-11-07-exam-page-lock", assessmentVerifiedTeacherInvites: true, assessmentApprovals: true, assessmentRejectFeedback: true, assessmentDocumentDrafts: true, assessmentWritingReview: true, assessmentCameraRequired: true, assessmentLocalSignals: true, assessmentLocalFaceDetection: true, assessmentMultiFaceTwoStrikeTermination: true, assessmentSoundTwoStrikeTermination: true, assessmentContextChangeTermination: true, assessmentPageLockOnContextChange: true, assessmentFullscreenContextAutoSubmit: true, assessmentClipboardBlocked: true, assessmentRecruiterLiveView: true, assessmentGeminiFallbackChain: true, assessmentMonitoringPolicy: true, assessmentWarningSignals: true, assessmentFourWarningTermination: true, studentAssessmentTracker: true, adminPracticeAreaManagement: true, adminPracticeFileQuestionDrafts: true, studentPracticeAreas: true, profileCvSharing: true, adminCvConsent: true, adminCvApproval: true, companyCvApprovalGate: true, companyCvReview: true, adminCompanyCvReviewHistory: true, studentProfileSync: true, studentInterviewScores: true, adminStudentRecords: true, adminStudentCvReview: true, adminCompanyRecords: true, keyConfigured: !!selected.key, provider: PROVIDER, model: selected.model, catalogueSize: INTERNSHIP_DATA.length, storage: portalData.storageMode(), mongodbConnected: portalData.storageMode() === "mongodb", sessionStorage: portalData.sessionStore ? (portalData.storageMode() === "mongodb" ? "mongodb" : "sqlite") : "memory" }));
+app.get("/api/health", (req, res) => res.json({ ok: true, apiVersion: "2026-11-08-theme-admin-listings", adminInternshipManagement: true, assessmentVerifiedTeacherInvites: true, assessmentApprovals: true, assessmentRejectFeedback: true, assessmentDocumentDrafts: true, assessmentWritingReview: true, assessmentCameraRequired: true, assessmentLocalSignals: true, assessmentLocalFaceDetection: true, assessmentMultiFaceTwoStrikeTermination: true, assessmentSoundTwoStrikeTermination: true, assessmentContextChangeTermination: true, assessmentPageLockOnContextChange: true, assessmentFullscreenContextAutoSubmit: true, assessmentClipboardBlocked: true, assessmentRecruiterLiveView: true, assessmentGeminiFallbackChain: true, assessmentMonitoringPolicy: true, assessmentWarningSignals: true, assessmentFourWarningTermination: true, studentAssessmentTracker: true, adminPracticeAreaManagement: true, adminPracticeFileQuestionDrafts: true, studentPracticeAreas: true, profileCvSharing: true, adminCvConsent: true, adminCvApproval: true, companyCvApprovalGate: true, companyCvReview: true, adminCompanyCvReviewHistory: true, studentProfileSync: true, studentInterviewScores: true, adminStudentRecords: true, adminStudentCvReview: true, adminCompanyRecords: true, keyConfigured: !!selected.key, provider: PROVIDER, model: selected.model, catalogueSize: INTERNSHIP_DATA.length, storage: portalData.storageMode(), mongodbConnected: portalData.storageMode() === "mongodb", sessionStorage: portalData.sessionStore ? (portalData.storageMode() === "mongodb" ? "mongodb" : "sqlite") : "memory" }));
 app.get("/api/internships", (req, res) => {
+  const adminOverrides = portalData.collection("internships").filter((item) => item.adminManaged && !item.companyId);
+  const hiddenIds = new Set(adminOverrides.filter((item) => item.deleted).map((item) => item.id));
+  const overrideById = new Map(adminOverrides.filter((item) => !item.deleted).map((item) => [item.id, item]));
+  const baseCatalogue = INTERNSHIP_DATA.filter((item) => !hiddenIds.has(item.id)).map((item) => ({ ...item, ...(overrideById.get(item.id) || {}) }));
+  const adminAdded = adminOverrides.filter((item) => !item.deleted && !INTERNSHIP_DATA.some((base) => base.id === item.id));
   const listings = portalData.collection("internships").filter((listing) => String(listing.status).toLowerCase() === "active").map((listing) => {
+    if (!listing.companyId) return null;
     const company = portalData.collection("companies").find((item) => item.id === listing.companyId && String(item.status).toLowerCase() === "active");
     if (!company) return null;
     return { ...listing, org: company.name, sector: listing.sector || company.industry || "Other", locationType: listing.locationType || "On-site", duration: listing.duration || listing.employmentType || "", stipend: listing.stipend || listing.salary || "", durationMonths: Number(listing.durationMonths) || parseInt(listing.duration, 10) || 0, eligibility: listing.eligibility || "See company requirements", interests: Array.isArray(listing.interests) ? listing.interests : [] };
   }).filter(Boolean);
-  res.json({ items: [...INTERNSHIP_DATA, ...listings] });
+  res.json({ items: [...baseCatalogue, ...adminAdded, ...listings] });
 });
+const adminInternshipFields = (body = {}) => ({
+  title: String(body.title || "").trim().slice(0, 160),
+  org: String(body.org || "").trim().slice(0, 160),
+  sector: String(body.sector || "Other").trim().slice(0, 80),
+  location: String(body.location || "").trim().slice(0, 160),
+  locationType: String(body.locationType || "On-site").trim().slice(0, 40),
+  duration: String(body.duration || "").trim().slice(0, 80),
+  durationMonths: Math.max(0, Math.min(60, Number.parseInt(body.durationMonths, 10) || 0)),
+  deadline: String(body.deadline || "").trim().slice(0, 32),
+  skills: Array.isArray(body.skills) ? body.skills.map((skill) => String(skill).trim().slice(0, 60)).filter(Boolean).slice(0, 40) : [],
+  eligibility: String(body.eligibility || "").trim().slice(0, 1000),
+  description: String(body.description || "").trim().slice(0, 5000),
+  stipend: String(body.stipend || "").trim().slice(0, 100)
+});
+app.get("/api/admin/internships", adminOnly, (req, res) => {
+  res.json({ items: portalData.collection("internships").filter((item) => item.adminManaged && !item.companyId && !item.deleted) });
+});
+app.post("/api/admin/internships", adminOnly, asyncRoute(async (req, res) => {
+  const fields = adminInternshipFields(req.body);
+  if (!fields.title || !fields.org || !fields.location || !fields.description) return res.status(400).json({ error: "Enter the title, organization, location, and description." });
+  const item = { id: makeId("int"), ...fields, adminManaged: true, status: "active", createdAt: new Date().toISOString(), createdBy: req.session.email };
+  portalData.update("internships", (items) => [...items, item]);
+  portalData.addAudit({ actorRole: "admin", actorEmail: req.session.email, action: "Created internship listing", targetId: item.id });
+  await portalData.flush();
+  res.status(201).json({ item });
+}));
+app.patch("/api/admin/internships/:id", adminOnly, asyncRoute(async (req, res) => {
+  const id = req.params.id;
+  const existing = portalData.collection("internships").find((item) => item.id === id && !item.companyId);
+  const base = existing || INTERNSHIP_DATA.find((item) => item.id === id) || req.body || {};
+  const fields = adminInternshipFields({ ...base, ...req.body });
+  if (!fields.title || !fields.org || !fields.location || !fields.description) return res.status(400).json({ error: "Enter the title, organization, location, and description." });
+  const item = { ...base, ...fields, id, adminManaged: true, deleted: false, status: "active", updatedAt: new Date().toISOString(), updatedBy: req.session.email };
+  portalData.update("internships", (items) => items.some((entry) => entry.id === id && !entry.companyId) ? items.map((entry) => entry.id === id && !entry.companyId ? item : entry) : [...items, item]);
+  portalData.addAudit({ actorRole: "admin", actorEmail: req.session.email, action: "Updated internship listing", targetId: id });
+  await portalData.flush();
+  res.json({ item });
+}));
+app.delete("/api/admin/internships/:id", adminOnly, asyncRoute(async (req, res) => {
+  const id = req.params.id;
+  const existing = portalData.collection("internships").find((item) => item.id === id && !item.companyId);
+  const base = existing || INTERNSHIP_DATA.find((item) => item.id === id) || { id };
+  const item = { ...base, id, adminManaged: true, deleted: true, status: "deleted", deletedAt: new Date().toISOString(), deletedBy: req.session.email };
+  portalData.update("internships", (items) => items.some((entry) => entry.id === id && !entry.companyId) ? items.map((entry) => entry.id === id && !entry.companyId ? item : entry) : [...items, item]);
+  portalData.addAudit({ actorRole: "admin", actorEmail: req.session.email, action: "Deleted internship listing", targetId: id });
+  await portalData.flush();
+  res.json({ ok: true, id });
+}));
 app.post("/api/auth/logout", asyncRoute(async (req, res) => {
   const token = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
   if (token) await revokeSession(token);
@@ -947,9 +1001,11 @@ app.delete("/api/student/cv", studentOnly, (req, res) => {
 });
 app.post("/api/student/applications", studentOnly, (req, res) => {
   const internshipId = String(req.body?.internshipId || "");
-  const companyRole = portalData.collection("internships").find((item) => item.id === internshipId && item.status === "active");
-  const catalogueRole = INTERNSHIP_DATA.find((item) => item.id === internshipId);
-  const role = companyRole || catalogueRole;
+  const serverRole = portalData.collection("internships").find((item) => item.id === internshipId && item.status === "active" && !item.deleted);
+  const override = portalData.collection("internships").find((item) => item.id === internshipId && item.adminManaged);
+  const baseRole = INTERNSHIP_DATA.find((item) => item.id === internshipId);
+  const companyRole = serverRole?.companyId ? serverRole : null;
+  const role = companyRole || (serverRole?.adminManaged ? serverRole : (!override?.deleted && baseRole ? { ...baseRole, ...(override || {}) } : null));
   if (!role) return res.status(404).json({ error: "Internship is not available." });
   if (portalData.collection("applications").some((item) => item.studentId === req.session.id && item.internshipId === internshipId)) return res.status(409).json({ error: "You have already applied to this internship." });
   const application = { id: makeId("application"), studentId: req.session.id, companyId: companyRole?.companyId || null, internshipId, internshipTitle: role.title, companyName: companyRole ? portalData.collection("companies").find((item) => item.id === companyRole.companyId)?.name || "Company" : role.org || "InternMatch listing", status: "Applied", appliedAt: new Date().toISOString(), history: [{ status: "Applied", at: new Date().toISOString() }] };

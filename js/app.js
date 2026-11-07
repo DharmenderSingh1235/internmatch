@@ -12,13 +12,13 @@ window.IM_API_BASE = (window.IM_API_BASE || (isLocalInternMatchHost
 const App = (function () {
   const THEME_KEY = "im_theme";
   const ADMIN_THEME_KEY = "im_admin_theme";
-  const currentThemeKey = () => /(?:^|\/)admin\.html$/i.test(window.location.pathname) ? ADMIN_THEME_KEY : THEME_KEY;
+  const currentThemeKey = () => THEME_KEY;
 
   function applyStoredTheme() {
     try {
-      const theme = localStorage.getItem(currentThemeKey()) || "light";
+      const theme = localStorage.getItem(THEME_KEY) || localStorage.getItem(ADMIN_THEME_KEY) || "light";
       document.documentElement.setAttribute("data-theme", theme);
-    } catch (e) { /* ignore */ }
+    } catch (e) { document.documentElement.setAttribute("data-theme", "light"); }
   }
   applyStoredTheme();
 
@@ -191,14 +191,22 @@ const App = (function () {
       const isDark = document.documentElement.getAttribute("data-theme") === "dark";
       return isDark ? "☀ Light mode" : "🌙 Dark mode";
     }
-    btns.forEach((btn) => (btn.textContent = label()));
+    function syncButtons() {
+      const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+      btns.forEach((btn) => {
+        btn.textContent = label();
+        btn.setAttribute("aria-pressed", isDark ? "true" : "false");
+        btn.setAttribute("title", isDark ? "Switch to light mode" : "Switch to dark mode");
+      });
+    }
+    syncButtons();
     btns.forEach((btn) => {
       btn.addEventListener("click", () => {
         const isDark = document.documentElement.getAttribute("data-theme") === "dark";
         const next = isDark ? "light" : "dark";
         document.documentElement.setAttribute("data-theme", next);
         try { localStorage.setItem(currentThemeKey(), next); } catch (e) { /* ignore */ }
-        btns.forEach((b) => (b.textContent = label()));
+        syncButtons();
       });
     });
   }

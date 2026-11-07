@@ -12,6 +12,20 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!response.ok) throw new Error(data.error || `Admin API request failed (${response.status}) at ${route}.`);
     return data;
   };
+  let serverAdminInternships = [];
+  async function loadServerAdminInternships() {
+    const data = await adminApi("/admin/internships");
+    serverAdminInternships = Array.isArray(data.items) ? data.items : [];
+    return serverAdminInternships;
+  }
+  function getAdminInternshipCatalogue() {
+    const byId = new Map(Store.getAllInternships().map((item) => [item.id, item]));
+    serverAdminInternships.forEach((item) => {
+      if (item.deleted) byId.delete(item.id);
+      else byId.set(item.id, item);
+    });
+    return [...byId.values()];
+  }
   const adminViews = {
     overview: { title: "Admin dashboard", panels: ["admin-overview"] },
     users: { title: "User management", panels: ["admin-students"] },
@@ -441,8 +455,10 @@ document.addEventListener("DOMContentLoaded", () => {
     form.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  form.addEventListener("submit", (e) => {
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
+    const submitButton = form.querySelector('[type="submit"]');
+    if (submitButton) submitButton.disabled = true;
     const id = form.elements["id"].value;
     const data = {
       title: form.elements["title"].value.trim(),
@@ -458,23 +474,30 @@ document.addEventListener("DOMContentLoaded", () => {
       description: form.elements["description"].value.trim(),
       stipend: form.elements["stipend"].value.trim()
     };
-    if (id) {
-      Store.updateInternship(id, data);
-      logAdminAction("Updated internship listing", data.title);
-      App.toast("Internship updated.");
-    } else {
-      Store.addInternship(data);
-      logAdminAction("Added internship listing", data.title);
-      App.toast("Internship added.");
+    try {
+      if (id) {
+        await adminApi(`/admin/internships/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(data) });
+        logAdminAction("Updated internship listing", data.title);
+        App.toast("Internship updated and saved to the server.");
+      } else {
+        await adminApi("/admin/internships", { method: "POST", body: JSON.stringify(data) });
+        logAdminAction("Added internship listing", data.title);
+        App.toast("Internship added and saved to the server.");
+      }
+      await loadServerAdminInternships();
+      resetForm();
+      renderAll();
+    } catch (error) {
+      App.toast(error.message || "Could not save this internship to the server.", "error");
+    } finally {
+      if (submitButton) submitButton.disabled = false;
     }
-    resetForm();
-    renderAll();
   });
 
   resetBtn.addEventListener("click", resetForm);
 
   function renderInternshipTable() {
-    const all = Store.getAllInternships();
+    const all = getAdminInternshipCatalogue();
     tbody.innerHTML = all.map((i) => `
       <tr>
         <td>${App.escapeHtml(i.title)}</td>
@@ -491,18 +514,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
     tbody.querySelectorAll("[data-edit]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        const internship = Store.getInternshipById(btn.getAttribute("data-edit"));
+        const internship = all.find((item) => item.id === btn.getAttribute("data-edit"));
         if (internship) fillFormForEdit(internship);
       });
     });
     tbody.querySelectorAll("[data-delete]").forEach((btn) => {
       btn.addEventListener("click", () => {
         if (!confirm("Delete this internship listing?")) return;
-        const item = Store.getInternshipById(btn.getAttribute("data-delete"));
-        Store.deleteInternship(btn.getAttribute("data-delete"));
-        logAdminAction("Deleted internship listing", item ? item.title : btn.getAttribute("data-delete"));
-        App.toast("Internship deleted.");
-        renderAll();
+        const id = btn.getAttribute("data-delete");
+        const item = all.find((entry) => entry.id === id);
+        btn.disabled = true;
+        adminApi(`/admin/internships/${encodeURIComponent(id)}`, { method: "DELETE" }).then(async () => {
+          logAdminAction("Deleted internship listing", item ? item.title : id);
+          App.toast("Internship deleted and saved to the server.");
+          await loadServerAdminInternships();
+          renderAll();
+        }).catch((error) => App.toast(error.message || "Could not delete this internship.", "error")).finally(() => { btn.disabled = false; });
       });
     });
 
@@ -545,7 +572,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const result = entry.type === "quiz" ? `${entry.score}/${entry.total} · ${Math.round((Number(entry.score) / Number(entry.total)) * 100)}%` : `${entry.total || 0} responses`;
         return `<li>${App.escapeHtml(entry.category || "Practice session")} — ${App.escapeHtml(result)} · ${App.formatDate(entry.date)}</li>`;
       }).join("") : "No interview practice sessions";
-      const topMatches = Recommendation.rankAll(profile, Store.getAllInternships()).slice(0, 3).map((internship) => `<li>${App.escapeHtml(internship.title)} · ${App.escapeHtml(internship.org)} — ${internship.match.score}%</li>`).join("") || "No recommendations available";
+      const topMatches = Recommendation.rankAll(profile, getAdminInternshipCatalogue()).slice(0, 3).map((internship) => `<li>${App.escapeHtml(internship.title)} · ${App.escapeHtml(internship.org)} — ${internship.match.score}%</li>`).join("") || "No recommendations available";
       const achievementNames = [
         ["Profile complete", Store.profileCompletion(profile) === 100],
         ["First application", apps.length > 0],
@@ -625,7 +652,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderControlCenter() {
     const users = Store.getAllUsers();
-    const internships = Store.getAllInternships();
+    const internships = getAdminInternshipCatalogue();
     const applications = users.flatMap((user) => Store.getApplications(user.email).map((application) => ({ user, application })));
     const companies = new Set(internships.map((item) => (item.org || "").trim().toLowerCase()).filter(Boolean));
     const recommendationRows = [];
@@ -743,7 +770,12 @@ document.addEventListener("DOMContentLoaded", () => {
   }));
 
   if (sessionStorage.getItem(SESSION_KEY) === "true" && sessionStorage.getItem("im_admin_api_token")) {
-    adminApi("/admin/students").then(() => { showAdminPanel(); renderAssessmentReviewQueue(); }).catch(() => {
+    adminApi("/admin/students").then(async () => {
+      try { await loadServerAdminInternships(); }
+      catch (error) { App.toast(`Server internship list unavailable: ${error.message}`, "error"); }
+      showAdminPanel();
+      renderAssessmentReviewQueue();
+    }).catch(() => {
       sessionStorage.removeItem(SESSION_KEY);
       sessionStorage.removeItem("im_admin_api_token");
       window.location.replace("login.html?role=admin");
