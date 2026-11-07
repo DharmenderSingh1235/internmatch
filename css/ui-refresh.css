@@ -434,3 +434,16 @@ body[data-portal="admin"] #admin-panel .company-access-state { color:var(--color
 :root[data-theme="dark"] #admin-panel .admin-practice-manager :is(input,select,textarea) { color:#17243d; background:#fff; border-color:#cbd5e1; }
 :root[data-theme="dark"] #admin-panel .admin-practice-manager .admin-settings__eyebrow { color:#2857a5; }
 :root[data-theme="dark"] #admin-panel .admin-practice-manager .admin-practice-manager__head .admin-settings__eyebrow { background:#eaf2ff; }
+/* Ghost buttons on the student's permanently dark hero/sidebar need a dark translucent fill. */
+body[data-portal="student"] .dash-hero__actions .btn--ghost,
+body[data-portal="student"] .sidebar-foot .btn--ghost {
+  color:rgba(255,255,255,.92);
+  background:rgba(255,255,255,.08);
+  border-color:rgba(255,255,255,.26);
+}
+body[data-portal="student"] .dash-hero__actions .btn--ghost:hover,
+body[data-portal="student"] .sidebar-foot .btn--ghost:hover {
+  color:#fff;
+  background:rgba(255,255,255,.16);
+  border-color:rgba(255,255,255,.42);
+}
