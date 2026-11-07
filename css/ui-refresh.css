@@ -408,6 +408,7 @@ body[data-portal="admin"] #admin-panel .company-access-state { color:var(--color
 }
 
 /* Keep native controls and media legible after switching themes. */
+.hero__panel { background:#101b34; color:#edf3ff; }
 :root[data-theme="dark"] body { background-color:var(--color-bg); color:var(--color-text); }
 :root[data-theme="dark"] img { filter:none; }
 :root[data-theme="dark"] input,

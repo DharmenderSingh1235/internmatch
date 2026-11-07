@@ -239,7 +239,7 @@ a:hover { text-decoration: underline; }
 .hero__lede { font-size: 1.08rem; color: var(--color-muted); max-width: 46ch; }
 .hero__actions { display: flex; gap: 12px; margin-top: 22px; flex-wrap: wrap; }
 .hero__panel {
-  background: var(--color-ink);
+  background: #101b34;
   color: #fff;
   border-radius: var(--radius-lg);
   padding: 28px 26px;
