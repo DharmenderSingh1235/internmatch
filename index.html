@@ -9,15 +9,9 @@
 <meta name="description" content="InternMatch is a rule-based recommendation prototype that matches student profiles to internship listings for the PM Internship Scheme." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20261108-blue-match-card" />
+<link rel="stylesheet" href="css/style.css?v=20261108-home-hero" />
 <link rel="stylesheet" href="css/responsive.css" />
-  <link rel="stylesheet" href="css/ui-refresh.css?v=20261108-blue-match-card" />
-<style id="homepage-theme-contrast">
-  .hero__panel { background:linear-gradient(145deg,#233f77,#14264a)!important; color:#f4f7ff!important; border:1px solid #304a7d; }
-  .hero__panel h3,.hero__panel .hero__stat-row { color:#f4f7ff!important; }
-  .hero__panel .hero__stat-row { border-color:rgba(255,255,255,.16)!important; }
-  .hero__panel .hero__stat-row strong { color:#9db8ff!important; }
-</style>
+  <link rel="stylesheet" href="css/ui-refresh.css?v=20261108-home-hero" />
 </head>
 <body>
 
@@ -46,20 +40,27 @@
   <div class="container">
     <div>
       <span class="hero__eyebrow">PM Internship Scheme · student prototype</span>
-      <h1>Internships matched to your skills, not just your keywords.</h1>
-      <p class="hero__lede">InternMatch reads your profile — skills, interests, academics, and preferences — and scores every listing with a transparent, explainable match percentage. No black box, no guesswork.</p>
+      <h1>Find internships that fit your skills and goals.</h1>
+      <p class="hero__lede">Explore opportunities ranked against your skills, interests, academics, and preferences. Every match is explainable, so you can see what fits and where to grow.</p>
       <div class="hero__actions">
         <a class="btn btn--primary btn--lg" href="internships.html">Search internships</a>
         <a class="btn btn--ghost btn--lg" href="register.html">Create your profile</a>
       </div>
     </div>
-    <div class="hero__panel">
-      <h3>How your match score is built</h3>
-      <div class="hero__stat-row"><span>Skills match</span><strong>40%</strong></div>
-      <div class="hero__stat-row"><span>Interest match</span><strong>25%</strong></div>
-      <div class="hero__stat-row"><span>Academic eligibility</span><strong>15%</strong></div>
-      <div class="hero__stat-row"><span>Sector preference</span><strong>10%</strong></div>
-      <div class="hero__stat-row"><span>Location &amp; duration fit</span><strong>10%</strong></div>
+    <div class="hero__panel" aria-label="How internship match scores are calculated">
+      <div class="hero__panel-head">
+        <div><span class="hero__panel-kicker">HOW WE MATCH</span><h2>Every score has a reason.</h2></div>
+        <div class="hero__score-stamp"><strong>100%</strong><span>transparent</span></div>
+      </div>
+      <p class="hero__panel-intro">Each opportunity is ranked using five clear factors.</p>
+      <div class="hero__score-list">
+        <div class="hero__score-row"><span class="hero__score-name">Skills match</span><span class="hero__score-track"><span style="--score:40%"></span></span><strong>40%</strong></div>
+        <div class="hero__score-row"><span class="hero__score-name">Interests</span><span class="hero__score-track"><span style="--score:25%"></span></span><strong>25%</strong></div>
+        <div class="hero__score-row"><span class="hero__score-name">Academic fit</span><span class="hero__score-track"><span style="--score:15%"></span></span><strong>15%</strong></div>
+        <div class="hero__score-row"><span class="hero__score-name">Sector preference</span><span class="hero__score-track"><span style="--score:10%"></span></span><strong>10%</strong></div>
+        <div class="hero__score-row"><span class="hero__score-name">Location &amp; duration</span><span class="hero__score-track"><span style="--score:10%"></span></span><strong>10%</strong></div>
+      </div>
+      <div class="hero__panel-foot"><span class="hero__panel-foot-icon">✓</span>Understand why each role matches your profile</div>
     </div>
   </div>
 </section>
