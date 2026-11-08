@@ -1014,6 +1014,16 @@ app.post("/api/student/applications", studentOnly, (req, res) => {
 app.get("/api/student/applications", studentOnly, (req, res) => {
   res.json({ items: portalData.collection("applications").filter((item) => item.studentId === req.session.id) });
 });
+app.patch("/api/student/applications/:id/status", studentOnly, (req, res) => {
+  const status = String(req.body?.status || "");
+  if (status !== "Withdrawn") return res.status(400).json({ error: "Students can only withdraw their own applications." });
+  const application = portalData.collection("applications").find((item) => item.id === req.params.id && item.studentId === req.session.id);
+  if (!application) return res.status(404).json({ error: "Application not found." });
+  if (application.status === "Withdrawn") return res.json({ application });
+  const updated = { ...application, status, history: [...(application.history || []), { status, at: new Date().toISOString() }] };
+  portalData.update("applications", (items) => items.map((item) => item.id === application.id ? updated : item));
+  res.json({ application: updated });
+});
 app.get("/api/student/interviews", studentOnly, (req, res) => {
   const applications = portalData.collection("applications");
   const items = portalData.collection("interviews").filter((item) => item.studentId === req.session.id).map((item) => {

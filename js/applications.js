@@ -16,7 +16,9 @@ document.addEventListener("DOMContentLoaded", () => {
     Applied: "status-applied",
     "Under Review": "status-review",
     Shortlisted: "status-shortlisted",
+    Assessment: "status-assessment",
     Interview: "status-interview",
+    Offered: "status-offered",
     Selected: "status-selected",
     Rejected: "status-rejected",
     Withdrawn: "status-withdrawn"
@@ -29,11 +31,17 @@ document.addEventListener("DOMContentLoaded", () => {
   function render() {
     const q = (search.value || "").trim().toLowerCase();
     const statusQ = statusFilter.value;
-    let apps = Store.getApplications(user.email)
-      .map((a) => {
-        const serverApplication = serverApplications.find((item) => item.internshipId === a.internshipId);
-        return Object.assign({}, a, serverApplication ? { status: serverApplication.status, appliedOn: serverApplication.appliedAt || a.appliedOn } : {}, { internship: internshipsById[a.internshipId] });
-      })
+    const localApplications = Store.getApplications(user.email);
+    const serverInternshipIds = new Set(serverApplications.map((item) => item.internshipId));
+    let apps = [
+      ...serverApplications.map((item) => ({
+        ...localApplications.find((local) => local.internshipId === item.internshipId),
+        ...item,
+        appliedOn: item.appliedAt || localApplications.find((local) => local.internshipId === item.internshipId)?.appliedOn,
+        internship: internshipsById[item.internshipId]
+      })),
+      ...localApplications.filter((item) => !serverInternshipIds.has(item.internshipId)).map((item) => ({ ...item, internship: internshipsById[item.internshipId] }))
+    ]
       .filter((a) => a.internship);
 
     if (q) {
@@ -99,9 +107,28 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     list.querySelectorAll("[data-withdraw]").forEach((btn) => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async () => {
         if (!confirm("Withdraw this application? This can't be undone.")) return;
-        Store.withdrawApplication(user.email, btn.getAttribute("data-withdraw"));
+        const internshipId = btn.getAttribute("data-withdraw");
+        const serverApplication = serverApplications.find((item) => item.internshipId === internshipId);
+        if (serverApplication) {
+          btn.disabled = true;
+          try {
+            const response = await fetch(`${window.IM_API_BASE}/api/student/applications/${encodeURIComponent(serverApplication.id)}/status`, {
+              method: "PATCH",
+              headers: { "content-type": "application/json", authorization: `Bearer ${sessionStorage.getItem("im_student_api_token") || ""}` },
+              body: JSON.stringify({ status: "Withdrawn" })
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.error || "Could not withdraw this application.");
+            serverApplications = serverApplications.map((item) => item.id === data.application.id ? data.application : item);
+          } catch (error) {
+            btn.disabled = false;
+            App.toast(error.message, "error");
+            return;
+          }
+        }
+        Store.withdrawApplication(user.email, internshipId);
         App.toast("Application withdrawn.");
         render();
       });
@@ -134,13 +161,38 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const token = sessionStorage.getItem("im_student_api_token");
   if (token) {
+    let loadingServerApplications = false;
     fetch(`${window.IM_API_BASE}/api/student/interviews`, { headers: { Authorization: `Bearer ${token}` } })
       .then((response) => response.ok ? response.json() : null)
       .then((data) => { scheduledInterviews = data?.items || []; render(); })
       .catch(() => {});
-    fetch(`${window.IM_API_BASE}/api/student/applications`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((response) => response.ok ? response.json() : null)
-      .then((data) => { serverApplications = data?.items || []; render(); })
-      .catch(() => {});
+    const loadApplications = async () => {
+      if (loadingServerApplications) return;
+      loadingServerApplications = true;
+      const headers = { Authorization: `Bearer ${token}` };
+      const readApplications = async () => {
+        const response = await fetch(`${window.IM_API_BASE}/api/student/applications`, { headers, cache: "no-store" });
+        if (!response.ok) throw new Error("Could not load server applications.");
+        return (await response.json()).items || [];
+      };
+      try {
+        serverApplications = await readApplications();
+        const serverIds = new Set(serverApplications.map((item) => item.internshipId));
+        const localOnly = Store.getApplications(user.email).filter((item) => item.status !== "Withdrawn" && !serverIds.has(item.internshipId));
+        if (localOnly.length) {
+          await Promise.all(localOnly.map((item) => fetch(`${window.IM_API_BASE}/api/student/applications`, {
+            method: "POST",
+            headers: { ...headers, "content-type": "application/json" },
+            body: JSON.stringify({ internshipId: item.internshipId })
+          }).catch(() => null)));
+          serverApplications = await readApplications();
+        }
+        render();
+      } catch (_) { /* Keep browser records visible when the API is temporarily unavailable. */ }
+      finally { loadingServerApplications = false; }
+    };
+    window.addEventListener("focus", loadApplications);
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") loadApplications(); });
+    loadApplications();
   }
 });

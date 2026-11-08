@@ -331,7 +331,9 @@
 .status-applied { background: var(--color-primary-tint); color: var(--color-primary-dark); }
 .status-review { background: var(--color-warn-tint); color: var(--color-warn); }
 .status-shortlisted { background: var(--color-accent-tint); color: var(--color-accent); }
+.status-assessment { background: var(--color-primary-tint); color: var(--color-primary-dark); }
 .status-interview { background: rgba(56, 189, 248, 0.15); color: #0284c7; }
+.status-offered { background: var(--color-success-tint); color: var(--color-success); }
 .status-selected { background: var(--color-success-tint); color: var(--color-success); }
 .status-rejected { background: var(--color-danger-tint); color: var(--color-danger); }
 .status-withdrawn { background: var(--color-bg-alt); color: var(--color-muted); }
