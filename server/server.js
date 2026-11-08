@@ -1505,7 +1505,7 @@ app.post("/api/student/assessments/:id/start", studentOnly, (req, res) => {
   let attempt = portalData.collection("assessmentSessions").find((entry) => entry.assessmentId === assessment.id && entry.studentId === req.session.id);
   if (attempt?.terminatedAt) return res.status(403).json({ error: "This assessment was terminated and is awaiting recruiter review." });
   if (!attempt) {
-    attempt = { assessmentId: assessment.id, studentId: req.session.id, startedAt: new Date().toISOString(), shareLiveCameraAllowed: req.body?.shareLiveCamera === true };
+    attempt = { id: makeId("assessment-session"), assessmentId: assessment.id, studentId: req.session.id, startedAt: new Date().toISOString(), shareLiveCameraAllowed: req.body?.shareLiveCamera === true };
     portalData.update("assessmentSessions", (items) => [...items, attempt]);
   } else if (req.body?.shareLiveCamera === true && !attempt.shareLiveCameraAllowed) {
     attempt = { ...attempt, shareLiveCameraAllowed: true };
