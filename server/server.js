@@ -63,16 +63,10 @@ app.use(cors({ origin(origin, callback) {
   return callback(new Error("Not allowed by CORS"));
 } }));
 app.use("/api", asyncRoute(async (req, res, next) => {
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) return next();
-  const release = await portalData.beginRequest();
-  let released = false;
-  const finishRequest = () => {
-    if (released) return;
-    released = true;
-    release();
-  };
-  res.once("finish", finishRequest);
-  res.once("close", finishRequest);
+  // Supabase is hydrated once when this serverless instance starts. Reloading
+  // every collection before every request serialized all traffic behind one
+  // slow PostgREST call and made assessment requests exceed the browser timeout.
+  await portalData.ready;
   next();
 }));
 
