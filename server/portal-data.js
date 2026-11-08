@@ -31,6 +31,35 @@ function saveJson() {
 }
 
 const ready = (async () => {
+  // Prefer MongoDB when explicitly configured. On its first startup, copy the
+  // existing Supabase records into MongoDB so changing providers preserves data.
+  if (process.env.MONGODB_URI) {
+    try {
+      await database.connectMongo();
+      const initialized = await database.isMongoInitialized();
+      if (initialized) {
+        for (const name of collectionNames) state[name] = (await database.loadMongoCollection(name)) || [];
+      } else {
+        if (process.env.SUPABASE_URL && process.env.SUPABASE_SECRET_KEY) {
+          database.connectSupabase();
+          if (await database.isSupabaseInitialized()) {
+            const cloudState = await database.loadSupabaseCollections(collectionNames);
+            for (const name of collectionNames) state[name] = cloudState?.[name] || [];
+          }
+        }
+        for (const name of collectionNames) await database.syncMongoCollection(name, [], state[name] || []);
+        await database.markMongoInitialized();
+        console.log("✓ Existing portal records migrated to MongoDB (first configured run)");
+      }
+      persistenceMode = "mongodb";
+      return;
+    } catch (error) {
+      if (process.env.NODE_ENV === "production") throw error;
+      persistenceMode = database.isSqliteAvailable() ? "sqlite-json" : "json";
+      console.warn(`⚠ MongoDB unavailable (${error.message}). Local development is using ${persistenceMode} storage.`);
+      return;
+    }
+  }
   if (process.env.SUPABASE_URL && process.env.SUPABASE_SECRET_KEY) {
     try {
       database.connectSupabase();
@@ -56,32 +85,6 @@ const ready = (async () => {
   }
   if (process.env.NODE_ENV === "production" && process.env.SUPABASE_REQUIRED === "true") {
     throw new Error("Supabase is required in production. Configure SUPABASE_URL and SUPABASE_SECRET_KEY.");
-  }
-  if (process.env.MONGODB_URI) {
-    try {
-      await database.connectMongo();
-      const initialized = await database.isMongoInitialized();
-      if (initialized) {
-        for (const name of collectionNames) state[name] = (await database.loadMongoCollection(name)) || [];
-      } else {
-        for (const name of collectionNames) {
-          const previous = [];
-          await database.syncMongoCollection(name, previous, state[name] || []);
-        }
-        await database.markMongoInitialized();
-        console.log("✓ Existing local portal records migrated to MongoDB (first configured run)");
-      }
-      persistenceMode = "mongodb";
-      return;
-    } catch (error) {
-      if (process.env.NODE_ENV === "production") throw error;
-      persistenceMode = database.isSqliteAvailable() ? "sqlite-json" : "json";
-      if (database.isSqliteAvailable()) {
-        for (const name of ["students", "companies", "companyRequests", "internships", "applications"]) database.syncCollectionToSqlite(name, state[name] || []);
-      }
-      console.warn(`⚠ MongoDB unavailable (${error.message}). Local development is using ${persistenceMode} storage; these writes will not sync to Atlas.`);
-    }
-    return;
   }
   if (database.isSqliteAvailable()) {
     for (const name of ["students", "companies", "companyRequests", "internships", "applications"]) database.syncCollectionToSqlite(name, state[name] || []);
@@ -187,7 +190,9 @@ const sessionStore = process.env.MONGODB_URI || sqliteSessions ? {
   prune: (...args) => (persistenceMode === "mongodb" ? mongoSessions : sqliteSessions)?.prune(...args)
 } : null;
 
-const durableSessionStore = process.env.SUPABASE_URL && process.env.SUPABASE_SECRET_KEY
+const durableSessionStore = process.env.MONGODB_URI
+  ? sessionStore
+  : process.env.SUPABASE_URL && process.env.SUPABASE_SECRET_KEY
   ? {
       put: (...args) => database.supabaseSessionStore()?.put(...args),
       get: (...args) => database.supabaseSessionStore()?.get(...args),
