@@ -28,6 +28,7 @@ if (apiBase) {
   }
 }
 fs.copyFileSync(path.join(root, "netlify-headers"), path.join(output, "_headers"));
+fs.copyFileSync(path.join(root, "README.md"), path.join(output, "README.md"));
 console.log(apiBase
   ? `Prepared static site in dist/ with API ${apiBase}`
   : "Prepared static site in dist/ using its built-in API default. Set Netlify API_BASE_URL to the Render URL when the Render service is ready.");
