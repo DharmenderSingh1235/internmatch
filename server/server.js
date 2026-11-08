@@ -915,11 +915,15 @@ app.get("/api/student/interview-scores", studentOnly, (req, res) => {
   res.set("Cache-Control", "no-store");
   res.json({ scores: Array.isArray(student.interviewScores) ? student.interviewScores.slice(0, 20) : [] });
 });
-app.get("/api/student/practice-areas", studentOnly, (req, res) => {
+function listPublishedPracticeAreas(req, res) {
   res.set("Cache-Control", "no-store");
   const items = portalData.collection("practiceAreas").filter((area) => area.active).map((area) => ({ id: area.id, title: area.title, icon: area.icon, description: area.description, questions: area.questions }));
   res.json({ items });
-});
+}
+// Published practice sets are student learning content, so the interview prep
+// page can load them for browser-local student sessions as well as API sessions.
+app.get("/api/practice-areas", listPublishedPracticeAreas);
+app.get("/api/student/practice-areas", studentOnly, listPublishedPracticeAreas);
 app.put("/api/student/interview-scores", studentOnly, (req, res) => {
   if (!Array.isArray(req.body?.scores)) return res.status(400).json({ error: "Provide a list of practice quiz scores." });
   const scores = req.body.scores.slice(0, 20).map((entry) => ({ category: String(entry?.category || "Practice quiz").trim().slice(0, 80), score: Number(entry?.score), total: Number(entry?.total), date: String(entry?.date || "").slice(0, 40) }))

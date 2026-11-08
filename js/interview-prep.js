@@ -235,11 +235,14 @@ document.addEventListener("DOMContentLoaded", () => {
   showOnly(categoryPanel);
   renderHistory();
   hydrateInterviewScores();
-  const studentToken = sessionStorage.getItem("im_student_api_token");
-  if (studentToken && user.role === "student") {
-    fetch(`${window.IM_API_BASE}/api/student/practice-areas`, { headers: { authorization: `Bearer ${studentToken}` }, cache: "no-store" })
-      .then((response) => response.ok ? response.json() : null)
-      .then((data) => { if (Array.isArray(data?.items)) { customAreas = data.items; renderCategoryGrid(); } })
-      .catch((error) => console.warn("Admin-created practice areas could not load:", error.message));
-  }
+  fetch(`${window.IM_API_BASE}/api/practice-areas`, { cache: "no-store" })
+    .then(async (response) => {
+      if (!response.ok) throw new Error(`Practice area request failed (${response.status}).`);
+      return response.json();
+    })
+    .then((data) => { if (Array.isArray(data?.items)) { customAreas = data.items; renderCategoryGrid(); } })
+    .catch((error) => {
+      console.warn("Admin-created practice areas could not load:", error.message);
+      App.toast("Admin-added practice areas could not load. Refresh the page or try again shortly.", "error");
+    });
 });
