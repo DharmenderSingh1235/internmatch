@@ -39,12 +39,13 @@ app.use((req, res, next) => {
   // Login persists its own session in issueToken(). Do not let an unrelated,
   // previously queued collection write prevent a valid sign-in response.
   const isAuthLogin = /^\/api\/auth\/(student|company|admin)\/login$/.test(req.path);
-  if (!process.env.MONGODB_URI || !req.path.startsWith("/api/") || isAuthLogin) return next();
+  const durableStoreConfigured = !!(process.env.MONGODB_URI || process.env.SUPABASE_SECRET_KEY);
+  if (!durableStoreConfigured || !req.path.startsWith("/api/") || (process.env.MONGODB_URI && isAuthLogin)) return next();
   const send = res.send;
   res.send = function (body) {
     res.send = send;
     portalData.flush().then(() => send.call(res, body)).catch((error) => {
-      console.error("[MongoDB response flush failed]:", error.message);
+      console.error("[database response flush failed]:", error.message);
       if (!res.headersSent) {
         res.statusCode = 503;
         res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -61,6 +62,19 @@ app.use(cors({ origin(origin, callback) {
   if (!origin || LOCAL_ORIGIN_RE.test(origin) || allowedOrigins.has(origin)) return callback(null, true);
   return callback(new Error("Not allowed by CORS"));
 } }));
+app.use("/api", asyncRoute(async (req, res, next) => {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) return next();
+  const release = await portalData.beginRequest();
+  let released = false;
+  const finishRequest = () => {
+    if (released) return;
+    released = true;
+    release();
+  };
+  res.once("finish", finishRequest);
+  res.once("close", finishRequest);
+  next();
+}));
 
 const WINDOW_MS = 5 * 60 * 1000;
 const MAX_REQUESTS = 20;
@@ -262,7 +276,7 @@ const safeEmail = (value) => String(value || "").trim().toLowerCase();
 const tokenDigest = (token) => crypto.createHash("sha256").update(token).digest("hex");
 async function getSession(token) {
   const cached = sessions.get(token);
-  if (portalData.storageMode() !== "mongodb" && cached && cached.expiresAt > Date.now()) return cached;
+  if (!new Set(["mongodb", "supabase"]).has(portalData.storageMode()) && cached && cached.expiresAt > Date.now()) return cached;
   if (cached && cached.expiresAt <= Date.now()) sessions.delete(token);
   const persisted = await portalData.sessionStore?.get(tokenDigest(token));
   if (persisted) sessions.set(token, persisted);

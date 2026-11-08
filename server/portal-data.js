@@ -11,12 +11,17 @@ let state = Object.fromEntries(collectionNames.map((name) => [name, []]));
 const mongoWriteQueue = [];
 let mongoDrain = null;
 let lastMongoError = null;
+let requestQueue = Promise.resolve();
 let persistenceMode = "json";
 
 try {
   if (fs.existsSync(filename)) state = { ...state, ...JSON.parse(fs.readFileSync(filename, "utf8")) };
 } catch (error) { console.error("Could not load company portal data:", error.message); }
 state.audit = (state.audit || []).map((entry) => entry.id ? entry : { ...entry, id: `audit-${crypto.randomUUID()}` });
+state.assessmentSessions = (state.assessmentSessions || []).map((entry) => entry.id ? entry : {
+  ...entry,
+  id: `assessment-session-${crypto.createHash("sha256").update(`${entry.assessmentId || ""}:${entry.studentId || ""}`).digest("hex").slice(0, 32)}`
+});
 
 function saveJson() {
   fs.mkdirSync(directory, { recursive: true });
@@ -26,6 +31,32 @@ function saveJson() {
 }
 
 const ready = (async () => {
+  if (process.env.SUPABASE_URL && process.env.SUPABASE_SECRET_KEY) {
+    try {
+      database.connectSupabase();
+      const initialized = await database.isSupabaseInitialized();
+      if (initialized) {
+        const cloudState = await database.loadSupabaseCollections(collectionNames);
+        for (const name of collectionNames) state[name] = cloudState?.[name] || [];
+      } else {
+        for (const name of collectionNames) {
+          await database.syncSupabaseCollection(name, [], state[name] || []);
+        }
+        await database.markSupabaseInitialized();
+        console.log("✓ Existing local portal records migrated to Supabase Postgres (first configured run)");
+      }
+      persistenceMode = "supabase";
+      return;
+    } catch (error) {
+      if (process.env.NODE_ENV === "production" || process.env.SUPABASE_REQUIRED === "true") throw error;
+      persistenceMode = database.isSqliteAvailable() ? "sqlite-json" : "json";
+      console.warn(`⚠ Supabase unavailable (${error.message}). Local development is using ${persistenceMode} storage.`);
+      return;
+    }
+  }
+  if (process.env.NODE_ENV === "production" && process.env.SUPABASE_REQUIRED === "true") {
+    throw new Error("Supabase is required in production. Configure SUPABASE_URL and SUPABASE_SECRET_KEY.");
+  }
   if (process.env.MONGODB_URI) {
     try {
       await database.connectMongo();
@@ -62,7 +93,12 @@ function collection(name) { return state[name] || []; }
 function drainMongoQueue() {
   if (!mongoDrain) mongoDrain = (async () => {
     while (mongoWriteQueue.length) {
-      await mongoWriteQueue[0]();
+      try {
+        await mongoWriteQueue[0]();
+      } catch (error) {
+        if (persistenceMode === "supabase" && error?.code === "40001") mongoWriteQueue.shift();
+        throw error;
+      }
       mongoWriteQueue.shift();
       lastMongoError = null;
     }
@@ -81,6 +117,7 @@ function update(name, transform) {
   const next = transform(previous);
   state[name] = next;
   if (persistenceMode === "mongodb") enqueueMongoWrite(() => database.syncMongoCollection(name, previous, next));
+  else if (persistenceMode === "supabase") enqueueMongoWrite(() => database.syncSupabaseCollection(name, previous, next));
   else {
     saveJson();
     if (database.isSqliteAvailable()) database.syncCollectionToSqlite(name, state[name]);
@@ -93,6 +130,7 @@ function addAudit(entry) {
   const next = [record, ...previous].slice(0, 2000);
   state.audit = next;
   if (persistenceMode === "mongodb") enqueueMongoWrite(() => database.syncMongoCollection("audit", previous, next));
+  else if (persistenceMode === "supabase") enqueueMongoWrite(() => database.syncSupabaseCollection("audit", previous, next));
   else {
     saveJson();
     if (database.isSqliteAvailable()) database.recordAuditToSqlite(record);
@@ -100,7 +138,34 @@ function addAudit(entry) {
 }
 async function flush() {
   await drainMongoQueue();
-  if (lastMongoError) throw lastMongoError;
+  if (lastMongoError) {
+    const error = lastMongoError;
+    lastMongoError = null;
+    throw error;
+  }
+}
+
+async function beginRequest() {
+  if (persistenceMode !== "supabase") return () => {};
+  let releaseTurn;
+  const turn = new Promise((resolve) => { releaseTurn = resolve; });
+  const previousTurn = requestQueue;
+  requestQueue = previousTurn.then(() => turn);
+  await previousTurn;
+  try {
+    await flush();
+    const latest = await database.loadSupabaseCollections(collectionNames);
+    for (const name of collectionNames) state[name] = latest?.[name] || [];
+  } catch (error) {
+    releaseTurn();
+    throw error;
+  }
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    releaseTurn();
+  };
 }
 
 const mongoSessions = {
@@ -122,14 +187,25 @@ const sessionStore = process.env.MONGODB_URI || sqliteSessions ? {
   prune: (...args) => (persistenceMode === "mongodb" ? mongoSessions : sqliteSessions)?.prune(...args)
 } : null;
 
+const durableSessionStore = process.env.SUPABASE_URL && process.env.SUPABASE_SECRET_KEY
+  ? {
+      put: (...args) => database.supabaseSessionStore()?.put(...args),
+      get: (...args) => database.supabaseSessionStore()?.get(...args),
+      delete: (...args) => database.supabaseSessionStore()?.delete(...args),
+      deleteForAccount: (...args) => database.supabaseSessionStore()?.deleteForAccount(...args),
+      prune: (...args) => database.supabaseSessionStore()?.prune(...args)
+    }
+  : null;
+
 module.exports = {
   ready,
   flush,
+  beginRequest,
   collection,
   update,
   addAudit,
   isSqlite: () => persistenceMode === "sqlite-json",
   storageMode: () => persistenceMode,
-  sessionStore,
+  sessionStore: durableSessionStore || sessionStore,
   close: database.closeDatabase
 };

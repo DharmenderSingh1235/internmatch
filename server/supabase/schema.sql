@@ -176,15 +176,134 @@ create table if not exists public.audit_logs (
   created_at timestamptz not null default now()
 );
 
-create or replace function public.current_app_role()
+-- Compatibility store for the existing Express API. The API owns auth and
+-- authorization; these rows are server-only and never granted to browser roles.
+create table if not exists public.portal_records (
+  collection text not null check (collection in (
+    'companies','companyRequests','students','internships','applications','shortlists',
+    'interviews','assessments','assessmentSessions','assessmentSubmissions',
+    'assessmentObserverInvites','supportMessages','passwordResetRequests','practiceAreas','audit'
+  )),
+  id text not null,
+  payload jsonb not null check (jsonb_typeof(payload) = 'object'),
+  updated_at timestamptz not null default now(),
+  primary key (collection, id)
+);
+create index if not exists portal_records_collection_idx on public.portal_records(collection);
+alter table public.portal_records enable row level security;
+revoke all on public.portal_records from public, anon, authenticated;
+grant all on public.portal_records to service_role;
+create policy portal_records_server_only on public.portal_records for all to service_role
+using (true) with check (true);
+
+create table if not exists public.portal_sessions (
+  token_hash text primary key,
+  account_id text not null,
+  payload jsonb not null check (jsonb_typeof(payload) = 'object'),
+  expires_at timestamptz not null,
+  updated_at timestamptz not null default now()
+);
+create index if not exists portal_sessions_account_idx on public.portal_sessions(account_id);
+create index if not exists portal_sessions_expiry_idx on public.portal_sessions(expires_at);
+alter table public.portal_sessions enable row level security;
+revoke all on public.portal_sessions from public, anon, authenticated;
+grant all on public.portal_sessions to service_role;
+create policy portal_sessions_server_only on public.portal_sessions for all to service_role
+using (true) with check (true);
+
+create table if not exists public.portal_meta (
+  key text primary key,
+  value jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+alter table public.portal_meta enable row level security;
+revoke all on public.portal_meta from public, anon, authenticated;
+grant all on public.portal_meta to service_role;
+create policy portal_meta_server_only on public.portal_meta for all to service_role
+using (true) with check (true);
+
+drop function if exists public.sync_portal_collection(text, jsonb, jsonb);
+create or replace function public.sync_portal_collection(
+  p_collection text,
+  p_changes jsonb
+)
+returns void language plpgsql security definer set search_path = public, pg_temp
+as $$
+declare
+  change_item jsonb;
+  expected_item jsonb;
+  next_item jsonb;
+  stored_item jsonb;
+  item_id text;
+begin
+  if p_collection not in (
+    'companies','companyRequests','students','internships','applications','shortlists',
+    'interviews','assessments','assessmentSessions','assessmentSubmissions',
+    'assessmentObserverInvites','supportMessages','passwordResetRequests','practiceAreas','audit'
+  ) or jsonb_typeof(p_changes) <> 'array' then
+    raise exception 'Invalid portal collection sync request';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext('internmatch_portal'), hashtext(p_collection));
+
+  -- Validate all expected old values before changing anything. Each API update
+  -- sends only changed rows, so profile documents and CV blobs are not resent
+  -- for unrelated writes.
+  for change_item in select value from jsonb_array_elements(p_changes) as item(value) loop
+    item_id := change_item ->> 'id';
+    expected_item := change_item -> 'expected';
+    next_item := change_item -> 'next';
+    if item_id is null or not (change_item ? 'expected') or not (change_item ? 'next') then
+      raise exception 'Invalid portal record change';
+    end if;
+    if expected_item = 'null'::jsonb then
+      if exists (select 1 from public.portal_records where collection = p_collection and id = item_id) then
+        raise exception 'Portal record already exists; reload and retry' using errcode = '40001';
+      end if;
+    else
+      select payload into stored_item from public.portal_records
+        where collection = p_collection and id = item_id for update;
+      if not found or stored_item is distinct from expected_item then
+        raise exception 'Stale portal record; reload and retry' using errcode = '40001';
+      end if;
+    end if;
+  end loop;
+
+  for change_item in select value from jsonb_array_elements(p_changes) as item(value) loop
+    item_id := change_item ->> 'id';
+    next_item := change_item -> 'next';
+    if next_item = 'null'::jsonb then
+      delete from public.portal_records where collection = p_collection and id = item_id;
+    else
+      if jsonb_typeof(next_item) <> 'object' or next_item ->> 'id' <> item_id then
+        raise exception 'Invalid portal record payload';
+      end if;
+      insert into public.portal_records(collection, id, payload, updated_at)
+        values (p_collection, item_id, next_item, now())
+      on conflict (collection, id) do update
+        set payload = excluded.payload, updated_at = excluded.updated_at;
+    end if;
+  end loop;
+end;
+$$;
+revoke all on function public.sync_portal_collection(text, jsonb) from public, anon, authenticated;
+grant execute on function public.sync_portal_collection(text, jsonb) to service_role;
+
+create or replace function private.current_app_role()
 returns text language sql stable security definer set search_path = public, auth
 as $$ select role from public.profiles where id = auth.uid() $$;
-revoke all on function public.current_app_role() from public;
+revoke all on function private.current_app_role() from public, anon;
+grant usage on schema private to authenticated;
+grant execute on function private.current_app_role() to authenticated;
+create or replace function public.current_app_role()
+returns text language sql stable security invoker set search_path = public, private, auth
+as $$ select private.current_app_role() $$;
+revoke all on function public.current_app_role() from public, anon;
 grant execute on function public.current_app_role() to authenticated;
 
 -- New sign-ups can only become students through the public Auth flow.
 -- Company/admin roles are assigned by the trusted server after review.
-create or replace function public.handle_new_auth_user()
+create or replace function private.handle_new_auth_user()
 returns trigger language plpgsql security definer set search_path = public, auth
 as $$
 begin
@@ -194,9 +313,10 @@ begin
   return new;
 end;
 $$;
+revoke all on function private.handle_new_auth_user() from public, anon, authenticated;
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created after insert on auth.users
-for each row execute procedure public.handle_new_auth_user();
+for each row execute procedure private.handle_new_auth_user();
 
 alter table public.profiles enable row level security;
 alter table public.companies enable row level security;
@@ -212,48 +332,48 @@ alter table public.support_messages enable row level security;
 alter table public.audit_logs enable row level security;
 
 create policy profiles_read_scoped on public.profiles for select to authenticated
-using (id = auth.uid() or public.current_app_role() = 'admin' or exists (
+using (id = auth.uid() or private.current_app_role() = 'admin' or exists (
   select 1 from public.applications a where a.student_id = profiles.id and a.company_id = auth.uid()
 ));
 create policy profiles_update_self on public.profiles for update to authenticated
-using (id = auth.uid()) with check (id = auth.uid() and role = public.current_app_role());
+using (id = auth.uid()) with check (id = auth.uid() and role = private.current_app_role());
 
 create policy companies_read_active_or_owner on public.companies for select to authenticated
-using (status = 'active' or id = auth.uid() or public.current_app_role() = 'admin');
+using (status = 'active' or id = auth.uid() or private.current_app_role() = 'admin');
 create policy company_requests_read_owner_or_admin on public.company_requests for select to authenticated
-using (company_id = auth.uid() or public.current_app_role() = 'admin');
+using (company_id = auth.uid() or private.current_app_role() = 'admin');
 
 create policy internships_read_visible on public.internships for select to authenticated
-using (status = 'active' or company_id = auth.uid() or public.current_app_role() = 'admin');
+using (status = 'active' or company_id = auth.uid() or private.current_app_role() = 'admin');
 create policy internships_company_submit on public.internships for insert to authenticated
-with check (company_id = auth.uid() and public.current_app_role() = 'company' and status = 'pending_approval');
+with check (company_id = auth.uid() and private.current_app_role() = 'company' and status = 'pending_approval');
 create policy internships_company_edit on public.internships for update to authenticated
-using (company_id = auth.uid() and public.current_app_role() = 'company')
-with check (company_id = auth.uid() and public.current_app_role() = 'company' and status in ('pending_approval','paused'));
+using (company_id = auth.uid() and private.current_app_role() = 'company')
+with check (company_id = auth.uid() and private.current_app_role() = 'company' and status in ('pending_approval','paused'));
 
 create policy applications_read_participants on public.applications for select to authenticated
-using (student_id = auth.uid() or company_id = auth.uid() or public.current_app_role() = 'admin');
+using (student_id = auth.uid() or company_id = auth.uid() or private.current_app_role() = 'admin');
 create policy applications_student_apply on public.applications for insert to authenticated
-with check (student_id = auth.uid() and public.current_app_role() = 'student' and exists (
+with check (student_id = auth.uid() and private.current_app_role() = 'student' and exists (
   select 1 from public.internships i where i.id = applications.internship_id and i.company_id = applications.company_id and i.status = 'active'
 ));
 
 create policy shortlists_read_owner on public.shortlists for select to authenticated
-using (company_id = auth.uid() or student_id = auth.uid() or public.current_app_role() = 'admin');
+using (company_id = auth.uid() or student_id = auth.uid() or private.current_app_role() = 'admin');
 
 create policy assessments_read_eligible on public.assessments for select to authenticated
-using (company_id = auth.uid() or public.current_app_role() = 'admin' or (status = 'approved' and exists (
+using (company_id = auth.uid() or private.current_app_role() = 'admin' or (status = 'approved' and exists (
   select 1 from public.applications a where a.student_id = auth.uid() and a.internship_id = assessments.internship_id and a.status <> 'Rejected'
 )));
 create policy assessments_company_create on public.assessments for insert to authenticated
-with check (company_id = auth.uid() and public.current_app_role() = 'company' and status = 'pending_approval');
+with check (company_id = auth.uid() and private.current_app_role() = 'company' and status = 'pending_approval');
 create policy assessments_company_resubmit on public.assessments for update to authenticated
 using (company_id = auth.uid() and status = 'rejected')
 with check (company_id = auth.uid() and status = 'pending_approval');
 
 create policy questions_read_eligible on public.assessment_questions for select to authenticated
 using (exists (select 1 from public.assessments a where a.id = assessment_id and (
-  a.company_id = auth.uid() or public.current_app_role() = 'admin' or (a.status = 'approved' and exists (
+  a.company_id = auth.uid() or private.current_app_role() = 'admin' or (a.status = 'approved' and exists (
     select 1 from public.applications ap where ap.student_id = auth.uid() and ap.internship_id = a.internship_id and ap.status <> 'Rejected'
   ))
 )));
@@ -262,27 +382,27 @@ using (exists (select 1 from public.assessments a where a.id = assessment_id and
 with check (exists (select 1 from public.assessments a where a.id = assessment_id and a.company_id = auth.uid() and a.status in ('pending_approval','rejected')));
 
 create policy submissions_read_participants on public.assessment_submissions for select to authenticated
-using (student_id = auth.uid() or public.current_app_role() = 'admin' or exists (
+using (student_id = auth.uid() or private.current_app_role() = 'admin' or exists (
   select 1 from public.assessments a where a.id = assessment_id and a.company_id = auth.uid()
 ));
 create policy submissions_student_submit on public.assessment_submissions for insert to authenticated
-with check (student_id = auth.uid() and public.current_app_role() = 'student' and exists (
+with check (student_id = auth.uid() and private.current_app_role() = 'student' and exists (
   select 1 from public.assessments a join public.applications ap on ap.internship_id = a.internship_id
   where a.id = assessment_id and a.status = 'approved' and ap.student_id = auth.uid() and ap.status <> 'Rejected'
 ));
 
 create policy interviews_read_participants on public.interviews for select to authenticated
-using (student_id = auth.uid() or company_id = auth.uid() or public.current_app_role() = 'admin');
+using (student_id = auth.uid() or company_id = auth.uid() or private.current_app_role() = 'admin');
 create policy interviews_company_manage on public.interviews for all to authenticated
-using (company_id = auth.uid() and public.current_app_role() = 'company')
-with check (company_id = auth.uid() and public.current_app_role() = 'company');
+using (company_id = auth.uid() and private.current_app_role() = 'company')
+with check (company_id = auth.uid() and private.current_app_role() = 'company');
 
 create policy support_read_owner_or_admin on public.support_messages for select to authenticated
-using (student_id = auth.uid() or public.current_app_role() = 'admin');
+using (student_id = auth.uid() or private.current_app_role() = 'admin');
 create policy support_student_create on public.support_messages for insert to authenticated
-with check (student_id = auth.uid() and public.current_app_role() = 'student');
+with check (student_id = auth.uid() and private.current_app_role() = 'student');
 create policy audit_admin_read on public.audit_logs for select to authenticated
-using (public.current_app_role() = 'admin');
+using (private.current_app_role() = 'admin');
 
 grant usage on schema public to authenticated;
 grant select, update on public.profiles to authenticated;

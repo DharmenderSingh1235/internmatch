@@ -9,6 +9,7 @@ const sqliteFile = path.join(dataDir, "portal.sqlite");
 let sqliteDb = null;
 let mongoClient = null;
 let mongoDb = null;
+let supabase = null;
 const MONGO_COLLECTIONS = new Set(["students", "companies", "companyRequests", "internships", "applications", "shortlists", "interviews", "assessments", "assessmentSessions", "assessmentSubmissions", "assessmentObserverInvites", "supportMessages", "passwordResetRequests", "practiceAreas", "audit"]);
 
 try {
@@ -290,6 +291,107 @@ async function connectMongo() {
   return true;
 }
 
+function connectSupabase() {
+  const url = String(process.env.SUPABASE_URL || "").trim();
+  const key = String(process.env.SUPABASE_SECRET_KEY || "").trim();
+  if (!url || !key) return false;
+  const { createClient } = require("@supabase/supabase-js");
+  supabase = createClient(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
+    global: { headers: { "X-Client-Info": "internmatch-express/1.0.0" } }
+  });
+  return true;
+}
+
+async function loadSupabaseCollections(names) {
+  if (!supabase) return null;
+  const loaded = Object.fromEntries(names.map((name) => [name, []]));
+  const pageSize = 500;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await supabase.from("portal_records")
+      .select("collection,id,payload")
+      .order("collection", { ascending: true })
+      .order("id", { ascending: true })
+      .range(offset, offset + pageSize - 1);
+    if (error) throw error;
+    for (const row of data || []) if (loaded[row.collection]) loaded[row.collection].push(row.payload);
+    if (!data || data.length < pageSize) break;
+  }
+  return loaded;
+}
+
+async function syncSupabaseCollection(name, previous, items) {
+  if (!supabase || !Array.isArray(previous) || !Array.isArray(items)) return;
+  const before = new Map(previous.filter((item) => item?.id).map((item) => [String(item.id), item]));
+  const after = new Map(items.filter((item) => item?.id).map((item) => [String(item.id), item]));
+  const changes = [];
+  for (const [id, item] of after) {
+    const old = before.get(id);
+    if (!old) changes.push({ id, expected: null, next: item });
+    else if (JSON.stringify(old) !== JSON.stringify(item)) changes.push({ id, expected: old, next: item });
+  }
+  for (const [id, old] of before) if (!after.has(id)) changes.push({ id, expected: old, next: null });
+  if (!changes.length) return;
+  const { error } = await supabase.rpc("sync_portal_collection", {
+    p_collection: name,
+    p_changes: changes
+  });
+  if (error) {
+    if (error.code === "40001") throw Object.assign(new Error("Portal data changed in another request. Please retry."), { code: "40001" });
+    throw error;
+  }
+}
+
+async function isSupabaseInitialized() {
+  if (!supabase) return false;
+  const { data, error } = await supabase.from("portal_meta").select("key")
+    .eq("key", "portal_initialized").maybeSingle();
+  if (error) throw error;
+  return !!data;
+}
+
+async function markSupabaseInitialized() {
+  if (!supabase) return;
+  const { error } = await supabase.from("portal_meta").upsert({
+    key: "portal_initialized",
+    value: { initializedAt: new Date().toISOString(), schemaVersion: 1 }
+  }, { onConflict: "key" });
+  if (error) throw error;
+}
+
+function supabaseSessionStore() {
+  if (!supabase) return null;
+  return {
+    async put(tokenHash, session) {
+      const { error } = await supabase.from("portal_sessions").upsert({
+        token_hash: tokenHash,
+        account_id: session.id,
+        payload: session,
+        expires_at: new Date(session.expiresAt).toISOString()
+      }, { onConflict: "token_hash" });
+      if (error) throw error;
+    },
+    async get(tokenHash) {
+      const { data, error } = await supabase.from("portal_sessions").select("payload")
+        .eq("token_hash", tokenHash).gt("expires_at", new Date().toISOString()).maybeSingle();
+      if (error) throw error;
+      return data?.payload || null;
+    },
+    async delete(tokenHash) {
+      const { error } = await supabase.from("portal_sessions").delete().eq("token_hash", tokenHash);
+      if (error) throw error;
+    },
+    async deleteForAccount(accountId) {
+      const { error } = await supabase.from("portal_sessions").delete().eq("account_id", accountId);
+      if (error) throw error;
+    },
+    async prune() {
+      const { error } = await supabase.from("portal_sessions").delete().lte("expires_at", new Date().toISOString());
+      if (error) throw error;
+    }
+  };
+}
+
 async function loadMongoCollection(name) {
   if (!mongoDb || !MONGO_COLLECTIONS.has(name)) return null;
   const docs = await mongoDb.collection(`portal_${name}`).find({}, { projection: { payload: 1 } }).toArray();
@@ -344,6 +446,12 @@ async function closeDatabase() {
 
 module.exports = {
   connectMongo,
+  connectSupabase,
+  loadSupabaseCollections,
+  syncSupabaseCollection,
+  isSupabaseInitialized,
+  markSupabaseInitialized,
+  supabaseSessionStore,
   loadMongoCollection,
   syncMongoCollection,
   appendMongoAudit,

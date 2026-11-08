@@ -1,6 +1,6 @@
 (() => {
   const local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
-  const apiBase = (window.IM_API_BASE || (local ? "http://127.0.0.1:3003" : "https://internmatch-server-bj4z-7b0rtm9hx-team-7-baf1.vercel.app")).replace(/\/+$/, "");
+  const apiBase = (window.IM_API_BASE || (local ? "http://127.0.0.1:3003" : "https://internmatch-server-bj4z.vercel.app")).replace(/\/+$/, "");
   const tokenKey = "im_assessment_observer_token";
   const title = document.getElementById("observer-title");
   const description = document.getElementById("observer-description");

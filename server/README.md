@@ -31,6 +31,9 @@ The API key must be supplied by you. Keep `.env` private; it is excluded by `.gi
 | `MONGODB_URI` | Optional MongoDB Atlas or MongoDB connection string. Set this to make MongoDB the primary portal store. |
 | `MONGODB_DB` | Database name (default: the database name in the connection string) |
 | `MONGODB_MAX_POOL_SIZE` | Maximum MongoDB connection pool size per server instance (default: 20) |
+| `SUPABASE_URL` | Supabase project URL used by the Express API for durable portal storage |
+| `SUPABASE_SECRET_KEY` | Server-only Supabase secret key; never expose it in browser code or public environment variables |
+| `SUPABASE_REQUIRED` | Set to `true` in production to stop startup if Supabase is not configured |
 
 The backend grounds internship answers in the local sample catalogue and rate-limits chat requests to 20 per five minutes per IP. Sign-in, registration, and reset requests have both per-account limits and higher per-IP limits so students sharing a campus network are less likely to block one another. Password hashing is asynchronous. With MongoDB enabled, portal records and hashed login sessions are stored in shared MongoDB collections; API writes wait for MongoDB persistence before returning success. On the first MongoDB startup, existing `server/data/portal-data.json` records are imported if MongoDB has not already been initialized. After that, MongoDB is authoritative. Without `MONGODB_URI`, the local SQLite/JSON fallback remains available. The API adds security headers, disables response caching for API data, limits interview signaling payloads, and returns JSON errors for API failures. MongoDB is a stronger shared storage foundation, but does not guarantee a 1,000-user capacity by itself; load-test the deployed API and size the host/database for expected traffic. Sample listings are fictional.
 
@@ -40,6 +43,14 @@ The backend grounds internship answers in the local sample catalogue and rate-li
 2. Copy `server/.env.example` to `server/.env` and replace the `MONGODB_URI` placeholders with the Atlas connection string. Keep the URI out of Git, frontend files, and chat messages.
 3. Run `npm install` from the `server` folder so the MongoDB Node driver is installed, then start with `npm start`.
 4. Open `/api/health`; it should report `"storage":"mongodb"` and `"sessionStorage":"mongodb"`.
+
+## Use Supabase Postgres
+
+The API keeps its existing Express routes, password hashing, and bearer-token sessions. With `SUPABASE_URL` and `SUPABASE_SECRET_KEY` set, portal collections and hashed sessions are stored in Supabase Postgres. The secret key is used only by the API server; browser code must use only publishable keys. The `portal_records`, `portal_sessions`, and `portal_meta` tables have RLS enabled and no browser-role grants. A server-only Postgres function applies collection changes with stale-write checks.
+
+The first configured run imports `server/data/portal-data.json` if it is present and the Supabase `portal_initialized` marker has not been set. After that, Supabase is authoritative. Keep a backup of local data before switching storage. Users and password hashes remain under the existing Express authentication system; this setup does not migrate accounts to Supabase Auth. Use the Supabase dashboard to copy a server-only `sb_secret_...` key into the Vercel API project's encrypted `SUPABASE_SECRET_KEY` environment variable. Also set `SUPABASE_URL`, `SUPABASE_REQUIRED=true`, `OPENAI_API_KEY`, `ADMIN_PASSWORD`, and the exact production frontend URL in `ALLOWED_ORIGIN`, then redeploy the API.
+
+For Vercel, use the existing `internmatch-server-bj4z` project with the repository's `server/` root directory. Do not set `SUPABASE_SECRET_KEY` on the frontend project or add it to a `NEXT_PUBLIC_`/`VITE_` variable.
 
 For Vercel or another hosted deployment, add `MONGODB_URI`, `MONGODB_DB`, `ALLOWED_ORIGIN` (the exact public frontend origin, such as `https://your-site.vercel.app`), and the existing AI/admin secrets in the API project's server environment settings, then redeploy the API. Keep the API deployment publicly reachable for browser requests and allow only its expected origins. Do not copy the local `.env` file to the frontend project.
 
