@@ -151,8 +151,10 @@ document.addEventListener("DOMContentLoaded", () => {
             } else serverError = new Error(data.error || "Could not sync this student account to the server.");
           }
         } else serverError = new Error(data.error || "Student sign-in failed.");
-      } catch (_) {
-        serverError = null;
+      } catch (error) {
+        // Keep the API failure so a missing browser-local account does not
+        // misleadingly look like the user's account is gone from the server.
+        serverError = error;
       }
       if (serverUser) {
         Store.cacheAuthenticatedUser({ name: serverUser.name, email, password, college: serverUser.profile?.college || "", role: "student" });
@@ -163,10 +165,11 @@ document.addEventListener("DOMContentLoaded", () => {
         goToNext();
         return;
       }
-      if (serverError) { App.toast(serverError.message, "error"); return; }
+      const apiUnavailable = serverError instanceof TypeError || serverError?.message === "Failed to fetch";
+      if (serverError && !apiUnavailable) { App.toast(serverError.message, "error"); return; }
       const result = Store.loginUser(email, password);
       if (!result.ok) {
-        App.toast(result.error || "The server is unavailable. Start the InternMatch server and try again.", "error");
+        App.toast(serverError ? loginError(serverError) : (result.error || "The server is unavailable. Start the InternMatch server and try again."), "error");
         return;
       }
       App.toast("Signed in in this browser only. Start the server to sync your account.", "warning");
