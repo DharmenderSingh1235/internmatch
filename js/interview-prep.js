@@ -52,7 +52,9 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderCategoryGrid() {
     // Keep admin-created areas visible even when their title matches a built-in
     // category (for example, an admin-authored Python question set).
-    const extra = customAreas.filter((area) => area.active && area.title && Array.isArray(area.questions) && area.questions.length);
+    // The API only returns published (active) sets and intentionally omits the
+    // active flag, so validate the content rather than filtering on that field.
+    const extra = customAreas.filter((area) => area.title && Array.isArray(area.questions) && area.questions.length);
     categoryGrid.innerHTML = categories.map((category) => categoryCard(category)).join("") + extra.map((area) => categoryCard(area.title, false, area)).join("") + categoryCard("HR / Behavioral", true);
   }
   renderCategoryGrid();
