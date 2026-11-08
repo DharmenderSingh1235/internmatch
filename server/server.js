@@ -1919,15 +1919,20 @@ async function startServer() {
   process.exitCode = 1;
   });
 }
-startServer().catch((error) => {
-  console.error("API startup failed:", error.message);
-  process.exitCode = 1;
-  portalData.close().catch(() => {});
-});
-for (const signal of ["SIGINT", "SIGTERM"]) {
-  process.once(signal, () => {
-    if (!server) { portalData.close().finally(() => process.exit(0)); return; }
-    server.close(() => portalData.close().finally(() => process.exit(0)));
-    setTimeout(() => process.exit(1), 10_000).unref();
+if (process.env.VERCEL) {
+  // Vercel invokes the exported Express app as a serverless function.
+  module.exports = app;
+} else {
+  startServer().catch((error) => {
+    console.error("API startup failed:", error.message);
+    process.exitCode = 1;
+    portalData.close().catch(() => {});
   });
+  for (const signal of ["SIGINT", "SIGTERM"]) {
+    process.once(signal, () => {
+      if (!server) { portalData.close().finally(() => process.exit(0)); return; }
+      server.close(() => portalData.close().finally(() => process.exit(0)));
+      setTimeout(() => process.exit(1), 10_000).unref();
+    });
+  }
 }
