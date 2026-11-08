@@ -112,7 +112,11 @@ dialog::backdrop { background: rgba(13, 24, 44, .48); backdrop-filter: blur(3px)
 .sidebar-foot { border-color: rgba(255,255,255,.14); }
 
 .auth-shell__form > .auth-card { border-radius: 20px; box-shadow: var(--shadow-float); }
-.auth-shell__art { border-radius: 22px; }
+.auth-shell__art {
+  border-radius: 22px;
+  background: linear-gradient(145deg, #1b2e52, #101b34);
+  color: #fff;
+}
 .hero h1 { letter-spacing: -.04em; }
 .catalogue-toolbar, .browse-toolbar { border-color: var(--color-border); border-radius: 15px; }
 
