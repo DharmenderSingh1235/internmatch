@@ -66,6 +66,9 @@ app.use("/api", asyncRoute(async (req, res, next) => {
   // Supabase is hydrated once when this serverless instance starts. Reloading
   // every collection before every request serialized all traffic behind one
   // slow PostgREST call and made assessment requests exceed the browser timeout.
+  // The career chatbot is catalogue-only and does not need to wait for MongoDB
+  // initialization on a cold serverless instance.
+  if (req.path === "/chat") return next();
   await portalData.ready;
   next();
 }));

@@ -381,8 +381,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (aiAvailable) {
       let streamedBubble;
       try {
-        streamedBubble = addBubble("", "ai");
+        streamedBubble = addBubble("Thinking…", "ai");
         const aiReply = await askAiBackend(text, (chunk) => {
+          if (streamedBubble.textContent === "Thinking…") streamedBubble.textContent = "";
           streamedBubble.textContent += chunk;
           windowEl.scrollTop = windowEl.scrollHeight;
         });
