@@ -4,7 +4,7 @@ const path = require("path");
 const crypto = require("crypto");
 const express = require("express");
 const cors = require("cors");
-const { PDFParse } = require("pdf-parse");
+const pdfParse = require("pdf-parse");
 const mammoth = require("mammoth");
 
 const INTERNSHIP_DATA = require(path.join(__dirname, "..", "data", "internships.js"));
@@ -685,8 +685,7 @@ app.post("/api/admin/practice-areas/generate-questions", adminOnly, asyncRoute(a
   try {
     if (extension === "pdf") {
       if (buffer.subarray(0, 5).toString("ascii") !== "%PDF-") return res.status(400).json({ error: "This file does not appear to be a valid PDF." });
-      const parser = new PDFParse({ data: buffer });
-      try { sourceText = (await parser.getText()).text || ""; } finally { await parser.destroy(); }
+      sourceText = (await pdfParse(buffer)).text || "";
     } else if (extension === "docx") {
       if (buffer.subarray(0, 2).toString("ascii") !== "PK") return res.status(400).json({ error: "This file does not appear to be a valid DOCX document." });
       sourceText = (await mammoth.extractRawText({ buffer })).value || "";
@@ -1355,8 +1354,7 @@ app.post("/api/company/assessments/generate-questions", companyOnly, async (req,
   try {
     if (extension === "pdf") {
       if (buffer.subarray(0, 5).toString("ascii") !== "%PDF-") return res.status(400).json({ error: "This file does not appear to be a valid PDF." });
-      const parser = new PDFParse({ data: buffer });
-      try { sourceText = (await parser.getText()).text || ""; } finally { await parser.destroy(); }
+      sourceText = (await pdfParse(buffer)).text || "";
     } else if (extension === "docx") {
       if (buffer.subarray(0, 2).toString("ascii") !== "PK") return res.status(400).json({ error: "This file does not appear to be a valid DOCX document." });
       sourceText = (await mammoth.extractRawText({ buffer })).value || "";
