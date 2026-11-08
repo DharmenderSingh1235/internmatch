@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 3003;
 const PROVIDER = (process.env.AI_PROVIDER || "openai").toLowerCase();
 const PROVIDER_CONFIG = {
   openai: { key: process.env.OPENAI_API_KEY, model: process.env.OPENAI_MODEL || "gpt-4o-mini" },
-  gemini: { key: process.env.GEMINI_API_KEY, model: process.env.GEMINI_MODEL || "gemini-3.8-flash" },
+  gemini: { key: process.env.GEMINI_API_KEY, model: process.env.GEMINI_MODEL || "gemini-3.6-flash" },
   anthropic: { key: process.env.ANTHROPIC_API_KEY, model: process.env.ANTHROPIC_MODEL || "claude-3-5-haiku-latest" }
 };
 const selected = PROVIDER_CONFIG[PROVIDER];
