@@ -50,8 +50,9 @@ document.addEventListener("DOMContentLoaded", () => {
     </button>`;
   }
   function renderCategoryGrid() {
-    const builtInNames = new Set(categories.map((category) => category.toLowerCase()));
-    const extra = customAreas.filter((area) => area.active && area.title && Array.isArray(area.questions) && area.questions.length && !builtInNames.has(area.title.toLowerCase()));
+    // Keep admin-created areas visible even when their title matches a built-in
+    // category (for example, an admin-authored Python question set).
+    const extra = customAreas.filter((area) => area.active && area.title && Array.isArray(area.questions) && area.questions.length);
     categoryGrid.innerHTML = categories.map((category) => categoryCard(category)).join("") + extra.map((area) => categoryCard(area.title, false, area)).join("") + categoryCard("HR / Behavioral", true);
   }
   renderCategoryGrid();
