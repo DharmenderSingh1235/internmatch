@@ -254,7 +254,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const table = document.getElementById("admin-recruitment-tbody");
     if (!table) return;
     const rows = applications.slice().sort((a, b) => new Date(b.application.appliedAt || 0) - new Date(a.application.appliedAt || 0));
-    table.innerHTML = rows.length ? rows.map(({ student, application }) => `<tr><td>${App.escapeHtml(student.name || student.email)}</td><td>${App.escapeHtml(application.internshipTitle || application.internshipId)}</td><td>${App.escapeHtml(application.companyName || "—")}</td><td>${App.escapeHtml(application.status || "Applied")}</td><td>${App.escapeHtml(application.appliedAt ? App.formatDate(application.appliedAt) : "—")}</td></tr>`).join("") : '<tr><td colspan="5">No applications recorded yet.</td></tr>';
+    table.innerHTML = rows.length ? rows.map(({ student, application }) => {
+      const history = Array.isArray(application.history) ? application.history : [];
+      const historyText = history.map((entry) => `${App.escapeHtml(entry.status || "Applied")} · ${App.escapeHtml(App.formatDate(entry.at || entry.on || entry.date))}`).join(" → ");
+      return `<tr><td>${App.escapeHtml(student.name || student.email)}</td><td>${App.escapeHtml(application.internshipTitle || application.internshipId)}</td><td>${App.escapeHtml(application.companyName || "—")}</td><td><strong>${App.escapeHtml(application.status || "Applied")}</strong>${historyText ? `<small class="admin-cell-tags">${historyText}</small>` : ""}</td><td>${App.escapeHtml(application.appliedAt ? App.formatDate(application.appliedAt) : "—")}</td></tr>`;
+    }).join("") : '<tr><td colspan="5">No applications recorded yet.</td></tr>';
   }
   async function renderAdminServerStudents() {
     const body = document.getElementById("admin-server-student-tbody");
