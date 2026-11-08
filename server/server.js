@@ -170,6 +170,51 @@ async function callGemini(message, history) {
   return data.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("").trim();
 }
 
+async function streamGemini(message, history, res) {
+  const contents = [...normalizeHistory(history).map((item) => ({ role: item.role === "assistant" ? "model" : "user", parts: [{ text: item.content }] })),
+    { role: "user", parts: [{ text: message }] }];
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(selected.model)}:streamGenerateContent?alt=sse&key=${encodeURIComponent(selected.key)}`;
+  const response = await fetch(url, { method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ systemInstruction: { parts: [{ text: systemPrompt() }] }, contents,
+      generationConfig: { maxOutputTokens: 240, thinkingConfig: { thinkingLevel: "LOW" } } }) });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(`Gemini API error ${response.status}: ${data.error?.message || "request failed"}`);
+  }
+  if (!response.body) throw new Error("Gemini streaming response was empty.");
+  res.status(200).set({ "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache, no-transform", Connection: "keep-alive", "X-Accel-Buffering": "no" });
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let fullReply = "";
+  const sendEvents = (events) => {
+    for (const event of events) {
+      const line = event.split(/\r?\n/).find((part) => part.startsWith("data:"));
+      if (!line) continue;
+      try {
+        const chunk = JSON.parse(line.slice(5).trim());
+        const text = (chunk.candidates?.[0]?.content?.parts || []).map((part) => part.text || "").join("");
+        if (text) {
+          fullReply += text;
+          res.write(`data: ${JSON.stringify({ text })}\n\n`);
+        }
+      } catch (_) { /* Ignore non-JSON keepalive frames. */ }
+    }
+  };
+  while (true) {
+    const { value, done } = await reader.read();
+    buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+    const events = buffer.split(/\r?\n\r?\n/);
+    buffer = events.pop() || "";
+    sendEvents(events);
+    if (done) break;
+  }
+  if (buffer.trim()) sendEvents([buffer]);
+  res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+  res.end();
+  return fullReply.trim();
+}
+
 async function callAnthropic(message, history) {
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST", headers: { "content-type": "application/json", "x-api-key": selected.key, "anthropic-version": "2023-06-01" },
@@ -1869,11 +1914,18 @@ app.post("/api/chat", async (req, res) => {
   if (typeof message !== "string" || !message.trim()) return res.status(400).json({ error: "Missing 'message' string in request body." });
   if (message.length > 2000) return res.status(400).json({ error: "Message too long." });
   try {
+    if (PROVIDER === "gemini") {
+      await streamGemini(message.trim(), history, res);
+      return;
+    }
     const reply = await PROVIDER_CALLS[PROVIDER](message.trim(), history);
     res.json({ reply: reply || "I couldn't generate a reply for that — try rephrasing." });
   } catch (error) {
     console.error("[/api/chat]", error.message);
-    res.status(502).json({ error: "The AI provider could not answer. Check the server configuration and try again." });
+    if (res.headersSent) {
+      res.write(`data: ${JSON.stringify({ error: "The AI provider could not finish the reply." })}\n\n`);
+      res.end();
+    } else res.status(502).json({ error: "The AI provider could not answer. Check the server configuration and try again." });
   }
 });
 

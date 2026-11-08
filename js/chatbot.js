@@ -62,7 +62,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  async function askAiBackend(text) {
+  async function askAiBackend(text, onChunk) {
     const res = await fetch(`${AI_BACKEND_URL}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -71,6 +71,34 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || `Backend returned ${res.status}`);
+    }
+    if (res.headers.get("content-type")?.includes("text/event-stream") && res.body?.getReader) {
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let reply = "";
+      const consume = (events) => {
+        for (const event of events) {
+          const line = event.split(/\r?\n/).find((part) => part.startsWith("data:"));
+          if (!line) continue;
+          const payload = JSON.parse(line.slice(5).trim());
+          if (payload.error) throw new Error(payload.error);
+          if (payload.text) {
+            reply += payload.text;
+            onChunk?.(payload.text);
+          }
+        }
+      };
+      while (true) {
+        const { value, done } = await reader.read();
+        buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+        const events = buffer.split(/\r?\n\r?\n/);
+        buffer = events.pop() || "";
+        consume(events);
+        if (done) break;
+      }
+      if (buffer.trim()) consume([buffer]);
+      return reply.trim();
     }
     const data = await res.json();
     return data.reply;
@@ -351,13 +379,19 @@ document.addEventListener("DOMContentLoaded", () => {
   async function handleUserMessage(text) {
     addBubble(text, "user");
     if (aiAvailable) {
+      let streamedBubble;
       try {
-        const aiReply = await askAiBackend(text);
+        streamedBubble = addBubble("", "ai");
+        const aiReply = await askAiBackend(text, (chunk) => {
+          streamedBubble.textContent += chunk;
+          windowEl.scrollTop = windowEl.scrollHeight;
+        });
         conversationHistory.push({ role: "user", text });
         conversationHistory.push({ role: "assistant", text: aiReply });
-        addBubble(aiReply, "ai");
+        if (!aiReply && streamedBubble) streamedBubble.textContent = "I couldn't generate a reply for that — try rephrasing.";
         return;
       } catch (e) {
+        streamedBubble?.remove();
         aiAvailable = false;
         setStatus(false, "Lost the AI backend mid-conversation — switched to the built-in rule-based assistant.");
       }
