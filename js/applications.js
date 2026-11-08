@@ -23,6 +23,10 @@ document.addEventListener("DOMContentLoaded", () => {
     Rejected: "status-rejected",
     Withdrawn: "status-withdrawn"
   };
+  const canonicalStatus = (value) => {
+    const known = ["Applied", "Under Review", "Shortlisted", "Assessment", "Interview", "Offered", "Selected", "Rejected", "Withdrawn"];
+    return known.find((status) => status.toLowerCase() === String(value || "Applied").trim().toLowerCase()) || "Applied";
+  };
 
   const openNotes = new Set();
   let scheduledInterviews = [];
@@ -49,11 +53,12 @@ document.addEventListener("DOMContentLoaded", () => {
         return {
           ...local,
           ...item,
+          status: canonicalStatus(item.status || local?.status),
           appliedOn: item.appliedAt || local?.appliedOn,
           internship
         };
       }),
-      ...localApplications.filter((item) => !serverInternshipIds.has(item.internshipId)).map((item) => ({ ...item, internship: internshipsById[item.internshipId] }))
+      ...localApplications.filter((item) => !serverInternshipIds.has(item.internshipId)).map((item) => ({ ...item, status: canonicalStatus(item.status), internship: internshipsById[item.internshipId] }))
     ]
       .filter((a) => a.internship);
 
@@ -61,7 +66,7 @@ document.addEventListener("DOMContentLoaded", () => {
       apps = apps.filter((a) => `${a.internship.title} ${a.internship.org}`.toLowerCase().includes(q));
     }
     if (statusQ) {
-      apps = apps.filter((a) => a.status === statusQ);
+      apps = apps.filter((a) => canonicalStatus(a.status) === canonicalStatus(statusQ));
     }
     apps.sort((a, b) => new Date(b.appliedOn) - new Date(a.appliedOn));
 
@@ -71,6 +76,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const isOpen = openNotes.has(a.internship.id);
       const hasNote = a.notes && a.notes.trim();
       const scheduledInterview = scheduledInterviews.find((interview) => interview.internshipId === a.internship.id);
+      const history = Array.isArray(a.history) ? a.history : [];
+      const statusHistory = history.length ? `<details class="app-row__status-history"><summary>Status history</summary><ol>${history.map((entry) => `<li><strong>${App.escapeHtml(canonicalStatus(entry.status))}</strong><span>${App.escapeHtml(App.formatDate(entry.at || entry.on || entry.date))}</span></li>`).join("")}</ol></details>` : "";
       return `
       <div class="app-row">
         <div class="app-row__main">
@@ -78,6 +85,8 @@ document.addEventListener("DOMContentLoaded", () => {
             <h3 class="app-row__title">${App.escapeHtml(a.internship.title)}</h3>
             <p class="app-row__org">${App.escapeHtml(a.internship.org)} &middot; ${App.escapeHtml(a.internship.location)}</p>
             <p class="hint">Applied ${App.formatDate(a.appliedOn)}</p>
+            ${a.status === "Rejected" ? `<p class="app-row__status-note" role="status">This application was rejected by the company.</p>` : ""}
+            ${statusHistory}
           </div>
           <div class="app-row__right">
             <span class="status-badge ${STATUS_CLASS[a.status] || ""}">${App.escapeHtml(a.status)}</span>
