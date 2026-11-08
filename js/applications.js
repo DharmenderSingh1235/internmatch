@@ -29,7 +29,6 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   const openNotes = new Set();
-  let scheduledInterviews = [];
   let serverApplications = [];
 
   function render() {
@@ -75,7 +74,6 @@ document.addEventListener("DOMContentLoaded", () => {
     list.innerHTML = apps.length ? apps.map((a) => {
       const isOpen = openNotes.has(a.internship.id);
       const hasNote = a.notes && a.notes.trim();
-      const scheduledInterview = scheduledInterviews.find((interview) => interview.internshipId === a.internship.id);
       const history = Array.isArray(a.history) ? a.history : [];
       const statusHistory = history.length ? `<details class="app-row__status-history"><summary>Status history</summary><ol>${history.map((entry) => `<li><strong>${App.escapeHtml(canonicalStatus(entry.status))}</strong><span>${App.escapeHtml(App.formatDate(entry.at || entry.on || entry.date))}</span></li>`).join("")}</ol></details>` : "";
       return `
@@ -91,7 +89,6 @@ document.addEventListener("DOMContentLoaded", () => {
           <div class="app-row__right">
             <span class="status-badge ${STATUS_CLASS[a.status] || ""}">${App.escapeHtml(a.status)}</span>
             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-              ${scheduledInterview ? `<button class="btn btn--primary btn--sm" data-join-call="${App.escapeHtml(scheduledInterview.id)}" data-role-title="${App.escapeHtml(a.internship.title)}" data-org="${App.escapeHtml(a.internship.org)}">📹 Join Video Call</button>` : ""}
               <a class="btn btn--ghost btn--sm" href="internship-details.html?id=${a.internship.id}">View</a>
               <button class="btn btn--ghost btn--sm" data-toggle-notes="${a.internship.id}">${isOpen ? "Hide notes" : hasNote ? "Edit notes ✓" : "Add notes"}</button>
               ${a.status !== "Withdrawn" ? `<button class="btn btn--ghost btn--sm" data-withdraw="${a.internship.id}">Withdraw</button>` : ""}
@@ -107,26 +104,6 @@ document.addEventListener("DOMContentLoaded", () => {
       </div>
     `;
     }).join("") : `<p class="empty-state">No applications match here yet. <a href="internships.html">Find an internship to apply to</a>.</p>`;
-
-    list.querySelectorAll("[data-join-call]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const id = btn.getAttribute("data-join-call");
-        const roleTitle = btn.getAttribute("data-role-title");
-        const org = btn.getAttribute("data-org");
-        const profile = Store.getProfile(user.email);
-        InterviewRoom.start({
-          role: "student",
-          interviewId: id,
-          candidateName: profile?.fullName || user.name || "Student",
-          companyName: org || "Recruiter",
-          roleTitle: roleTitle || "Internship Role",
-          apiToken: sessionStorage.getItem("im_student_api_token"),
-          onEnd: () => {
-            App.toast("Left interview room.");
-          }
-        });
-      });
-    });
 
     list.querySelectorAll("[data-withdraw]").forEach((btn) => {
       btn.addEventListener("click", async () => {
@@ -184,10 +161,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const token = sessionStorage.getItem("im_student_api_token");
   if (token) {
     let loadingServerApplications = false;
-    fetch(`${window.IM_API_BASE}/api/student/interviews`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((response) => response.ok ? response.json() : null)
-      .then((data) => { scheduledInterviews = data?.items || []; render(); })
-      .catch(() => {});
     const loadApplications = async () => {
       if (loadingServerApplications) return;
       loadingServerApplications = true;
