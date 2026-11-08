@@ -34,12 +34,25 @@ document.addEventListener("DOMContentLoaded", () => {
     const localApplications = Store.getApplications(user.email);
     const serverInternshipIds = new Set(serverApplications.map((item) => item.internshipId));
     let apps = [
-      ...serverApplications.map((item) => ({
-        ...localApplications.find((local) => local.internshipId === item.internshipId),
-        ...item,
-        appliedOn: item.appliedAt || localApplications.find((local) => local.internshipId === item.internshipId)?.appliedOn,
-        internship: internshipsById[item.internshipId]
-      })),
+      ...serverApplications.map((item) => {
+        const local = localApplications.find((application) => application.internshipId === item.internshipId);
+        const catalogueInternship = internshipsById[item.internshipId];
+        // Company-posted internships live in the API database, not the static
+        // catalogue. Keep their applications visible with the saved snapshot.
+        const internship = catalogueInternship || {
+          id: item.internshipId,
+          title: item.internshipTitle || item.title || "Internship",
+          org: item.companyName || item.org || "Company",
+          location: item.location || "Location not specified",
+          deadline: item.deadline || ""
+        };
+        return {
+          ...local,
+          ...item,
+          appliedOn: item.appliedAt || local?.appliedOn,
+          internship
+        };
+      }),
       ...localApplications.filter((item) => !serverInternshipIds.has(item.internshipId)).map((item) => ({ ...item, internship: internshipsById[item.internshipId] }))
     ]
       .filter((a) => a.internship);
