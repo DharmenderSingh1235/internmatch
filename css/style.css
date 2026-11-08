@@ -626,7 +626,7 @@ input:focus, select:focus, textarea:focus {
   left: 50%;
   transform: translate(-50%, 20px);
   background: var(--color-ink);
-  color: #fff;
+  color: var(--color-surface);
   padding: 12px 20px;
   border-radius: var(--radius-sm);
   font-size: 0.9rem;
@@ -637,7 +637,8 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 8px 24px rgba(15,27,52,0.25);
 }
 .im-toast--show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
-.im-toast--error { background: var(--color-danger); }
+.im-toast--error { background: var(--color-danger); color: #fff; }
+:root[data-theme="dark"] .im-toast--error { background: var(--color-danger-tint); color: var(--color-danger); }
 [hidden] { display:none!important; }
 .auth-text-button { padding:0; border:0; color:var(--color-primary); background:transparent; text-decoration:underline; cursor:pointer; font:inherit; }
 .password-reset-dialog { width:min(460px,calc(100vw - 28px)); padding:22px; border:1px solid var(--color-border); border-radius:18px; color:var(--color-text); background:var(--color-surface); box-shadow:0 22px 70px rgba(0,0,0,.28); }
