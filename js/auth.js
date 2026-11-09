@@ -38,6 +38,12 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("login-description").textContent = isAdmin ? "Sign in to open the administration dashboard." : isCompany ? "Sign in to manage company roles and applicants." : "Sign in to continue to your student dashboard.";
     document.getElementById("login-welcome-heading").textContent = isAdmin ? "Administration." : isCompany ? "Recruit your next team." : "Welcome back.";
     document.getElementById("login-welcome-copy").textContent = isAdmin ? "Manage verified internships and platform activity." : isCompany ? "Post opportunities, then review students who apply." : "Log in to see your latest recommendations, saved internships, and application status.";
+    const loginFeatures = isAdmin
+      ? ["Review company and student accounts", "Manage internship listings", "Keep the platform running smoothly"]
+      : isCompany
+        ? ["Post roles for students", "Review and shortlist applicants", "Manage your hiring activity"]
+        : ["Find opportunities that fit", "Keep your applications moving", "Prepare for what comes next"];
+    loginFeatures.forEach((feature, index) => { document.getElementById(`login-feature-${["one", "two", "three"][index]}`).textContent = feature; });
     document.getElementById("login-welcome-note").textContent = isAdmin ? "Admin access uses the password configured by the site owner." : "Sign in to continue to your InternMatch account.";
     document.getElementById("forgot-password-open").hidden = isAdmin;
     document.getElementById("admin-password-help").hidden = !isAdmin;
