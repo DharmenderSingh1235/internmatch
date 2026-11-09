@@ -24,10 +24,9 @@
   }
 
   function makePreviewDocument(styleHtml, contentHtml) {
-    const cleanedStyles = safeCss(styleHtml);
     return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; font-src data:; style-src 'unsafe-inline';"><style>
       *{box-sizing:border-box}html,body{min-height:100%;margin:0}body{padding:18px;background:#e8edf4;color:#202b3e;font:14px/1.5 Arial,sans-serif}.docx-preview-wrapper{display:flex;flex-direction:column;align-items:center;gap:18px}.docx-preview{max-width:100%;box-shadow:0 5px 22px #15294a22}.docx-preview table{max-width:100%}@media(max-width:720px){body{padding:9px}.docx-preview{transform-origin:top center}}
-    </style>${cleanedStyles}</head><body>${contentHtml}</body></html>`;
+    </style>${styleHtml}</head><body>${contentHtml}</body></html>`;
   }
 
   async function show(blob, frame) {
