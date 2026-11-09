@@ -1,5 +1,5 @@
 /*
- * Resume Intelligence — PDF and DOCX analysis runs in this browser. The resume is sent to
+ * Resume Intelligence — PDF analysis runs in this browser. The resume is sent to
  * the InternMatch server only after the student explicitly allows admin review.
  * Skills and opportunity scores are transparent heuristics; writing patterns are not an authorship detector.
  */
@@ -43,12 +43,10 @@ document.addEventListener("DOMContentLoaded", () => {
   let foundSkills = [];
   let extractedResume = null;
   let localDraftSaved = false;
-  const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
   const MAX_RESUME_BYTES = 7.5 * 1024 * 1024;
   const resumeFormat = (file) => {
     const name = String(file?.name || "").toLowerCase();
     if (name.endsWith(".pdf") || file?.type === "application/pdf") return "pdf";
-    if (name.endsWith(".docx") || file?.type === DOCX_MIME) return "docx";
     return "";
   };
 
@@ -70,8 +68,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   async function uploadCompanyCv(file) {
     const format = resumeFormat(file);
-    if (!format || file.size > MAX_RESUME_BYTES) throw new Error("Choose a PDF or Word .docx file smaller than 7.5 MB.");
-    const mimeType = format === "pdf" ? "application/pdf" : DOCX_MIME;
+    if (!format || file.size > MAX_RESUME_BYTES) throw new Error("Choose a PDF file smaller than 7.5 MB.");
+    const mimeType = "application/pdf";
     const token = studentToken();
     const base64 = await new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -197,7 +195,7 @@ document.addEventListener("DOMContentLoaded", () => {
           } else if (serverCvUploaded) {
             adminServerCvStatus.textContent = "Your uploaded CV is currently waiting for Admin review.";
           } else {
-            adminServerCvStatus.textContent = "Select a PDF or Word .docx file to upload and submit for Admin review.";
+            adminServerCvStatus.textContent = "Select a PDF file to upload and submit for Admin review.";
           }
           localStorage.setItem(consentKey, JSON.stringify({ profileVisible: companyProfileShare.checked, cvShared: companyCvShare.checked }));
           showSharingState();
@@ -253,6 +251,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   fileInput.addEventListener("change", () => {
     selectedFile = fileInput.files[0] || null;
+    if (selectedFile && !resumeFormat(selectedFile)) {
+      fileInput.value = "";
+      selectedFile = null;
+      errorEl.textContent = "Only PDF resumes are supported. Choose a .pdf file.";
+      dropzoneTitle.textContent = "Drop your resume here or browse files";
+      uploadDropzone.classList.remove("has-file");
+      filenameEl.textContent = "No file selected";
+      analyzeBtn.disabled = true;
+      return;
+    }
     extractedResume = null;
     foundSkills = [];
     localDraftSaved = false;
@@ -381,7 +389,7 @@ document.addEventListener("DOMContentLoaded", () => {
         showSharingState();
         adminServerCvStatus.textContent = "Your CV was uploaded for admin review. Company access stays off until approval.";
       } else if (enabled && !serverCvUploaded) {
-        throw new Error("Select a PDF or Word .docx file so it can be uploaded for admin review.");
+        throw new Error("Select a PDF file so it can be uploaded for admin review.");
       } else {
         adminServerCvStatus.textContent = enabled
           ? "Admin review is allowed for your uploaded CV."
@@ -404,7 +412,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!user || !window.ResumeVault) return;
     if (adminShareCheckbox.checked) {
       if (!selectedFile) {
-        adminShareStatus.textContent = "Choose a PDF or Word .docx file to save a local copy for admin access.";
+        adminShareStatus.textContent = "Choose a PDF file to save a local copy for admin access.";
         return;
       }
       try { await saveSharedCV(selectedFile); }
@@ -419,11 +427,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function extractText(file) {
     const format = resumeFormat(file);
-    if (format === "docx") {
-      if (!window.mammoth?.extractRawText) throw new Error("DOCX_READER_UNAVAILABLE");
-      const result = await window.mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
-      return { text: result.value, pageCount: null, format: "Word document" };
-    }
+    if (format !== "pdf") throw new Error("UNSUPPORTED_FILE");
     if (!window.pdfjsLib) throw new Error("PDF_READER_UNAVAILABLE");
     const buffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
@@ -588,7 +592,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderResults() {
     const { text, pageCount, format, sections, education, projects, experience, styleSignals, completeness } = extractedResume;
     resultsPanel.style.display = "";
-    document.getElementById("resume-review-meta").textContent = `${format === "PDF" ? `${pageCount} PDF page${pageCount === 1 ? "" : "s"}` : "Word document text"} analyzed locally. ${localDraftSaved ? "Resume and analysis are saved in this browser only." : "This result was not saved and is available only for this visit."}${adminShareCheckbox.checked ? " Admin browser access is separately enabled." : ""}`;
+    document.getElementById("resume-review-meta").textContent = `${pageCount} PDF page${pageCount === 1 ? "" : "s"} analyzed locally. ${localDraftSaved ? "Resume and analysis are saved in this browser only." : "This result was not saved and is available only for this visit."}${adminShareCheckbox.checked ? " Admin browser access is separately enabled." : ""}`;
     const targetInternship = getTargetInternship();
     const atsResult = ATSScore.score(text, pageCount, targetInternship);
     atsResult.customRole = !!targetInternship.isCustomRole;
@@ -721,12 +725,11 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (error) {
       const messages = {
         PDF_READER_UNAVAILABLE: "PDF reader could not load. Check your connection and reload this page.",
-        DOCX_READER_UNAVAILABLE: "Word reader could not load. Check your connection and reload this page.",
-        UNSUPPORTED_FILE: "Choose a PDF or Word .docx file to analyze.",
+        UNSUPPORTED_FILE: "Choose a PDF file to analyze.",
         FILE_TOO_LARGE: "This resume is over 7.5 MB. Choose a smaller file and try again.",
-        NO_TEXT: "No readable text was found. The PDF may be scanned or the Word document may be empty; try a text-based file."
+        NO_TEXT: "No readable text was found. The PDF may be scanned or image-only; try a text-based PDF."
       };
-      errorEl.textContent = messages[error.message] || "Couldn't read that resume. Make sure it is a valid, text-based PDF or DOCX file and try again.";
+      errorEl.textContent = messages[error.message] || "Couldn't read that resume. Make sure it is a valid, text-based PDF and try again.";
     } finally {
       loadingEl.style.display = "none";
       analyzeBtn.disabled = !selectedFile;
@@ -738,6 +741,10 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const record = await ResumeVault.getDraft(user.email);
       if (!record?.file) return;
+      if (!resumeFormat(record.file)) {
+        localSaveStatus.textContent = "A previously saved Word resume is no longer supported. Choose a PDF to continue.";
+        return;
+      }
       selectedFile = record.file;
       localDraftSaved = true;
       dropzoneTitle.textContent = "Saved resume ready to analyze"; uploadDropzone.classList.add("has-file");

@@ -952,12 +952,10 @@ const handleUploadStudentCv = (req, res) => {
   const mimeType = String(req.body?.mimeType || "").toLowerCase();
   const data = String(req.body?.data || "");
   const isPdf = mimeType === "application/pdf" && /\.pdf$/i.test(fileName);
-  const isDocx = mimeType === DOCX_MIME && /\.docx$/i.test(fileName);
-  if ((!isPdf && !isDocx) || !/^[A-Za-z0-9+/]+={0,2}$/.test(data) || data.length > 10_500_000) return res.status(400).json({ error: "Upload a PDF or Word .docx file smaller than 7.5 MB." });
+  if (!isPdf || !/^[A-Za-z0-9+/]+={0,2}$/.test(data) || data.length > 10_500_000) return res.status(400).json({ error: "Upload a PDF file smaller than 7.5 MB." });
   const bytes = Buffer.from(data, "base64");
   const validPdf = isPdf && bytes.length >= 5 && bytes.subarray(0, 5).toString() === "%PDF-";
-  const validDocx = isDocx && bytes.length >= 4 && bytes.subarray(0, 4).toString("hex") === "504b0304" && bytes.includes(Buffer.from("[Content_Types].xml")) && bytes.includes(Buffer.from("word/document.xml"));
-  if (!validPdf && !validDocx) return res.status(400).json({ error: "The uploaded file is not a valid PDF or Word .docx document." });
+  if (!validPdf) return res.status(400).json({ error: "The uploaded file is not a valid PDF document." });
 
   // Submit uploaded CV for admin review first. Company sharing stays disabled until admin approves.
   const cvReview = { status: "Pending review", note: "", submittedAt: new Date().toISOString() };
