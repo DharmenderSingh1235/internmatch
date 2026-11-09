@@ -1,0 +1,178 @@
+/* Home page refresh, paired visually with the redesigned sign-in page. */
+.home-page {
+  overflow-x: hidden;
+  background:
+    radial-gradient(ellipse at 79% 14%, color-mix(in srgb, var(--color-primary) 10%, transparent), transparent 36%),
+    var(--color-bg);
+}
+
+.home-page .topbar {
+  background: color-mix(in srgb, var(--color-bg) 91%, transparent);
+  backdrop-filter: blur(16px);
+}
+
+.home-hero {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(54px, 8vw, 100px) 0 clamp(62px, 8vw, 104px);
+  background:
+    radial-gradient(ellipse at 84% 40%, color-mix(in srgb, var(--color-primary) 11%, transparent), transparent 42%),
+    linear-gradient(180deg, color-mix(in srgb, var(--color-surface) 48%, var(--color-bg)), var(--color-bg));
+}
+
+.home-hero::before {
+  position: absolute;
+  top: -270px;
+  right: -160px;
+  width: 620px;
+  height: 620px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 12%, transparent);
+  border-radius: 50%;
+  box-shadow: 0 0 0 44px color-mix(in srgb, var(--color-primary) 3%, transparent), 0 0 0 94px color-mix(in srgb, var(--color-primary) 2%, transparent);
+  content: "";
+  pointer-events: none;
+}
+
+.home-hero .container {
+  position: relative;
+  z-index: 1;
+  width: min(1200px, calc(100% - 48px));
+  grid-template-columns: minmax(0, 1.05fr) minmax(390px, .8fr);
+  gap: clamp(38px, 7vw, 92px);
+}
+
+.home-hero__copy { max-width: 650px; }
+.home-page .hero__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 13px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 13%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary-tint) 72%, var(--color-surface));
+  color: var(--color-primary-dark);
+  font-size: .73rem;
+  font-weight: 800;
+  letter-spacing: .075em;
+  text-transform: uppercase;
+}
+
+.home-hero__eyebrow-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 14%, transparent);
+}
+
+.home-page .hero h1 {
+  max-width: 13ch;
+  margin: 2px 0 20px;
+  font-size: clamp(2.8rem, 5.2vw, 4.65rem);
+  letter-spacing: -.055em;
+  line-height: 1.02;
+}
+
+.home-page .hero h1 span {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--color-primary) 28%, transparent);
+  text-decoration-thickness: .09em;
+  text-underline-offset: .12em;
+}
+
+.home-page .hero__lede {
+  max-width: 54ch;
+  font-size: clamp(1.02rem, 1.35vw, 1.15rem);
+  line-height: 1.75;
+}
+
+.home-page .hero__actions { gap: 13px; margin-top: 28px; }
+.home-page .hero__actions .btn { min-height: 50px; border-radius: 12px; }
+.home-page .hero__actions .btn--primary { box-shadow: 0 9px 22px color-mix(in srgb, var(--color-primary) 23%, transparent); }
+.home-page .hero__actions .btn--ghost { border-color: var(--color-border); background: var(--color-surface); }
+.home-hero__trust { margin: 20px 0 0; color: var(--color-muted); font-size: .87rem; }
+
+.home-page .hero__panel.home-match-card {
+  position: relative;
+  padding: clamp(24px, 3vw, 34px);
+  overflow: hidden;
+  border: 1px solid #344f82;
+  border-radius: 24px;
+  background: linear-gradient(145deg, #1c3769 0%, #14264a 52%, #101c37 100%) !important;
+  color: #edf3ff !important;
+  box-shadow: 0 26px 60px rgba(15, 27, 52, .25);
+}
+
+.home-match-card::after {
+  position: absolute;
+  top: -90px;
+  right: -100px;
+  width: 250px;
+  height: 250px;
+  border: 1px solid rgba(205, 220, 255, .16);
+  border-radius: 50%;
+  box-shadow: 0 0 0 26px rgba(205, 220, 255, .035);
+  content: "";
+  pointer-events: none;
+}
+
+.home-match-card__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.home-match-card__eyebrow { color: #a8bef5; font-size: .68rem; font-weight: 800; letter-spacing: .14em; }
+.home-match-card__head h2 { margin: 5px 0 0; color: #fff; font-family: var(--font-body); font-size: 1.2rem; font-weight: 700; }
+.home-match-card__icon { display: grid; width: 40px; height: 40px; flex: 0 0 40px; place-items: center; border: 1px solid rgba(206, 221, 255, .2); border-radius: 13px; background: rgba(255,255,255,.07); color: #a9bdff; font-size: 1.1rem; }
+.home-match-stat { margin-top: 13px; }
+.home-page .home-match-card .hero__stat-row { padding: 0 0 7px; border: 0; color: #e1e9f8 !important; font-size: .88rem; }
+.home-page .home-match-card .hero__stat-row strong { color: #a9bdff !important; font-family: var(--font-body); font-size: .88rem; }
+.home-match-stat__track { display: block; height: 5px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.12); }
+.home-match-stat__track > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #7294f8, #afc1ff); }
+.home-match-card__note { margin: 22px 0 0; padding-top: 15px; border-top: 1px solid rgba(255,255,255,.14); color: #b8c7e1 !important; font-size: .82rem; }
+
+.home-page .section { padding: clamp(52px, 7vw, 82px) 0; }
+.home-page .section__head h2 { font-size: clamp(1.8rem, 3vw, 2.45rem); letter-spacing: -.035em; }
+.home-page .section__head p { font-size: 1rem; line-height: 1.65; }
+.home-page .steps-grid, .home-page .benefits-grid { gap: 18px; margin-top: 12px; }
+.home-page .step-card, .home-page .benefit-card {
+  min-height: 205px;
+  padding: 27px;
+  border-radius: 18px;
+  box-shadow: 0 10px 28px rgba(15,27,52,.045);
+}
+.home-page .step-card__index { display: inline-flex; align-items: center; justify-content: center; width: 39px; height: 39px; margin-bottom: 22px; border-radius: 12px; background: var(--color-primary-tint); font-family: var(--font-body); font-size: .85rem; font-weight: 800; }
+.home-page .step-card h3, .home-page .benefit-card h3 { margin-bottom: 9px; font-size: 1.14rem; }
+.home-page .step-card p, .home-page .benefit-card p { margin: 0; color: var(--color-muted); line-height: 1.65; }
+.home-page .benefit-card__icon { width: 44px; height: 44px; border-radius: 13px; font-size: 1.3rem; }
+.home-page .section--alt { border-block: 1px solid var(--color-border); background: color-mix(in srgb, var(--color-surface) 76%, var(--color-bg)); }
+.home-page .featured-grid { gap: 18px; }
+.home-page .int-card { min-height: 270px; padding: 23px; border-radius: 18px; }
+.home-page .int-card__footer { margin-top: auto; }
+.home-page .site-footer { margin-top: 0; }
+
+:root[data-theme="dark"] .home-page .home-hero {
+  background: radial-gradient(ellipse at 82% 24%, rgba(77,124,240,.12), transparent 43%), var(--color-bg);
+}
+:root[data-theme="dark"] .home-page .section--alt { background: color-mix(in srgb, var(--color-surface) 84%, var(--color-bg)); }
+:root[data-theme="dark"] .home-page .hero__actions .btn--ghost { color: var(--color-text); background: var(--color-surface); }
+:root[data-theme="dark"] .home-page .step-card, :root[data-theme="dark"] .home-page .benefit-card { box-shadow: 0 10px 28px rgba(0,0,0,.16); }
+
+@media (max-width: 900px) {
+  .home-hero { padding: 48px 0 62px; }
+  .home-hero .container { grid-template-columns: minmax(0,1fr); gap: 34px; }
+  .home-page .hero__panel.home-match-card { order: 0; max-width: 620px; }
+  .home-page .hero h1 { max-width: 16ch; }
+}
+
+@media (max-width: 620px) {
+  .home-hero .container { width: calc(100% - 32px); gap: 28px; }
+  .home-page .hero h1 { font-size: clamp(2.45rem, 12vw, 3.35rem); }
+  .home-page .hero__actions { display: grid; grid-template-columns: 1fr; }
+  .home-page .hero__actions .btn { justify-content: center; }
+  .home-page .hero__panel.home-match-card { padding: 22px 19px; border-radius: 19px; }
+  .home-page .steps-grid, .home-page .benefits-grid { grid-template-columns: minmax(0,1fr); gap: 13px; }
+  .home-page .step-card, .home-page .benefit-card { min-height: 0; padding: 22px; }
+  .home-page .step-card__index { margin-bottom: 14px; }
+  .home-page .section__head.flex-between { align-items: flex-start; flex-direction: column; gap: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-page *, .home-page *::before, .home-page *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}

@@ -12,14 +12,9 @@
 <link rel="stylesheet" href="css/style.css?v=20261108-blue-match-card" />
 <link rel="stylesheet" href="css/responsive.css" />
   <link rel="stylesheet" href="css/ui-refresh.css?v=20261108-footer-theme-contrast" />
-<style id="homepage-theme-contrast">
-  .hero__panel { background:linear-gradient(145deg,#233f77,#14264a)!important; color:#f4f7ff!important; border:1px solid #304a7d; }
-  .hero__panel h3,.hero__panel .hero__stat-row { color:#f4f7ff!important; }
-  .hero__panel .hero__stat-row { border-color:rgba(255,255,255,.16)!important; }
-  .hero__panel .hero__stat-row strong { color:#9db8ff!important; }
-</style>
+<link rel="stylesheet" href="css/home.css?v=20261109-home-redesign" />
 </head>
-<body>
+<body class="home-page">
 
 <header class="topbar">
   <div class="container">
@@ -42,24 +37,26 @@
   </div>
 </header>
 
-<section class="hero">
+<section class="hero home-hero">
   <div class="container">
-    <div>
-      <span class="hero__eyebrow">PM Internship Scheme · student prototype</span>
-      <h1>Internships matched to your skills, not just your keywords.</h1>
+    <div class="home-hero__copy">
+      <span class="hero__eyebrow"><span class="home-hero__eyebrow-dot"></span> PM Internship Scheme · student prototype</span>
+      <h1>Internships matched to your <span>skills</span>, not just your keywords.</h1>
       <p class="hero__lede">InternMatch reads your profile — skills, interests, academics, and preferences — and scores every listing with a transparent, explainable match percentage. No black box, no guesswork.</p>
       <div class="hero__actions">
         <a class="btn btn--primary btn--lg" href="internships.html">Search internships</a>
         <a class="btn btn--ghost btn--lg" href="register.html">Create your profile</a>
       </div>
+      <p class="home-hero__trust">Built to help you discover, compare, and track opportunities in one place.</p>
     </div>
-    <div class="hero__panel">
-      <h3>How your match score is built</h3>
-      <div class="hero__stat-row"><span>Skills match</span><strong>40%</strong></div>
-      <div class="hero__stat-row"><span>Interest match</span><strong>25%</strong></div>
-      <div class="hero__stat-row"><span>Academic eligibility</span><strong>15%</strong></div>
-      <div class="hero__stat-row"><span>Sector preference</span><strong>10%</strong></div>
-      <div class="hero__stat-row"><span>Location &amp; duration fit</span><strong>10%</strong></div>
+    <div class="hero__panel home-match-card">
+      <div class="home-match-card__head"><div><span class="home-match-card__eyebrow">TRANSPARENT SCORING</span><h2>How your match is built</h2></div><span class="home-match-card__icon" aria-hidden="true">✦</span></div>
+      <div class="home-match-stat"><div class="hero__stat-row"><span>Skills match</span><strong>40%</strong></div><span class="home-match-stat__track"><span style="width:40%"></span></span></div>
+      <div class="home-match-stat"><div class="hero__stat-row"><span>Interest match</span><strong>25%</strong></div><span class="home-match-stat__track"><span style="width:25%"></span></span></div>
+      <div class="home-match-stat"><div class="hero__stat-row"><span>Academic eligibility</span><strong>15%</strong></div><span class="home-match-stat__track"><span style="width:15%"></span></span></div>
+      <div class="home-match-stat"><div class="hero__stat-row"><span>Sector preference</span><strong>10%</strong></div><span class="home-match-stat__track"><span style="width:10%"></span></span></div>
+      <div class="home-match-stat"><div class="hero__stat-row"><span>Location &amp; duration fit</span><strong>10%</strong></div><span class="home-match-stat__track"><span style="width:10%"></span></span></div>
+      <p class="home-match-card__note">Every part of your score is visible and easy to understand.</p>
     </div>
   </div>
 </section>
