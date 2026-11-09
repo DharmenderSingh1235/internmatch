@@ -53,9 +53,6 @@ document.addEventListener("DOMContentLoaded", () => {
     registerFoot.style.display = canCreateStudentAccount ? "" : "none";
     document.getElementById("login-create-account").href = "register.html";
     createAccountLink.hidden = !canCreateStudentAccount;
-    const recruiterLink = document.getElementById("recruiter-register-foot");
-    recruiterLink.hidden = isAdmin || isCompany;
-    recruiterLink.style.display = isAdmin || isCompany ? "none" : "";
     if (isCompany) {
       createAccountLink.hidden = false; createAccountLink.style.display = ""; createAccountLink.href = "company-register.html"; createAccountLink.textContent = "Create recruiter account";
       registerFoot.hidden = false; registerFoot.style.display = ""; registerFoot.innerHTML = 'New to recruiting here? <a href="company-register.html">Create a recruiter account</a>';
