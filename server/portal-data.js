@@ -93,6 +93,15 @@ const ready = (async () => {
 })();
 
 function collection(name) { return state[name] || []; }
+async function refreshCollection(name) {
+  await ready;
+  if (persistenceMode !== "supabase" && persistenceMode !== "mongodb") return;
+  await flush();
+  const latest = persistenceMode === "supabase"
+    ? (await database.loadSupabaseCollections([name]))?.[name]
+    : await database.loadMongoCollection(name);
+  if (Array.isArray(latest)) state[name] = latest;
+}
 function drainMongoQueue() {
   if (!mongoDrain) mongoDrain = (async () => {
     while (mongoWriteQueue.length) {
@@ -207,6 +216,7 @@ module.exports = {
   flush,
   beginRequest,
   collection,
+  refreshCollection,
   update,
   addAudit,
   isSqlite: () => persistenceMode === "sqlite-json",

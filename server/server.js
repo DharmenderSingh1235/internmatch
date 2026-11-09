@@ -1064,7 +1064,8 @@ app.patch("/api/company/me", companyOnly, (req, res) => {
   portalData.update("companies", (items) => items.map((item) => item.id === company.id ? company : item));
   res.json({ company: safeCompany(company) });
 });
-app.get("/api/company/applications", companyOnly, (req, res) => {
+app.get("/api/company/applications", companyOnly, asyncRoute(async (req, res) => {
+  await portalData.refreshCollection("students");
   res.set("Cache-Control", "no-store");
   const items = portalData.collection("applications").filter((application) => application.companyId === req.session.id).map((application) => {
     const student = portalData.collection("students").find((item) => item.id === application.studentId);
@@ -1083,7 +1084,7 @@ app.get("/api/company/applications", companyOnly, (req, res) => {
     };
   });
   res.json({ items });
-});
+}));
 app.patch("/api/company/applications/:id/status", companyOnly, (req, res) => {
   const allowed = ["Applied", "Shortlisted", "Assessment", "Interview", "Offered", "Rejected"];
   const status = String(req.body?.status || "");
@@ -1096,7 +1097,8 @@ app.patch("/api/company/applications/:id/status", companyOnly, (req, res) => {
   logCompanyAction(req, `Changed application to ${status}`, application.id);
   res.json({ application });
 });
-app.get("/api/company/students", companyOnly, (req, res) => {
+app.get("/api/company/students", companyOnly, asyncRoute(async (req, res) => {
+  await portalData.refreshCollection("students");
   const q = normalized(req.query.q); const skill = normalized(req.query.skill); const location = normalized(req.query.location);
   const applicantIds = new Set(portalData.collection("applications").filter((application) => application.companyId === req.session.id).map((application) => application.studentId));
   const items = portalData.collection("students").filter((student) => student.profileVisible || applicantIds.has(student.id)).map((student) => {
@@ -1115,8 +1117,9 @@ app.get("/api/company/students", companyOnly, (req, res) => {
     return (!q || haystack.includes(q)) && (!skill || student.skills.some((item) => normalized(item).includes(skill))) && (!location || normalized(student.location).includes(location));
   });
   res.json({ items, total: items.length, source: "student-consented profiles" });
-});
-app.get("/api/company/students/:id", companyOnly, (req, res) => {
+}));
+app.get("/api/company/students/:id", companyOnly, asyncRoute(async (req, res) => {
+  await portalData.refreshCollection("students");
   const applied = portalData.collection("applications").some((application) => application.companyId === req.session.id && application.studentId === req.params.id);
   const student = portalData.collection("students").find((item) => item.id === req.params.id && (item.profileVisible || applied));
   if (!student) return res.status(404).json({ error: "Student details are available only to the company they applied to." });
@@ -1131,8 +1134,9 @@ app.get("/api/company/students/:id", companyOnly, (req, res) => {
       cvAvailableToCompany: applied && !!student.cvShared && !!student.cvPdf && adminApproved
     }
   });
-});
-app.get("/api/company/students/:id/cv", companyOnly, (req, res) => {
+}));
+app.get("/api/company/students/:id/cv", companyOnly, asyncRoute(async (req, res) => {
+  await portalData.refreshCollection("students");
   const applied = portalData.collection("applications").some((application) => application.companyId === req.session.id && application.studentId === req.params.id);
   const student = applied && portalData.collection("students").find((item) => item.id === req.params.id);
   if (!student || !student.cvPdf) return res.status(404).json({ error: "This student has not uploaded a CV." });
@@ -1145,7 +1149,7 @@ app.get("/api/company/students/:id/cv", companyOnly, (req, res) => {
   logCompanyAction(req, "Opened student-shared CV", student.id);
   const cvReview = (student.companyCvReviews || []).find((review) => review.companyId === req.session.id) || null;
   res.json({ fileName: student.cvPdf.fileName, mimeType: student.cvPdf.mimeType, data: student.cvPdf.data, cvReview });
-});
+}));
 app.patch("/api/company/students/:id/cv-review", companyOnly, (req, res) => {
   const status = String(req.body?.status || "");
   if (!["Approved", "Needs changes"].includes(status)) return res.status(400).json({ error: "Choose Approved or Needs changes." });
