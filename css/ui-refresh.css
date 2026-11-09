@@ -540,3 +540,95 @@ body[data-portal="student"] .app-content .browse-hero { overflow:hidden; }
   body[data-portal="student"] .dash-hero { padding:20px 17px; }
   body[data-portal="student"] .app-content .panel__head { align-items:flex-start; }
 }
+
+/* Company workspace finish: match the shared InternMatch blue product style. */
+body[data-portal="company"] .company-sidebar {
+  background:linear-gradient(180deg,#192d53 0%,#111f3b 50%,#0c172e 100%);
+}
+body[data-portal="company"] .company-nav a { border-radius:12px; }
+body[data-portal="company"] .company-nav a[aria-current="page"] {
+  background:linear-gradient(105deg,#356be6 0%,#5266df 100%);
+  box-shadow:0 8px 22px rgba(37,77,177,.3),inset 3px 0 0 rgba(255,255,255,.86);
+}
+body[data-portal="company"] .company-topbar {
+  position:sticky;
+  top:0;
+  z-index:20;
+  min-height:78px;
+  border-bottom-color:color-mix(in srgb,var(--color-border) 86%,transparent);
+  background:color-mix(in srgb,var(--color-surface) 88%,transparent);
+  backdrop-filter:blur(18px);
+}
+body[data-portal="company"] .company-topbar h1 { font-size:1.38rem; letter-spacing:-.035em; }
+body[data-portal="company"] .company-content { padding-top:30px; }
+body[data-portal="company"] .company-hero {
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+  min-height:210px;
+  padding:clamp(26px,3.5vw,42px);
+  border:1px solid #344f82;
+  border-radius:24px;
+  background:linear-gradient(125deg,#192f59 0%,#21478e 58%,#4559bd 130%);
+  box-shadow:0 22px 50px rgba(21,48,102,.2);
+}
+body[data-portal="company"] .company-hero::after {
+  position:absolute;
+  z-index:-1;
+  top:-135px;
+  right:-100px;
+  width:390px;
+  height:390px;
+  border:1px solid rgba(205,220,255,.17);
+  border-radius:50%;
+  box-shadow:0 0 0 34px rgba(205,220,255,.035),0 0 0 74px rgba(205,220,255,.025);
+  content:"";
+  pointer-events:none;
+}
+body[data-portal="company"] .company-hero :is(h2,p,.company-eyebrow) { color:#f4f7ff; }
+body[data-portal="company"] .company-hero p:not(.company-eyebrow) { color:#c9d7ef; line-height:1.65; }
+body[data-portal="company"] .company-hero .company-eyebrow { color:#b6c9ff; }
+body[data-portal="company"] .company-hero .btn--primary { border-color:#fff; background:#fff; color:#21468d; box-shadow:0 8px 20px rgba(9,25,57,.2); }
+body[data-portal="company"] .company-stat {
+  border-radius:17px;
+  box-shadow:0 9px 25px rgba(15,27,52,.06);
+  transition:transform .18s ease,box-shadow .18s ease;
+}
+body[data-portal="company"] .company-stat:hover { transform:translateY(-2px); box-shadow:0 15px 30px rgba(15,27,52,.1); }
+body[data-portal="company"] .company-stat strong { font-variant-numeric:tabular-nums; letter-spacing:-.035em; }
+body[data-portal="company"] .company-panel {
+  border-radius:19px;
+  box-shadow:0 8px 26px rgba(15,27,52,.055);
+}
+body[data-portal="company"] .company-section-heading h2,
+body[data-portal="company"] .company-page-intro h2 { letter-spacing:-.03em; }
+body[data-portal="company"] .company-section-heading { gap:16px; }
+body[data-portal="company"] .company-table-wrap { overflow-x:auto; }
+body[data-portal="company"] .company-table th { color:var(--color-muted); font-size:.72rem; letter-spacing:.065em; }
+body[data-portal="company"] .company-role-card,
+body[data-portal="company"] .candidate-card,
+body[data-portal="company"] .company-review-card,
+body[data-portal="company"] .company-schedule-card { transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease; }
+body[data-portal="company"] .company-role-card:hover,
+body[data-portal="company"] .candidate-card:hover,
+body[data-portal="company"] .company-review-card:hover { transform:translateY(-2px); box-shadow:0 12px 28px rgba(15,27,52,.09); }
+body[data-portal="company"] :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),select,textarea) { border-radius:11px; }
+body[data-portal="company"] .company-content .btn { border-radius:11px; font-weight:700; }
+:root[data-theme="dark"] body[data-portal="company"] .company-hero {
+  border-color:#344f82;
+  background:linear-gradient(125deg,#142443 0%,#1a376e 58%,#303d83 130%);
+}
+:root[data-theme="dark"] body[data-portal="company"] .company-stat,
+:root[data-theme="dark"] body[data-portal="company"] .company-panel { box-shadow:0 9px 26px rgba(0,0,0,.18); }
+:root[data-theme="dark"] body[data-portal="company"] .company-role-card:hover,
+:root[data-theme="dark"] body[data-portal="company"] .candidate-card:hover,
+:root[data-theme="dark"] body[data-portal="company"] .company-review-card:hover { box-shadow:0 12px 30px rgba(0,0,0,.24); }
+
+@media(max-width:700px) {
+  body[data-portal="company"] .company-topbar { position:sticky; top:0; }
+  body[data-portal="company"] .company-content { padding-top:21px; }
+  body[data-portal="company"] .company-hero { min-height:0; padding:23px 20px; border-radius:19px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  body[data-portal="company"] *,body[data-portal="company"] *::before,body[data-portal="company"] *::after { animation-duration:.01ms!important; transition-duration:.01ms!important; }
+}
