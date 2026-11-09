@@ -457,3 +457,86 @@ body[data-portal="student"] .sidebar-foot .btn--ghost:hover {
   background:#eaf0ff;
   border-color:#eaf0ff;
 }
+
+/* Student portal finish: repeatable surfaces and hierarchy across student pages. */
+body[data-portal="student"] .sidebar {
+  background:linear-gradient(180deg,#192d53 0%,#111f3b 50%,#0c172e 100%);
+}
+body[data-portal="student"] .sidebar-nav a { border-radius:12px; }
+body[data-portal="student"] .sidebar-nav a.is-active {
+  background:linear-gradient(105deg,#356be6 0%,#5266df 100%);
+  box-shadow:0 8px 22px rgba(37,77,177,.3),inset 3px 0 0 rgba(255,255,255,.86);
+}
+body[data-portal="student"] .app-main { min-height:100vh; }
+body[data-portal="student"] .app-topbar {
+  position:sticky;
+  top:0;
+  z-index:20;
+  min-height:78px;
+  background:color-mix(in srgb,var(--color-surface) 88%,transparent);
+  backdrop-filter:blur(18px);
+}
+body[data-portal="student"] .app-content { padding-top:30px; }
+body[data-portal="student"] .app-content :is(.panel,.application-card,.saved-card,.compare-card,.recommendation-card,.int-card,.empty-state,.empty-state-card) {
+  transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease;
+}
+body[data-portal="student"] .app-content :is(.application-card,.saved-card,.compare-card,.recommendation-card,.int-card):hover {
+  transform:translateY(-2px);
+  border-color:color-mix(in srgb,var(--color-primary) 30%,var(--color-border));
+  box-shadow:0 14px 32px rgba(15,27,52,.09);
+}
+body[data-portal="student"] .app-content .panel__head {
+  align-items:center;
+  gap:14px;
+  margin-bottom:17px;
+  padding-bottom:12px;
+  border-bottom:1px solid var(--color-border);
+}
+body[data-portal="student"] .app-content :is(.panel__head h2,.section__head h2) { letter-spacing:-.025em; }
+body[data-portal="student"] .app-content :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),select,textarea) {
+  border-radius:11px;
+}
+body[data-portal="student"] .app-content .btn { border-radius:11px; font-weight:700; }
+body[data-portal="student"] .app-content .stat-card {
+  border-top-width:3px;
+  box-shadow:0 8px 24px rgba(15,27,52,.055);
+}
+body[data-portal="student"] .dash-hero {
+  gap:18px;
+  padding:clamp(24px,3vw,36px);
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:23px;
+  background:linear-gradient(125deg,#192f59 0%,#21478e 58%,#4559bd 130%);
+  box-shadow:0 20px 48px rgba(21,48,102,.19);
+}
+body[data-portal="student"] .dash-hero::before {
+  background-image:
+    radial-gradient(circle at 88% 4%,rgba(255,255,255,.18),transparent 45%),
+    radial-gradient(circle at 100% 100%,rgba(124,92,255,.35),transparent 42%),
+    radial-gradient(rgba(255,255,255,.13) 1px,transparent 1px);
+}
+body[data-portal="student"] .dash-hero__completion,
+body[data-portal="student"] .dash-hero__skillmatch {
+  border-color:rgba(255,255,255,.2);
+  border-radius:17px;
+  background:rgba(255,255,255,.1);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
+}
+body[data-portal="student"] .cv-review-banner { border-radius:16px; }
+body[data-portal="student"] .app-content .browse-hero { overflow:hidden; }
+:root[data-theme="dark"] body[data-portal="student"] .app-content :is(.application-card,.saved-card,.compare-card,.recommendation-card,.int-card):hover {
+  box-shadow:0 14px 32px rgba(0,0,0,.23);
+}
+:root[data-theme="dark"] body[data-portal="student"] .app-content .panel__head { border-bottom-color:var(--color-border); }
+
+@media(max-width:860px) {
+  body[data-portal="student"] .app-topbar { position:sticky; top:0; }
+  body[data-portal="student"] .app-content { padding-top:21px; }
+  body[data-portal="student"] .dash-hero { border-radius:19px; }
+}
+@media(max-width:560px) {
+  body[data-portal="student"] .app-content { padding-inline:13px; }
+  body[data-portal="student"] .app-topbar { min-height:64px; }
+  body[data-portal="student"] .dash-hero { padding:20px 17px; }
+  body[data-portal="student"] .app-content .panel__head { align-items:flex-start; }
+}
