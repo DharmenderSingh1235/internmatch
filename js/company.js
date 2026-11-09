@@ -74,12 +74,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       frame.className = "company-inline-cv-preview";
       frame.title = `${student.student.name} resume preview`;
       content.appendChild(frame);
-      const download = document.createElement("a");
-      download.className = "btn btn--secondary btn--sm company-inline-cv-download";
-      download.href = url;
-      download.download = data.fileName || "student-resume.docx";
-      download.textContent = `Download ${data.fileName || "CV"}`;
-      content.appendChild(download);
       if (blob.type === "application/pdf" || /\.pdf$/i.test(data.fileName || "")) frame.src = url;
       else await window.InternMatchDocxPreview.show(blob, frame);
       dialog.showModal(); dialog.addEventListener("close", () => URL.revokeObjectURL(url), { once: true });

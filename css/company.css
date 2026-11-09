@@ -290,7 +290,6 @@
 .company-cv-dialog { height:92vh; max-height:92vh; overflow:auto; }
 .company-cv-dialog iframe { display:block; width:100%; height:min(66vh,760px); border:0; }
 .company-inline-cv-preview { display:block; width:100%; height:min(62vh,740px); margin:12px 0; border:1px solid var(--color-border); border-radius:12px; background:#eef2f8; }
-.company-inline-cv-download { margin:0 0 16px; }
 .company-cv-review { display:grid; gap:12px; padding:16px 22px 20px; border-top:1px solid var(--color-border); background:var(--color-bg-alt); }
 .company-cv-review h3 { margin:0 0 4px; font-size:1rem; }
 .company-cv-review p { margin:0; color:var(--color-muted); font-size:.84rem; }

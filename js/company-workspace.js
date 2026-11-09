@@ -424,8 +424,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const clearCompanyCvPreview = () => {
     const frame = document.getElementById("company-cv-frame");
     frame.removeAttribute("src"); frame.removeAttribute("srcdoc"); frame.removeAttribute("sandbox"); frame.hidden = false; frame.style.display = "";
-    const download = document.getElementById("company-cv-download-link");
-    download.hidden = true; download.removeAttribute("href"); download.removeAttribute("download");
     if (activeCompanyCvUrl) URL.revokeObjectURL(activeCompanyCvUrl);
     activeCompanyCvUrl = "";
   };
@@ -468,12 +466,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         const cvBlob = new Blob([bytes], { type: result.mimeType || "application/pdf" });
         activeCompanyCvUrl = URL.createObjectURL(cvBlob);
         const frame = document.getElementById("company-cv-frame");
-        const download = document.getElementById("company-cv-download-link");
         const isPdf = cvBlob.type === "application/pdf" || /\.pdf$/i.test(result.fileName || "");
         frame.hidden = false; frame.style.display = ""; frame.removeAttribute("src"); frame.removeAttribute("srcdoc"); frame.removeAttribute("sandbox");
         if (isPdf) frame.src = activeCompanyCvUrl;
         else await window.InternMatchDocxPreview.show(cvBlob, frame);
-        download.hidden = false; download.href = activeCompanyCvUrl; download.download = result.fileName || "student-resume.docx"; download.textContent = `Download ${result.fileName || "CV"}`;
         document.getElementById("company-cv-review-note").value = result.cvReview?.note || "";
         document.getElementById("company-cv-review-status").textContent = result.cvReview ? `${result.cvReview.status} · ${dateLabel(result.cvReview.reviewedAt?.slice(0, 10))}` : "Not reviewed yet";
         cvDialog.showModal();

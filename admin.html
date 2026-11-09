@@ -64,7 +64,7 @@
   #admin-cv-review-status.is-pending { border-color:#ea580c; color:#ea580c; background:rgba(234,88,12,0.12); }
   .admin-cv-review-actions { display:flex; flex-wrap:wrap; align-items:center; gap:7px; }
   .admin-cv-review-note { width:calc(100% - 36px); margin:10px 18px; padding:8px 10px; border:1px solid var(--color-border); border-radius:9px; color:var(--color-text); background:var(--color-bg-alt); font:inherit; font-size:.84rem; }
-  .admin-cv-dialog iframe { display:block; width:100%; height:calc(100% - 126px); border:0; background:#edf1f6; }
+  .admin-cv-dialog iframe { display:block; width:100%; height:calc(100% - 96px); border:0; background:#edf1f6; }
   .admin-student-open { padding:0; border:0; color:var(--color-primary); background:none; font:inherit; font-weight:700; text-align:left; cursor:pointer; }
   .admin-student-open:hover { text-decoration:underline; }
   .admin-record-section { min-width:0; padding:14px; border:1px solid var(--color-border); border-radius:13px; background:var(--color-bg-alt); }
@@ -447,7 +447,6 @@
         <div class="admin-cv-review-actions"><button type="button" class="btn btn--secondary btn--sm" id="admin-cv-approve">Approve CV</button><button type="button" class="btn btn--ghost btn--sm" id="admin-cv-request-changes">Needs changes</button><button type="button" class="btn btn--ghost btn--sm" id="admin-cv-dialog-close">Close</button></div>
       </div>
       <textarea class="admin-cv-review-note" id="admin-cv-review-note" rows="2" maxlength="500" placeholder="Optional feedback for the student"></textarea>
-        <a class="btn btn--secondary btn--sm" id="admin-cv-download-link" hidden>Download Word CV</a>
       <iframe id="admin-cv-frame" title="Student CV preview"></iframe>
     </dialog>
 
@@ -563,7 +562,7 @@
 <script src="js/vendor/jszip.min.js"></script>
 <script src="js/vendor/docx-preview.min.js"></script>
 <script src="js/docx-preview.js?v=20261110-preview-style-fix"></script>
-<script src="js/admin.js?v=20261110-preview-style-fix"></script>
+<script src="js/admin.js?v=20261110-inline-preview-only"></script>
 <script src="js/admin-analytics.js"></script>
 <script src="js/admin-practice-areas.js?v=20261103-practice-api-diagnostic"></script>
 </body>

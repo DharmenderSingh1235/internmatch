@@ -133,16 +133,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const adminCompanyDialog = document.getElementById("admin-company-dialog");
   document.getElementById("admin-company-dialog-close")?.addEventListener("click", () => adminCompanyDialog.close());
   async function showCvFile(blob, fileName) {
-    const downloadLink = document.getElementById("admin-cv-download-link");
     const isPdf = blob.type === "application/pdf" || /\.pdf$/i.test(fileName || "");
     cvFrame.hidden = false; cvFrame.style.display = "";
     cvFrame.removeAttribute("src"); cvFrame.removeAttribute("srcdoc"); cvFrame.removeAttribute("sandbox");
     if (isPdf) cvFrame.src = activeCvUrl;
     else await window.InternMatchDocxPreview.show(blob, cvFrame);
-    downloadLink.hidden = false;
-    downloadLink.href = activeCvUrl;
-    downloadLink.download = fileName || "student-resume.docx";
-    downloadLink.textContent = `Download ${fileName || "student-resume"}`;
   }
   async function openServerStudentCv(student) {
     const response = await fetch(`${window.IM_API_BASE}/api/admin/students/${encodeURIComponent(student.id)}/cv`, { headers: { authorization: `Bearer ${sessionStorage.getItem("im_admin_api_token") || ""}` } });
@@ -430,8 +425,6 @@ document.addEventListener("DOMContentLoaded", () => {
     cvFrame.removeAttribute("src");
     cvFrame.removeAttribute("srcdoc"); cvFrame.removeAttribute("sandbox");
     cvFrame.hidden = false; cvFrame.style.display = "";
-    const downloadLink = document.getElementById("admin-cv-download-link");
-    downloadLink.hidden = true; downloadLink.removeAttribute("href"); downloadLink.removeAttribute("download");
     if (activeCvUrl) URL.revokeObjectURL(activeCvUrl);
     activeCvUrl = "";
     activeCvEmail = "";
