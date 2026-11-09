@@ -64,11 +64,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
       const data = await api(`/students/${encodeURIComponent(id)}/cv`);
       const bytes = Uint8Array.from(atob(data.data), (char) => char.charCodeAt(0));
-      const url = URL.createObjectURL(new Blob([bytes], { type: data.mimeType || "application/pdf" }));
+      const blob = new Blob([bytes], { type: data.mimeType || "application/pdf" });
+      const url = URL.createObjectURL(blob);
       const dialog = ensureProfileDialog(); const content = document.getElementById("company-student-dialog-content");
       const student = await api(`/students/${encodeURIComponent(id)}`);
       document.getElementById("company-student-dialog-title").textContent = `${student.student.name} · shared CV`;
-      content.innerHTML = `<p>The student explicitly shared this resume with active company accounts.</p><a class="btn btn--primary" href="${url}" target="_blank" rel="noopener" download="${esc(data.fileName)}">Open / download ${esc(data.fileName)}</a>`;
+      content.innerHTML = "<p>The student explicitly shared this resume with active company accounts.</p>";
+      const frame = document.createElement("iframe");
+      frame.className = "company-inline-cv-preview";
+      frame.title = `${student.student.name} resume preview`;
+      content.appendChild(frame);
+      const download = document.createElement("a");
+      download.className = "btn btn--secondary btn--sm company-inline-cv-download";
+      download.href = url;
+      download.download = data.fileName || "student-resume.docx";
+      download.textContent = `Download ${data.fileName || "CV"}`;
+      content.appendChild(download);
+      if (blob.type === "application/pdf" || /\.pdf$/i.test(data.fileName || "")) frame.src = url;
+      else await window.InternMatchDocxPreview.show(blob, frame);
       dialog.showModal(); dialog.addEventListener("close", () => URL.revokeObjectURL(url), { once: true });
     } catch (error) { App.toast(error.message, "error"); }
   }

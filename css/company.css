@@ -279,6 +279,9 @@
 .company-applicant-actions { display:flex; flex-wrap:wrap; align-items:center; gap:5px; margin-top:7px; }
 .company-candidate-dialog { width:min(760px,calc(100vw - 28px)); max-height:86vh; padding:0; border:1px solid var(--color-border); border-radius:18px; color:var(--color-text); background:var(--color-surface); box-shadow:0 22px 70px rgba(0,0,0,.3); }
 .company-candidate-dialog::backdrop { background:rgba(10,20,38,.62); }
+.company-student-dialog { width:min(920px,calc(100vw - 28px)); max-height:90vh; padding:0; overflow:auto; border:1px solid var(--color-border); border-radius:18px; color:var(--color-text); background:var(--color-surface); box-shadow:0 22px 70px rgba(0,0,0,.3); }
+.company-student-dialog::backdrop { background:rgba(10,20,38,.62); }
+.company-student-dialog #company-student-dialog-content { padding:20px; }
 .company-candidate-dialog__head { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:18px 22px; border-bottom:1px solid var(--color-border); }
 .company-candidate-dialog__head h2 { margin:3px 0 0; }
 .company-candidate-dialog__body { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; padding:20px; }
@@ -286,6 +289,8 @@
 .company-candidate-dialog__body div:nth-child(10),.company-candidate-dialog__body div:nth-child(11) { grid-column:1 / -1; }
 .company-cv-dialog { height:92vh; max-height:92vh; overflow:auto; }
 .company-cv-dialog iframe { display:block; width:100%; height:min(66vh,760px); border:0; }
+.company-inline-cv-preview { display:block; width:100%; height:min(62vh,740px); margin:12px 0; border:1px solid var(--color-border); border-radius:12px; background:#eef2f8; }
+.company-inline-cv-download { margin:0 0 16px; }
 .company-cv-review { display:grid; gap:12px; padding:16px 22px 20px; border-top:1px solid var(--color-border); background:var(--color-bg-alt); }
 .company-cv-review h3 { margin:0 0 4px; font-size:1rem; }
 .company-cv-review p { margin:0; color:var(--color-muted); font-size:.84rem; }
