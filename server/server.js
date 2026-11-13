@@ -410,6 +410,7 @@ function safeStudent(student, includeContact = false) {
     github: profile.github || "",
     portfolio: profile.portfolio || "",
     cgpa: profile.cgpa || "",
+    photo: (includeContact || student.profileVisible) ? (student.profilePhoto || profile.photo || "") : "",
     mobileNumber: includeContact ? profile.mobileNumber || "" : undefined,
     email: includeContact ? student.email : undefined,
     available: profile.availability || "Not specified",
@@ -623,10 +624,11 @@ app.patch("/api/admin/companies/:id/status", adminOnly, (req, res) => {
   logCompanyAction(req, `Set company status to ${status}`, req.params.id);
   res.json({ ok: true });
 });
-app.get("/api/admin/students", adminOnly, (req, res) => {
+app.get("/api/admin/students", adminOnly, asyncRoute(async (req, res) => {
+  await Promise.all([portalData.refreshCollection("students"), portalData.refreshCollection("applications"), portalData.refreshCollection("companies")]);
   const companyNames = new Map(portalData.collection("companies").map((company) => [company.id, company.name]));
   const items = portalData.collection("students").map((student) => {
-    const profile = { ...(student.profile || {}), photo: student.profilePhoto || "" };
+    const profile = { ...(student.profile || {}), photo: student.profilePhoto || student.profile?.photo || "" };
     return {
       ...safeStudent(student, true),
       profile,
@@ -643,12 +645,14 @@ app.get("/api/admin/students", adminOnly, (req, res) => {
   });
   res.set("Cache-Control", "no-store");
   res.json({ items });
-});
-app.get("/api/admin/students/:id", adminOnly, (req, res) => {
+}));
+app.get("/api/admin/students/:id", adminOnly, asyncRoute(async (req, res) => {
+  await Promise.all([portalData.refreshCollection("students"), portalData.refreshCollection("applications"), portalData.refreshCollection("companies")]);
   const student = portalData.collection("students").find((item) => item.id === req.params.id);
   if (!student) return res.status(404).json({ error: "Student account not found." });
   const companyNames = new Map(portalData.collection("companies").map((company) => [company.id, company.name]));
-  const profile = { ...(student.profile || {}), photo: student.profilePhoto || "" };
+  const profile = { ...(student.profile || {}), photo: student.profilePhoto || student.profile?.photo || "" };
+  res.set("Cache-Control", "no-store");
   res.json({
     student: {
       ...safeStudent(student, true),
@@ -664,7 +668,7 @@ app.get("/api/admin/students/:id", adminOnly, (req, res) => {
       savedIds: Array.isArray(student.savedIds) ? student.savedIds : []
     }
   });
-});
+}));
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 function sendStoredStudentCv(res, cv) {
   const mimeType = cv.mimeType === DOCX_MIME || /\.docx$/i.test(cv.fileName || "") ? DOCX_MIME : "application/pdf";
@@ -1068,7 +1072,7 @@ app.patch("/api/company/me", companyOnly, (req, res) => {
   res.json({ company: safeCompany(company) });
 });
 app.get("/api/company/applications", companyOnly, asyncRoute(async (req, res) => {
-  await portalData.refreshCollection("students");
+  await Promise.all([portalData.refreshCollection("students"), portalData.refreshCollection("applications")]);
   res.set("Cache-Control", "no-store");
   const items = portalData.collection("applications").filter((application) => application.companyId === req.session.id).map((application) => {
     const student = portalData.collection("students").find((item) => item.id === application.studentId);
@@ -1101,7 +1105,7 @@ app.patch("/api/company/applications/:id/status", companyOnly, (req, res) => {
   res.json({ application });
 });
 app.get("/api/company/students", companyOnly, asyncRoute(async (req, res) => {
-  await portalData.refreshCollection("students");
+  await Promise.all([portalData.refreshCollection("students"), portalData.refreshCollection("applications")]);
   const q = normalized(req.query.q); const skill = normalized(req.query.skill); const location = normalized(req.query.location);
   const applicantIds = new Set(portalData.collection("applications").filter((application) => application.companyId === req.session.id).map((application) => application.studentId));
   const items = portalData.collection("students").filter((student) => student.profileVisible || applicantIds.has(student.id)).map((student) => {
@@ -1119,14 +1123,16 @@ app.get("/api/company/students", companyOnly, asyncRoute(async (req, res) => {
     const haystack = [student.name, student.course, student.college, student.location, ...student.skills, ...student.interests].join(" ").toLowerCase();
     return (!q || haystack.includes(q)) && (!skill || student.skills.some((item) => normalized(item).includes(skill))) && (!location || normalized(student.location).includes(location));
   });
+  res.set("Cache-Control", "no-store");
   res.json({ items, total: items.length, source: "student-consented profiles" });
 }));
 app.get("/api/company/students/:id", companyOnly, asyncRoute(async (req, res) => {
-  await portalData.refreshCollection("students");
+  await Promise.all([portalData.refreshCollection("students"), portalData.refreshCollection("applications")]);
   const applied = portalData.collection("applications").some((application) => application.companyId === req.session.id && application.studentId === req.params.id);
   const student = portalData.collection("students").find((item) => item.id === req.params.id && (item.profileVisible || applied));
   if (!student) return res.status(404).json({ error: "Student details are available only to the company they applied to." });
   const adminApproved = student.cvReview?.status === "Approved";
+  res.set("Cache-Control", "no-store");
   res.json({
     student: {
       ...safeStudent(student, applied),
