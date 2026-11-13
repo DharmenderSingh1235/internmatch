@@ -207,6 +207,20 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  async function persistProfilePhoto() {
+    Store.writeBlob(`im_profile_${user.email}`, profile);
+    const token = sessionStorage.getItem("im_student_api_token");
+    if (!token || user.role !== "student") return false;
+    const response = await fetch(`${window.IM_API_BASE}/api/student/profile`, {
+      method: "PUT",
+      headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+      body: JSON.stringify({ profile })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `Photo sync failed (${response.status}).`);
+    return true;
+  }
+
   photoUpload.addEventListener("change", async () => {
     const file = photoUpload.files[0];
     if (!file) return;
@@ -217,20 +231,26 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     try {
       profile.photo = await resizeImageFile(file, 480);
-      Store.saveProfile(user.email, { photo: profile.photo });
+      const synced = await persistProfilePhoto();
       renderPhotoPreview();
-      App.toast("Profile photo updated.");
+      App.toast(synced ? "Profile photo updated and synced with your account." : "Profile photo saved in this browser. Sign in to sync it with admin and company views.", synced ? "success" : "error");
     } catch (error) {
+      renderPhotoPreview();
       App.toast(error.message || "Couldn't process that image.", "error");
     }
     photoUpload.value = "";
   });
 
-  photoRemoveBtn.addEventListener("click", () => {
+  photoRemoveBtn.addEventListener("click", async () => {
     profile.photo = "";
-    Store.saveProfile(user.email, { photo: "" });
-    renderPhotoPreview();
-    App.toast("Profile photo removed.");
+    try {
+      const synced = await persistProfilePhoto();
+      renderPhotoPreview();
+      App.toast(synced ? "Profile photo removed from your account." : "Profile photo removed from this browser. Sign in to sync the change.", synced ? "success" : "error");
+    } catch (error) {
+      renderPhotoPreview();
+      App.toast(error.message || "Couldn't sync the profile photo removal.", "error");
+    }
   });
 
   function renderProjects() {
