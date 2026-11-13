@@ -98,8 +98,9 @@
   #profile-projects-card { order:8; }
   #profile-achievements-card { order:9; }
   #interview-score-card { order:10; }
+  #recruiter-assessments-card { order:11; }
   #profile-form > .profile-save-row { order:11; }
-  #profile-achievements-card, #interview-score-card, #profile-intro-card, #profile-projects-card, .profile-save-row { grid-column:1/-1; }
+  #profile-achievements-card, #interview-score-card, #recruiter-assessments-card, #profile-intro-card, #profile-projects-card, .profile-save-row { grid-column:1/-1; }
   #profile-academic-card, #profile-contact-card, #profile-skills-card, #profile-preferences-card { grid-column:span 1; }
   #profile-form > .card h2 { margin-bottom:14px; font-size:1.3rem; }
   #profile-form .field:last-child { margin-bottom:0; }
@@ -143,6 +144,14 @@
   .score-history-item__category { display:block; font-weight:700; }
   .score-history-item__date { display:block; margin-top:3px; color:var(--color-muted); font-size:.82rem; }
   .score-history-item__result { flex:0 0 auto; min-width:92px; text-align:right; }
+  .recruiter-assessment-list { display:grid; gap:10px; }
+  .recruiter-assessment-item { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:14px 16px; border:1px solid var(--color-border); border-radius:13px; background:var(--color-bg-alt); }
+  .recruiter-assessment-item__info { min-width:0; }
+  .recruiter-assessment-item__info strong,.recruiter-assessment-item__info span { display:block; }
+  .recruiter-assessment-item__info span { margin-top:4px; color:var(--color-muted); font-size:.84rem; }
+  .recruiter-assessment-item__result { flex:0 0 auto; text-align:right; }
+  .recruiter-assessment-item__result strong { display:block; }
+  @media(max-width:600px) { .recruiter-assessment-item { align-items:flex-start; flex-direction:column; } .recruiter-assessment-item__result { text-align:left; } }
   .score-history-item__percent { display:block; color:var(--color-primary); font-size:1.05rem; font-weight:700; }
   .score-history-item__fraction { display:block; color:var(--color-muted); font-size:.8rem; }
   .score-empty { display:flex; justify-content:space-between; align-items:center; gap:14px; padding:16px; border-radius:14px; background:var(--color-bg-alt); }
@@ -390,6 +399,11 @@
           <div id="interview-score-summary" aria-live="polite"></div>
         </div>
 
+        <div class="card" id="recruiter-assessments-card">
+          <div class="profile-section-heading"><div><span class="profile-section-kicker">Hiring process</span><h2 class="mt-0">Recruiter assessments</h2><p>See assessments assigned to your applications, submission status, and recruiter review results.</p></div><button type="button" class="btn btn--ghost btn--sm" id="profile-assessments-refresh">Refresh</button></div>
+          <div id="profile-recruiter-assessments" aria-live="polite"><p class="hint">Loading recruiter assessments…</p></div>
+        </div>
+
         <div class="profile-save-row"><button type="submit" class="btn btn--primary btn--lg">Save profile</button><span id="profile-save-status" class="hint" aria-live="polite"></span></div>
       </form>
     </div>
@@ -400,6 +414,6 @@
 <script src="js/storage.js?v=20261104-cv-consent-preservation"></script>
 <script src="js/recommendation.js"></script>
 <script src="js/app.js?v=20261108-theme"></script>
-<script src="js/profile.js?v=20261107-word-docx"></script>
+<script src="js/profile.js?v=20261113-recruiter-assessments"></script>
 </body>
 </html>

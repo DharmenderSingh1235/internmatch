@@ -626,7 +626,7 @@ app.patch("/api/admin/companies/:id/status", adminOnly, (req, res) => {
 app.get("/api/admin/students", adminOnly, (req, res) => {
   const companyNames = new Map(portalData.collection("companies").map((company) => [company.id, company.name]));
   const items = portalData.collection("students").map((student) => {
-    const { photo, ...profile } = student.profile || {};
+    const profile = { ...(student.profile || {}), photo: student.profilePhoto || "" };
     return {
       ...safeStudent(student, true),
       profile,
@@ -648,7 +648,7 @@ app.get("/api/admin/students/:id", adminOnly, (req, res) => {
   const student = portalData.collection("students").find((item) => item.id === req.params.id);
   if (!student) return res.status(404).json({ error: "Student account not found." });
   const companyNames = new Map(portalData.collection("companies").map((company) => [company.id, company.name]));
-  const { photo, ...profile } = student.profile || {};
+  const profile = { ...(student.profile || {}), photo: student.profilePhoto || "" };
   res.json({
     student: {
       ...safeStudent(student, true),
@@ -891,6 +891,9 @@ app.put("/api/student/profile", studentOnly, (req, res) => {
   if (!student) return res.status(404).json({ error: "Student account not found." });
   const profile = req.body?.profile && typeof req.body.profile === "object" ? req.body.profile : {};
   const { photo, ...shareableProfile } = profile;
+  const profilePhoto = typeof photo === "string" && /^data:image\/(?:jpeg|png|webp);base64,/i.test(photo) && photo.length <= 2_000_000
+    ? photo
+    : photo === "" ? "" : student.profilePhoto || "";
   const profileVisible = typeof req.body?.profileVisible === "boolean" ? req.body.profileVisible : student.profileVisible === true;
   const wantsCvShared = profileVisible && (typeof req.body?.cvShared === "boolean" ? req.body.cvShared : student.cvShared === true);
 
@@ -906,7 +909,7 @@ app.put("/api/student/profile", studentOnly, (req, res) => {
   }
 
   const cvShared = wantsCvShared && student.cvReview?.status === "Approved";
-  portalData.update("students", (items) => items.map((item) => item.id === student.id ? { ...item, name: String(shareableProfile.fullName || item.name).slice(0, 120), profile: shareableProfile, profileVisible, cvShared, cvPdf: cvShared || item.adminCvShared ? item.cvPdf : null, consentUpdatedAt: new Date().toISOString() } : item));
+  portalData.update("students", (items) => items.map((item) => item.id === student.id ? { ...item, name: String(shareableProfile.fullName || item.name).slice(0, 120), profile: shareableProfile, profilePhoto, profileVisible, cvShared, cvPdf: cvShared || item.adminCvShared ? item.cvPdf : null, consentUpdatedAt: new Date().toISOString() } : item));
   res.json({ ok: true, profileVisible, cvShared, cvReview: student.cvReview || null });
 });
 app.get("/api/student/interview-scores", studentOnly, (req, res) => {

@@ -18,6 +18,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const photoRemoveBtn = document.getElementById("photo-remove-btn");
   const projectList = document.getElementById("profile-project-list");
   const saveStatus = document.getElementById("profile-save-status");
+  const recruiterAssessments = document.getElementById("profile-recruiter-assessments");
+  const recruiterAssessmentsRefresh = document.getElementById("profile-assessments-refresh");
 
   let profile = Store.getProfile(user.email);
 
@@ -401,6 +403,49 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  async function loadRecruiterAssessments() {
+    if (!recruiterAssessments) return;
+    const token = sessionStorage.getItem("im_student_api_token");
+    if (!token || user.role !== "student") {
+      recruiterAssessments.innerHTML = `<p class="hint">Sign in with your student account to see assessments assigned by recruiters. <a href="login.html?role=student&amp;next=profile.html">Student sign in</a></p>`;
+      return;
+    }
+    recruiterAssessments.innerHTML = '<p class="hint" role="status">Loading recruiter assessments…</p>';
+    recruiterAssessmentsRefresh.disabled = true;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    try {
+      const response = await fetch(`${window.IM_API_BASE}/api/student/assessment-tracker`, {
+        headers: { authorization: `Bearer ${token}` }, cache: "no-store", signal: controller.signal
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || `Could not load recruiter assessments (${response.status}).`);
+      const items = Array.isArray(data.items) ? data.items : [];
+      recruiterAssessments.innerHTML = items.length ? `<div class="recruiter-assessment-list">${items.map((item) => {
+        const result = item.result;
+        let status = "Available";
+        let resultMarkup = `<a class="btn btn--primary btn--sm" href="interview-prep.html#company-assessments-panel">Start assessment</a>`;
+        if (result) {
+          status = result.writtenAnswersPending ? "Recruiter review pending" : result.status || "Submitted";
+          const score = result.status === "Scored" || result.status === "Reviewed"
+            ? `<strong>${Number(result.score)}/${Number(result.totalMarks)} marks${result.passed == null ? "" : result.passed ? " · Passed" : " · Not passed"}</strong>`
+            : "";
+          resultMarkup = `<div class="recruiter-assessment-item__result">${score}<span class="hint">Submitted ${App.escapeHtml(result.submittedAt ? App.formatDate(result.submittedAt) : "")}</span></div>`;
+        } else if (!item.available) {
+          status = item.startAt && Date.parse(item.startAt) > Date.now() ? `Opens ${App.escapeHtml(App.formatDate(item.startAt))}` : "Closed";
+          resultMarkup = `<span class="pill pill--muted">${status}</span>`;
+        }
+        return `<article class="recruiter-assessment-item"><div class="recruiter-assessment-item__info"><strong>${App.escapeHtml(item.title || "Recruiter assessment")}</strong><span>${App.escapeHtml(item.companyName || "Company")} · ${App.escapeHtml(item.roleTitle || "Internship")} · ${Number(item.durationMinutes) || 0} min · ${Number(item.totalMarks) || 0} marks</span><span>${App.escapeHtml(status)}</span></div>${resultMarkup}</article>`;
+      }).join("")}</div>` : '<p class="hint">No recruiter assessments are assigned to your applications yet.</p>';
+    } catch (error) {
+      recruiterAssessments.innerHTML = `<p class="hint" role="alert">${App.escapeHtml(error.name === "AbortError" ? "Assessment service timed out. Refresh to try again." : error.message)} <a href="interview-prep.html#company-assessments-panel">Open interview preparation</a></p>`;
+    } finally {
+      clearTimeout(timeout);
+      recruiterAssessmentsRefresh.disabled = false;
+    }
+  }
+  recruiterAssessmentsRefresh?.addEventListener("click", loadRecruiterAssessments);
+
   function fillForm() {
     profile.projects = Array.isArray(profile.projects) ? profile.projects : [];
     document.getElementById("p-fullname").value = profile.fullName || "";
@@ -617,4 +662,5 @@ document.addEventListener("DOMContentLoaded", () => {
   renderAchievements();
   renderInterviewScores();
   hydrateServerProfile();
+  loadRecruiterAssessments();
 });
