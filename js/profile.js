@@ -199,7 +199,7 @@ document.addEventListener("DOMContentLoaded", () => {
           canvas.width = Math.round(image.width * scale);
           canvas.height = Math.round(image.height * scale);
           canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
-          resolve(canvas.toDataURL("image/jpeg", 0.85));
+          resolve(canvas.toDataURL("image/jpeg", 0.92));
         };
         image.src = reader.result;
       };
@@ -230,7 +230,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     try {
-      profile.photo = await resizeImageFile(file, 480);
+      profile.photo = await resizeImageFile(file, 960);
       const synced = await persistProfilePhoto();
       renderPhotoPreview();
       App.toast(synced ? "Profile photo updated and synced with your account." : "Profile photo saved in this browser. Sign in to sync it with admin and company views.", synced ? "success" : "error");
