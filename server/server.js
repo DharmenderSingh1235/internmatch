@@ -451,7 +451,7 @@ function candidateMatch(candidate, internship) {
 }
 
 app.get("/", (req, res) => {
-  res.type("html").send(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>InternMatch AI backend</title><body style="font:16px system-ui;max-width:680px;margin:12vh auto;padding:24px;color:#17233b"><h1>InternMatch AI backend is running</h1><p>This address serves the chatbot API, not the website interface.</p><p>Open <a href="http://127.0.0.1:5500/chatbot.html">chatbot.html through Live Server</a> to use the chatbot. If your Live Server uses another port, use that address instead.</p><p>Backend status: <a href="/api/health">/api/health</a></p></body></html>`);
+  res.type("html").send(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>InternMatch API</title><body style="font:16px system-ui;max-width:680px;margin:12vh auto;padding:24px;color:#17233b"><h1>InternMatch API is running</h1><p>This service powers the InternMatch website and chatbot.</p><p>Open <a href="https://internmatch-frontend-team-7-baf1.vercel.app/">InternMatch website</a> to browse internships and use the Career chatbot.</p><p>Backend status: <a href="/api/health">/api/health</a></p></body></html>`);
 });
 const sessionStorageMode = process.env.MONGODB_URI
   ? "mongodb"
