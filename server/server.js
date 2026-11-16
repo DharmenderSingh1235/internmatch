@@ -451,7 +451,7 @@ function candidateMatch(candidate, internship) {
 }
 
 app.get("/", (req, res) => {
-  res.type("html").send(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>InternMatch API</title><body style="font:16px system-ui;max-width:680px;margin:12vh auto;padding:24px;color:#17233b"><h1>InternMatch API is running</h1><p>This service powers the InternMatch website and chatbot.</p><p>Open <a href="https://internmatch-frontend-team-7-baf1.vercel.app/">InternMatch website</a> to browse internships and use the Career chatbot.</p><p>Backend status: <a href="/api/health">/api/health</a></p></body></html>`);
+  res.redirect(302, "https://internmatch-frontend-team-7-baf1.vercel.app/");
 });
 const sessionStorageMode = process.env.MONGODB_URI
   ? "mongodb"
