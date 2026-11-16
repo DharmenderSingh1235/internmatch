@@ -57,7 +57,12 @@ app.use((req, res, next) => {
   next();
 });
 const LOCAL_ORIGIN_RE = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
-const allowedOrigins = new Set(String(process.env.ALLOWED_ORIGIN || "").split(",").map((origin) => origin.trim()).filter(Boolean));
+const allowedOrigins = new Set([
+  ...String(process.env.ALLOWED_ORIGIN || "").split(",").map((origin) => origin.trim()).filter(Boolean),
+  // Keep the production frontend connected even if the Vercel environment
+  // still contains an older frontend alias.
+  "https://internmatch-frontend-team-7-baf1.vercel.app"
+]);
 app.use(cors({ origin(origin, callback) {
   if (!origin || LOCAL_ORIGIN_RE.test(origin) || allowedOrigins.has(origin)) return callback(null, true);
   return callback(new Error("Not allowed by CORS"));
