@@ -458,7 +458,7 @@ const sessionStorageMode = process.env.MONGODB_URI
   : process.env.SUPABASE_URL && process.env.SUPABASE_SECRET_KEY
     ? "supabase"
     : portalData.sessionStore ? "sqlite" : "memory";
-app.get("/api/health", (req, res) => res.json({ ok: true, apiVersion: "2026-11-07-exam-page-lock", assessmentVerifiedTeacherInvites: true, assessmentApprovals: true, assessmentRejectFeedback: true, assessmentDocumentDrafts: true, assessmentWritingReview: true, assessmentCameraRequired: true, assessmentLocalSignals: true, assessmentLocalFaceDetection: true, assessmentMultiFaceTwoStrikeTermination: true, assessmentSoundTwoStrikeTermination: true, assessmentContextChangeTermination: true, assessmentPageLockOnContextChange: true, assessmentFullscreenContextAutoSubmit: true, assessmentClipboardBlocked: true, assessmentRecruiterLiveView: true, assessmentGeminiFallbackChain: true, assessmentMonitoringPolicy: true, assessmentWarningSignals: true, assessmentFourWarningTermination: true, studentAssessmentTracker: true, adminPracticeAreaManagement: true, adminPracticeFileQuestionDrafts: true, studentPracticeAreas: true, profileCvSharing: true, adminCvConsent: true, adminCvApproval: true, companyCvApprovalGate: true, companyCvReview: true, adminCompanyCvReviewHistory: true, studentProfileSync: true, studentInterviewScores: true, adminStudentRecords: true, adminStudentCvReview: true, adminCompanyRecords: true, keyConfigured: !!selected.key, provider: PROVIDER, model: selected.model, catalogueSize: INTERNSHIP_DATA.length, storage: portalData.storageMode(), mongodbConnected: portalData.storageMode() === "mongodb", sessionStorage: sessionStorageMode }));
+app.get("/api/health", (req, res) => res.json({ ok: true, apiVersion: "2026-11-07-exam-page-lock", assessmentVerifiedTeacherInvites: true, assessmentApprovals: true, assessmentRejectFeedback: true, assessmentDocumentDrafts: true, assessmentWritingReview: true, assessmentCameraRequired: true, assessmentLocalSignals: true, assessmentLocalFaceDetection: true, assessmentMultiFaceTwoStrikeTermination: true, assessmentSoundTwoStrikeTermination: true, assessmentContextChangeTermination: true, assessmentPageLockOnContextChange: true, assessmentFullscreenContextAutoSubmit: true, assessmentClipboardBlocked: true, assessmentRecruiterLiveView: true, assessmentGeminiFallbackChain: true, assessmentMonitoringPolicy: true, assessmentWarningSignals: true, assessmentFourWarningTermination: true, studentAssessmentTracker: true, adminPracticeAreaManagement: true, adminPracticeFileQuestionDrafts: true, studentPracticeAreas: true, profileCvSharing: true, adminCvConsent: true, adminCvApproval: true, companyCvApprovalGate: true, companyCvReview: true, adminCompanyCvReviewHistory: true, studentProfileSync: true, studentInterviewScores: true, adminStudentRecords: true, adminStudentCvReview: true, adminCompanyRecords: true, keyConfigured: !!selected.key, adminPasswordConfigured: !!process.env.ADMIN_PASSWORD, provider: PROVIDER, model: selected.model, catalogueSize: INTERNSHIP_DATA.length, storage: portalData.storageMode(), mongodbConnected: portalData.storageMode() === "mongodb", sessionStorage: sessionStorageMode }));
 app.get("/api/internships", (req, res) => {
   const listings = portalData.collection("internships").filter((listing) => String(listing.status).toLowerCase() === "active").map((listing) => {
     const company = portalData.collection("companies").find((item) => item.id === listing.companyId && String(item.status).toLowerCase() === "active");
@@ -474,7 +474,12 @@ app.post("/api/auth/logout", asyncRoute(async (req, res) => {
 }));
 app.post("/api/auth/admin/login", limitAuthRequests, asyncRoute(async (req, res) => {
   const expected = process.env.ADMIN_PASSWORD;
-  if (!expected) return res.status(503).json({ error: "Set ADMIN_PASSWORD in server/.env before using admin management." });
+  if (!expected) {
+    const error = process.env.VERCEL
+      ? "Admin login is not configured. Add ADMIN_PASSWORD to the internmatch-server Vercel Production environment and redeploy the API."
+      : "Set ADMIN_PASSWORD in server/.env before using admin management.";
+    return res.status(503).json({ error });
+  }
   const actual = Buffer.from(String(req.body?.password || ""));
   const configured = Buffer.from(expected);
   if (actual.length !== configured.length || !crypto.timingSafeEqual(actual, configured)) return res.status(401).json({ error: "Incorrect admin password." });
