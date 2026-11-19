@@ -899,7 +899,7 @@ app.get("/api/student/profile", studentOnly, (req, res) => {
   const student = portalData.collection("students").find((item) => item.id === req.session.id);
   if (!student) return res.status(404).json({ error: "Student account not found." });
   res.set("Cache-Control", "no-store");
-  const { photo, ...profile } = student.profile || {};
+  const profile = { ...(student.profile || {}), photo: student.profilePhoto || student.profile?.photo || "" };
   const companies = new Map(portalData.collection("companies").map((company) => [company.id, company.name]));
   const companyCvReviews = (student.companyCvReviews || []).map((review) => ({ status: review.status, note: review.note, reviewedAt: review.reviewedAt, companyName: companies.get(review.companyId) || review.companyName || "Company" }));
   res.json({ profile, interviewScores: student.interviewScores || [], profileVisible: !!student.profileVisible, cvShared: !!student.cvShared, adminCvShared: !!student.adminCvShared, cvUploaded: !!student.cvPdf, cvReview: student.cvReview || null, companyCvReviews });

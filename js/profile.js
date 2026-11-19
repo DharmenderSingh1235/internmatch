@@ -378,7 +378,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const mergedProfile = { ...(data.profile || {}) };
       Object.entries(localProfile).forEach(([key, value]) => {
         const hasValue = Array.isArray(value) ? value.length > 0 : typeof value === "string" ? value.trim() !== "" : value != null;
-        if (hasValue || key === "photo") mergedProfile[key] = value;
+        // The server is the shared source of truth for profile photos. Only
+        // merge browser-local values for the other profile fields.
+        if (key !== "photo" && hasValue) mergedProfile[key] = value;
       });
       profile = Object.assign(Store.getProfile(user.email), mergedProfile);
       Store.writeBlob(`im_profile_${user.email}`, profile);
