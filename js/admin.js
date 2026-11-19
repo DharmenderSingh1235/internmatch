@@ -134,6 +134,14 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("admin-company-dialog-close")?.addEventListener("click", () => adminCompanyDialog.close());
   async function showCvFile(blob, fileName) {
     const isPdf = blob.type === "application/pdf" || /\.pdf$/i.test(fileName || "");
+    const safeFileName = (fileName || (isPdf ? "student-resume.pdf" : "student-resume.docx")).replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_");
+    const cvOpenLink = document.getElementById("admin-cv-open");
+    const cvDownloadLink = document.getElementById("admin-cv-download");
+    cvDownloadLink.href = activeCvUrl;
+    cvDownloadLink.download = safeFileName;
+    cvDownloadLink.hidden = false;
+    cvOpenLink.href = activeCvUrl;
+    cvOpenLink.hidden = !isPdf;
     cvFrame.hidden = false; cvFrame.style.display = "";
     cvFrame.removeAttribute("src"); cvFrame.removeAttribute("srcdoc"); cvFrame.removeAttribute("sandbox");
     if (isPdf) cvFrame.src = activeCvUrl;
@@ -145,7 +153,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (activeCvUrl) URL.revokeObjectURL(activeCvUrl);
     const blob = await response.blob();
     activeCvUrl = URL.createObjectURL(blob);
-    const fileName = decodeURIComponent((response.headers.get("content-disposition") || "").match(/filename\*=UTF-8''([^;]+)/i)?.[1] || "student-resume.docx");
+    const encodedName = (response.headers.get("content-disposition") || "").match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+    let fileName = encodedName || (blob.type === "application/pdf" ? "student-resume.pdf" : "student-resume.docx");
+    if (encodedName) { try { fileName = decodeURIComponent(encodedName); } catch { /* Keep the server-provided encoded name if malformed. */ } }
     await showCvFile(blob, fileName);
     activeCvEmail = student.email || ""; activeCvStudentId = student.id;
     document.getElementById("admin-cv-dialog-title").textContent = `${student.name || "Student"} · CV`;
@@ -389,6 +399,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const studentDialogContent = document.getElementById("admin-student-dialog-content");
   const cvDialog = document.getElementById("admin-cv-dialog");
   const cvFrame = document.getElementById("admin-cv-frame");
+  const cvOpenLink = document.getElementById("admin-cv-open");
+  const cvDownloadLink = document.getElementById("admin-cv-download");
   let activeCvUrl = "";
   let activeCvEmail = "";
   let activeCvStudentId = "";
@@ -430,6 +442,8 @@ document.addEventListener("DOMContentLoaded", () => {
     cvFrame.removeAttribute("src");
     cvFrame.removeAttribute("srcdoc"); cvFrame.removeAttribute("sandbox");
     cvFrame.hidden = false; cvFrame.style.display = "";
+    cvOpenLink.removeAttribute("href"); cvOpenLink.hidden = true;
+    cvDownloadLink.removeAttribute("href"); cvDownloadLink.removeAttribute("download"); cvDownloadLink.hidden = true;
     if (activeCvUrl) URL.revokeObjectURL(activeCvUrl);
     activeCvUrl = "";
     activeCvEmail = "";
